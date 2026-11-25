@@ -409,7 +409,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     </View>:slug==="collaboration"&&result.state!=="PUBLISHED"?<View style={styles.card}>
     <Text accessibilityRole="header" style={styles.heading}>Corporate Partners</Text>
     <Text style={styles.body}>Contact the Foundation to discuss corporate social responsibility and service collaborations.</Text>
-    <Text style={styles.muted}>{result.state==="UNAVAILABLE"?"Current partner announcements cannot be verified.":"No partner identities are currently approved for public display."}</Text>
+    <Text style={styles.muted}>{result.state==="UNAVAILABLE"?"Current partner announcements cannot be verified.":"Partner information will appear here when it is verified and published."}</Text>
     <CmsButton title="Get in touch" onPress={onContact}/>
     <CmsButton title="Apply as a healthcare partner" onPress={onPartnerApplication} secondary/>
     <CmsButton title="Refresh partner announcements" onPress={()=>void load("collaboration")} secondary/>
@@ -466,7 +466,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
      if(fields.placement)return null;
      const aboutImage=page.assets.find(v=>v.role==="ABOUT"&&v.order===section.order);
      const aboutSrc=safeImage(aboutImage);
-     const highlights=Array.isArray(fields.highlights)?fields.highlights.slice(0,4):[];
+     const highlights=Array.isArray(fields.highlights)?fields.highlights.slice(0,5):[];
      return <View style={styles.card} key={i}>
       {!!text(fields.eyebrow)&&<Text style={styles.eyebrow}>{text(fields.eyebrow)}</Text>}
       <Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)}</Text>
@@ -499,18 +499,19 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       })}
      </View>;
     }
-    if(section.kind==="JOIN_CARDS")return <View key={i} style={styles.card}>
+    if(section.kind==="JOIN_CARDS")return <View key={i} style={styles.sections}><View style={styles.card}>
      <Text accessibilityRole="header" style={styles.heading}>{text(fields.volunteerTitle)}</Text>
      <Text style={styles.body}>{text(fields.volunteerBody)}</Text>
      {(Array.isArray(fields.volunteerBenefits)?fields.volunteerBenefits:[]).map((v,j)=>
       <Text style={styles.highlight} key={j}>✓ {text(v)}</Text>)}
      {volunteerJoin&&<CmsButton title="Become a Volunteer" onPress={onVolunteerApply}/>}
+     </View><View style={styles.card}>
      <Text accessibilityRole="header" style={styles.heading}>{text(fields.memberTitle)}</Text>
      <Text style={styles.body}>{text(fields.memberBody)}</Text>
      {(Array.isArray(fields.memberBenefits)?fields.memberBenefits:[]).map((v,j)=>
       <Text style={styles.highlight} key={j}>✓ {text(v)}</Text>)}
      {memberJoin&&<CmsButton title="Become a Member" onPress={()=>setSlug("membership")}/>}
-    </View>;
+    </View></View>;
     if(section.kind==="CTA"){
      const image=page.assets.find(x=>x.role==="PROMO"&&x.order===section.order);
      const uri=safeImage(image);
@@ -600,7 +601,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       <CmsButton title="Apply as a healthcare partner" onPress={onPartnerApplication} secondary/>
      </View>;
     }
-    if(section.kind==="PROJECT_TEASER"){const categories=["All Projects","Education","Healthcare","Livelihood","Social Welfare","Community Development"];const cards=(Array.isArray(fields.cards)?fields.cards:[]).filter(p=>page.kind!=="PROJECTS"||projectCategory==="All Projects"||p&&typeof p==="object"&&text(p.category).toLowerCase()===projectCategory.toLowerCase());return <View key={i} style={styles.card}><Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)||"Projects"}</Text>{page.kind==="PROJECTS"&&<View style={styles.nav}>{categories.map(c=><CmsButton key={c} title={c} secondary={c!==projectCategory} onPress={()=>setProjectCategory(c)}/>)}</View>}{!cards.length?<Text>No currently approved projects to display.</Text>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Fields;const cover=/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))?safeImage({src:text(p.coverSrc),role:"PROJECT",altText:text(p.title),order:0}):null;return <View key={j} style={styles.card}>{!!cover&&<Image source={{uri:cover}} accessibilityLabel={text(p.title)} style={styles.image} resizeMode="cover"/>}<Text style={styles.eyebrow}>{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</Text><Text style={styles.heading}>{text(p.title)}</Text><Text>{text(p.area)}</Text><Text style={styles.body}>{text(p.summary)}</Text>{!!text(p.launch)&&<Text>Planned start: {text(p.launch)}</Text>}</View>;})}</View>;}
+    if(section.kind==="PROJECT_TEASER"){const categories=["All Projects","Education","Healthcare","Livelihood","Social Welfare","Community Development"];const cards=(Array.isArray(fields.cards)?fields.cards:[]).filter(p=>page.kind!=="PROJECTS"||projectCategory==="All Projects"||p&&typeof p==="object"&&text(p.category).toLowerCase()===projectCategory.toLowerCase());return <View key={i} style={styles.card}><Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)||"Projects"}</Text>{page.kind==="PROJECTS"&&<View style={styles.nav}>{categories.map(c=><CmsButton key={c} title={c} secondary={c!==projectCategory} onPress={()=>setProjectCategory(c)}/>)}</View>}{!cards.length?<View style={styles.person}><Text style={styles.heading}>No projects to display yet</Text><Text style={styles.muted}>Published project updates will appear here.</Text>{page.slug==="home"&&publishedPaths.includes("/our-work")&&<CmsButton title="Explore our work" onPress={()=>setSlug("our-work")}/>}</View>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Fields;const cover=/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))?safeImage({src:text(p.coverSrc),role:"PROJECT",altText:text(p.title),order:0}):null;return <View key={j} style={styles.card}>{!!cover&&<Image source={{uri:cover}} accessibilityLabel={text(p.title)} style={styles.image} resizeMode="cover"/>}<Text style={styles.eyebrow}>{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</Text><Text style={styles.heading}>{text(p.title)}</Text><Text>{text(p.area)}</Text><Text style={styles.body}>{text(p.summary)}</Text>{!!text(p.launch)&&<Text>Planned start: {text(p.launch)}</Text>}</View>;})}</View>;}
     // Never infer operational projects from CMS-only text.
     return null;
    })}
