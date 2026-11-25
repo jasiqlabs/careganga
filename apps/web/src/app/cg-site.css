@@ -687,3 +687,9 @@
 .cg-site-newsletter-consent input{flex:none;width:1.25rem;height:1.25rem;accent-color:#f3c744}
 .cg-site-footer :is(button,input,a):focus-visible{outline:2px solid #f3c744;outline-offset:3px}
 .cg-site-newsletter-actions button:disabled,.cg-site-newsletter-secondary:disabled{opacity:.7;cursor:not-allowed}
+
+/* Support FAQs span the form and contact columns, with accessible disclosure targets. */
+.cg-site-contact-support-faq{grid-column:1/-1;overflow-wrap:anywhere}
+.cg-site-contact-support-faq summary{min-height:44px;cursor:pointer;padding-block:.45rem;color:#24533c;font-weight:700}
+.cg-site-contact-support-faq summary:focus-visible{outline:3px solid #9e6d13;outline-offset:2px;border-radius:.25rem}
+.cg-site-contact-button{font:inherit;font-weight:750;min-height:44px;white-space:normal;overflow-wrap:anywhere}
