@@ -34,16 +34,18 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  const [search,setSearch]=useState("");
  const [openFaq,setOpenFaq]=useState<number|null>(null);
  const [annualYear,setAnnualYear]=useState("ALL");
+ const [mediaYear,setMediaYear]=useState("ALL");
  const galleryItems=rows(f.items);
- const categories=Array.from(new Set(galleryItems.map(x=>text(x.category)).filter(Boolean))).sort();
- const galleryMatches=galleryItems.map((item,index)=>({item,
-  i:typeof item.originalIndex==="number"&&Number.isSafeInteger(item.originalIndex)?
-   item.originalIndex:index})).filter(({item})=>
-   item.mediaType===actualMedia&&
-   (categoryFilter==="ALL"||item.category===categoryFilter)&&
-   (!search.trim()||[item.title,item.caption,item.category].some(v=>
-    text(v).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))));
  const asset=(role:string,order=section.order)=>assets.find(a=>a.role===role&&a.order===order);
+ const available=galleryItems.map((item,index)=>({item,i:typeof item.originalIndex==="number"&&Number.isSafeInteger(item.originalIndex)?item.originalIndex:index}))
+  .filter(({item,i})=>item.mediaType===actualMedia&&!!mediaUrl(asset("GALLERY",i)));
+ const categories=Array.from(new Set(available.map(({item})=>text(item.category)).filter(Boolean))).sort();
+ const mediaYears=Array.from(new Set(available.map(({item})=>text(item.asOfDate).slice(0,4)).filter(y=>/^\d{4}$/.test(y)))).sort((a,b)=>b.localeCompare(a));
+ const resetMedia=()=>{setCategoryFilter("ALL");setSearch("");setMediaYear("ALL");};
+ const galleryMatches=available.filter(({item})=>
+  (categoryFilter==="ALL"||item.category===categoryFilter)&&
+  (actualMedia!=="PUBLICATION"||mediaYear==="ALL"||text(item.asOfDate).startsWith(mediaYear+"-"))&&
+  (!search.trim()||[item.title,item.caption,item.category].some(v=>text(v).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))));
  const picture=(role:string,order=section.order)=>{
   const img=asset(role,order),uri=mediaUrl(img);
   return uri?<Image style={styles.photo} source={{uri}}
@@ -182,12 +184,12 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
     <Pressable key={value} accessibilityRole="button"
      accessibilityState={{selected:actualMedia===value}}
      style={[styles.filter,actualMedia===value&&styles.filterActive]}
-     onPress={()=>setMediaFilter(value)}>
+     onPress={()=>{resetMedia();setMediaFilter(value);}}>
      <Text style={[styles.filterText,actualMedia===value&&styles.filterActiveText]}>
       {label}</Text>
     </Pressable>)}
   </View>}
-  {categories.length>1&&<View style={styles.filterRow} accessibilityLabel="Approved categories">
+  {categories.length>0&&<View style={styles.filterRow} accessibilityLabel="Approved categories">
    <Pressable accessibilityRole="button" accessibilityState={{selected:categoryFilter==="ALL"}}
     style={[styles.filter,categoryFilter==="ALL"&&styles.filterActive]}
     onPress={()=>setCategoryFilter("ALL")}><Text style={[styles.filterText,
@@ -201,10 +203,11 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   <TextInput style={styles.search} value={search} onChangeText={setSearch}
    placeholder="Search approved media" accessibilityLabel="Search approved media"
    autoCapitalize="none" maxLength={80}/>
+  {actualMedia==="PUBLICATION"&&<View style={styles.filterRow} accessibilityLabel="Publication year">{["ALL",...mediaYears].map(y=><Pressable key={y} accessibilityRole="button" accessibilityState={{selected:mediaYear===y}} style={[styles.filter,mediaYear===y&&styles.filterActive]} onPress={()=>setMediaYear(y)}><Text style={[styles.filterText,mediaYear===y&&styles.filterActiveText]}>{y==="ALL"?"All years":y}</Text></Pressable>)}</View>}
+  <Action title="Reset filters" onPress={resetMedia}/>
   <Text style={styles.source} accessibilityLiveRegion="polite">
    {galleryMatches.length} approved resources match</Text>
-  {galleryMatches.length===0&&<Text style={styles.body}>No approved media matches.
-    Change the filter or search.</Text>}
+  {galleryMatches.length===0&&<View style={styles.item}><Text style={styles.body}>{available.length===0?(text(f[actualMedia==="VIDEO"?"videosEmptyText":actualMedia==="PUBLICATION"?"publicationsEmptyText":"photosEmptyText"])||"No approved resources published yet."):"No approved resources match these filters. Change the filter or search."}</Text></View>}
   {galleryMatches.map(({item,i})=>{
    const media=asset("GALLERY",i),url=mediaUrl(media);
    if(!url)return null;
