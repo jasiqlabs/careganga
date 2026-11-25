@@ -299,7 +299,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   {onHealthcareDirectory&&<Action title="Find verified healthcare services" onPress={()=>onHealthcareDirectory()}/>}
   {rows(f.categories).map((item,i)=><View style={styles.item} key={i}>
    {picture("FEATURE",i)}
-   {asset("FEATURE",i)?.altText.startsWith("AI-generated illustration")&&<Text style={styles.source}>AI-generated illustration.</Text>}
+   {asset("FEATURE",i)?.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<Text style={styles.source}>Illustration; not a photograph of a verified facility.</Text>}
    <Text style={styles.itemTitle}>{text(item.title)}</Text>
    <Text style={styles.body}>{text(item.description)}</Text>
    {onHealthcareDirectory&&<Action title={"Find centers — "+text(item.title)} onPress={()=>onHealthcareDirectory(healthcareCode(item.title))}/>}
