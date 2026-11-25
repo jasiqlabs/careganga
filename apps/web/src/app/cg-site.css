@@ -1056,3 +1056,15 @@
 .cg-site-contact-social a{display:inline-flex;align-items:center;min-height:44px}
 .cg-site-contact-fallback{margin-block:1rem}
 .cg-site:has(.cg-site-page-contact)>.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+
+/* NGO approved reports: retain desktop table, readable mobile document cards. */
+.cg-site-report-date-label{display:none}
+@media(max-width:540px){
+ .cg-site-report-panel .cg-site-evidence-table,.cg-site-report-panel .cg-site-evidence-table tbody{display:block;width:100%;border:0}
+ .cg-site-report-panel .cg-site-evidence-table caption{display:block;padding:.5rem 0 .75rem}
+ .cg-site-report-panel .cg-site-evidence-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ .cg-site-report-panel .cg-site-evidence-table tbody tr{display:grid;gap:.3rem;margin-bottom:.75rem;padding:.65rem;border:1px solid #dce4ed;border-radius:.7rem;background:#f7faf8}
+ .cg-site-report-panel .cg-site-evidence-table tbody tr :is(th,td){display:block;width:100%;border:0;padding:.2rem;font-size:.9rem;overflow-wrap:anywhere}
+ .cg-site-report-panel .cg-site-report-date-label{display:inline;font-weight:700;color:#52657a}
+ .cg-site-report-panel .cg-site-evidence-table tbody a[download]{display:flex;justify-content:center;align-items:center;background:#194a3a;color:#fff;min-height:44px;text-decoration:none;border-radius:.5rem;padding:.45rem .6rem}
+}
