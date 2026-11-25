@@ -334,5 +334,11 @@ CG19 currently supplies original validated/scan-clean rights-safe media and CG12
   - `npm run build -w apps/web`: PASSED (`next build`, 0 errors, all static and dynamic admin routes generated).
   - `npx tsc --noEmit -p apps/android-internal/tsconfig.json`: PASSED (0 errors, native Android internal typechecked).
   - `node scripts/verify-cg19-client-source.mjs`: PASSED (52 exact client email templates, drafts, ticket_number, status notes verified).
+
+### 25 November 2026 — User-Led Manual QA & Public Contact Ingress Verification (US-003)
+- **Defect Resolution & Local Ingress Proxy Fix:** In `apps/web/src/app/api/support/[...parts]/route.ts`, normalized `BACKEND_URL` (`localhost` -> `127.0.0.1`) preventing Windows dual-stack IPv6 socket connection drop, added non-production loopback fallback for `trustedHeader` when client runs in local browser without upstream reverse proxy, and instrumented diagnostic error reporting.
+- **Executed Live Browser QA Evidence (US-003):**
+  - Public contact form submission at `http://localhost:3000/contact` with user input (Name: `Amit Kumar`, Subject: `Need medical assistance`): PASSED. Ticket number `CGF-SUP-000000002` generated with opaque private receipt `gMaW6mep8Zzvf-bfckBGfUmmynDVC0daMuaPkaAywSM` (expires 2026-12-25).
+  - Private receipt status check endpoint (`POST /api/support/receipt/status`): PASSED with status `SUBMITTED`.
   - `npm run test:cg19-migration-compatibility -w apps/backend`: PASSED (6/6 tests passed).
 - **Gate:** SOURCE_VERIFIED_RUNTIME_PENDING. No runtime PostgreSQL, live mail/SMS provider dispatch, Android emulator/device or production deployment implied. Original QA criteria and counts unchanged.

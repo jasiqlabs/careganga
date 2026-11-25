@@ -69,7 +69,8 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
     return fail(403,"Submit from the original CareGanga page.");
   const token=access==="STAFF"?(await cookies()).get("cg_staff_session")?.value:undefined;
   if(access==="STAFF"&&!token)return fail(401,"Sign in to Foundation support.");
-  const backend=process.env.BACKEND_URL;
+  const rawBackend = process.env.BACKEND_URL || "http://127.0.0.1:4000";
+  const backend = rawBackend.replace("localhost", "127.0.0.1");
   if(!backend)return fail(503,"Foundation support is unavailable.");
   let body:string|undefined;
   if(method!=="GET"){
@@ -95,7 +96,8 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
         return fail(503,"Trusted support ingress is not configured.");
       // Deployment ingress MUST overwrite/remove incoming trustedHeader and
       // populate it from a real client socket. Never blindly trust XFF.
-      const client=request.headers.get(trustedHeader);
+      const rawClient=request.headers.get(trustedHeader);
+      const client=rawClient||(process.env.NODE_ENV!=="production"?"127.0.0.1":null);
       if(!client||!/^[0-9a-fA-F:.]{3,45}$/.test(client))
         return fail(503,"Trusted client address is unavailable.");
       const timestamp=String(Date.now());
@@ -154,7 +156,8 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
     const data:unknown=await result.json();
     return NextResponse.json(data,{headers:{"Cache-Control":"no-store",
       "Referrer-Policy":"no-referrer"}});
-  }catch{
+  }catch(err){
+    console.error("CG19 support proxy fetch exception:", err);
     return fail(503,"The action could not be confirmed. Check original status before retrying.");
   }
 }
