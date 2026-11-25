@@ -23,11 +23,12 @@ export function Cg19NewsletterForm(){
     headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:AbortSignal.timeout(23000)});
    if(!r.ok){setFeedback(r.status===429?"Too many requests. Try again later.":
     r.status===400?"Check the email or private code. If it expired, request a new one.":
+    step==="KEY"?"Withdrawal outcome is unconfirmed. Retry with your original private withdrawal key.":
     "Newsletter verification is unavailable or the outcome is unconfirmed. If a code arrives, enter it; otherwise try later.");
     if(step==="REQUEST"&&r.status>=500)setStep("CODE");return;}
    const result:unknown=await r.json();
-   const state=result&&typeof result==="object"&&"state" in result?result.state:null;
-   if(step==="REQUEST"&&["CHECK_EMAIL","CHECK_EXISTING_CODE","SEND_UNCONFIRMED"].includes(String(state))){
+   const state=result&&typeof result==="object"&&!Array.isArray(result)&&"state" in result&&typeof result.state==="string"?result.state:null;
+   if(step==="REQUEST"&&state!==null&&["CHECK_EMAIL","CHECK_EXISTING_CODE","SEND_UNCONFIRMED"].includes(state)){
     setStep("CODE");
     setFeedback(state==="CHECK_EMAIL"?"The verification email was accepted for sending. Check your inbox and spam folder.":
      state==="CHECK_EXISTING_CODE"?"Use the recently requested verification code.":"Email delivery is not confirmed. Enter the code if it arrives.");
@@ -35,7 +36,8 @@ export function Cg19NewsletterForm(){
     setCode("");setEmail("");setConsent(false);setStep("REQUEST");
     setFeedback(state==="SUBSCRIBED"?"Your newsletter subscription is confirmed. Keep the private withdrawal key from the email.":"Your newsletter consent has been withdrawn.");
    }else setFeedback("The outcome could not be confirmed. Use the original private code.");
-  }catch{if(step==="REQUEST")setStep("CODE");setFeedback("Outcome unconfirmed. Enter the verification code if it arrives.");}
+  }catch{if(step==="REQUEST")setStep("CODE");setFeedback(step==="KEY"?"Withdrawal outcome is unconfirmed. Retry with your original private withdrawal key.":
+    step==="CODE"?"Outcome unconfirmed. Retry with the original verification code.":"Outcome unconfirmed. Enter the verification code if it arrives.");}
   finally{setBusy(false);}
  }
  return <div>
@@ -52,8 +54,8 @@ export function Cg19NewsletterForm(){
     I agree to receive CareGanga Foundation newsletters by email. I can unsubscribe at any time.</label>}
    {step!=="REQUEST"&&<label className="cg-site-newsletter-field">
     <span>{step==="KEY"?"Private withdrawal key":"Email verification code"}</span>
-    <input value={code} disabled={busy} autoComplete="off" type={step==="KEY"?"password":"text"}
-     inputMode={step==="CODE"?"numeric":"text"} maxLength={step==="KEY"?43:8}
+    <input value={code} disabled={busy} autoComplete={step==="CODE"?"one-time-code":"off"} type={step==="KEY"?"password":"text"}
+     inputMode={step==="CODE"?"numeric":"text"} maxLength={64}
      onChange={e=>setCode(e.target.value.trim())}/></label>}
    <button type="submit" disabled={busy||step==="REQUEST"&&action==="SUBSCRIBE"&&!consent} className="cg-site-newsletter-button">
     {busy?"Processing…":step==="REQUEST"?"Send verification code":step==="KEY"?"Withdraw consent":"Confirm "+(action==="SUBSCRIBE"?"subscription":"withdrawal")}</button>
