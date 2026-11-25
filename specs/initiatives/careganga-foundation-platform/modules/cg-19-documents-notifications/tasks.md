@@ -343,3 +343,7 @@ CG19 currently supplies original validated/scan-clean rights-safe media and CG12
 
 ### 24 November — Online confirmation error source coverage
 - HUX-11.03/15.01; origin=CG-17/US-004-QA01/08/09 receiving CG19 source. Added the online confirmation renderer to existing safe-error AST gate, using original CG01 catalog; no change to PDF issuance or payment truth. Source commit b15f8ff82ee4c3f7f85b4f5eb1bdbdfb057fac08. Local gate NOT_RUN; independent reviewer unavailable. Next: exercise changed/invalid source, renderer failure and authorized PDF response on local backend and both public channels. Original QA definitions unchanged.
+
+
+### 25 November — public contact receiving UX (PUB-11)
+- Existing CG19 US003 public support/receipt owner retained; linked CG18 PUB-11. Web e913884 and Public Android 3f5a6fb disable editing while send/check is pending, place feedback at the applicable action, and invalidate old status when a new private receipt is entered or checked. Web copy reports actual clipboard success/failure; native retains selectable private receipt. Original signed ingress, request idempotency, server validation and privacy are unchanged. Actual receipt/provider, rate limit, retry/conflict, Web/device and independent review remain NOT_RUN; no original QA status promotion or production change.
