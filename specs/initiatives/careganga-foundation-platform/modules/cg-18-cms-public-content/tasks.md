@@ -738,7 +738,7 @@ Baseline from current Web route inventory and earlier local QA evidence. This is
 | 6 | `/blog/[slug]` | PENDING — second-pass assembled page manual inspection |
 | 7 | `/campaigns` | ASSEMBLED_OFFLINE_180_OF_180 — visual inspected; full Next/backend and original assets pending |
 | 8 | `/campaigns/[slug]` | ASSEMBLED_OFFLINE_144_OF_144 — visual inspected; full Next/backend and original assets pending |
-| 9 | `/collaboration` | PENDING — second-pass assembled page manual inspection |
+| 9 | `/collaboration` | ASSEMBLED_OFFLINE_180_OF_180 — manual 390/1440 visual inspection; full Next/backend pending |
 | 10 | `/collaboration/healthcare-partner` | PENDING — second-pass assembled page manual inspection |
 | 11 | `/contact` | PENDING — second-pass assembled page manual inspection |
 | 12 | `/donate` | PENDING — second-pass assembled page manual inspection |
@@ -799,3 +799,6 @@ Baseline from current Web route inventory and earlier local QA evidence. This is
 
 ### 2026-11-25 — Second-pass notice board
 - Exact route and board component, extracted CMS functions and shell, selected CSS and synthetic approved data: 124/162 baseline, 162/162 final across six widths. Manual screenshots inspected at 390/1440; priority/search/category/reset, empty/unavailable, invalid calendar dates, clearly expired/future/reversed days and duplicate paths tested. UTC date-only display preserves backend authority for exact same-day expiry. Balanced 1/2-card layouts, compact mobile filter, accessible reset and non-overlapping CTA. Source 19bc1269f603f1fe0cfcc9a74779fb764088452f and 506acd427829f24c781b2ca11549cf2161c97c2c. Evidence `/mnt/data/cg-recheck/notice-page/after-results.json`, `after-390.png`, `after-1440.png`. Real data/assets, original dedicated reference, exact expiry integration and full Next/backend/independent review pending; no canonical acceptance promotion.
+
+### 2026-11-25 — Second-pass corporate partnerships
+- Exact page and CSS module (local after hashes match committed blobs), extracted CMS functions, shared chrome and synthetic authorized data; baseline 130/174, final expanded 180/180 across six widths. Manual 390/1440 inspections found and corrected final CTA contrast; ambiguous card indices excluded, invalid/null logo placements handled, UUID path validated, blank headings/narrative corrected, balanced 1/2-card grids and CTA moved below footer. Source 3fb3c958d24b5a208f30bb1996bdf5b388f63f74 and b20bcc79907b7507a6fbdcf4c6a6e89d3a3bbda2. Evidence `/mnt/data/cg-recheck/collaboration-page/after-results.json`, `after-390.png`, `after-1440.png`. Actual approved assets/partner records, dedicated original reference, full Next/backend and independent review remain pending; no canonical acceptance promotion.
