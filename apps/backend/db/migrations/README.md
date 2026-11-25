@@ -1,0 +1,3 @@
+# Frozen V1 historical migration archive
+
+These 311 SQL files are retained at their original paths for existing source guards, original QA references and reproducible historical replay on disposable databases only. They are not an active deployment migration directory. Never alter/delete them after V1 release. Normal installation and upgrades use baseline/schema.sql and upgrades/ and do not require this folder in the production artifact. Build verifies this archive against the baseline manifest. The legacy db:migrate command is for isolated historical replay only; never use it to install or start production.

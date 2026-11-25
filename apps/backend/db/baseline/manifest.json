@@ -1,0 +1,1251 @@
+{
+  "format": 1,
+  "postgresMajor": 17,
+  "migrations": [
+    {
+      "filename": "0001_cg01_identity.sql",
+      "sha256": "37b750fae45b21583c287e5a983acdea8fd5f464db7de05a36b64d5829a74963"
+    },
+    {
+      "filename": "0003_cg01_realm_integrity.sql",
+      "sha256": "d753df5cb40273d065cc26c4b6cded1b11f6ffae06f02707e84beba826398bd2"
+    },
+    {
+      "filename": "0004_cg01_recovery_delivery.sql",
+      "sha256": "6af9f82c1baa3764678f25b241a33594b0bcaeec8cc94dd004d7193ab8c7b025"
+    },
+    {
+      "filename": "0005_cg01_permission_namespace.sql",
+      "sha256": "dff746ea35efbd5633c02df4fedde990eb7df936fbefa76a2dee6d7dd19f1b16"
+    },
+    {
+      "filename": "0006_cg01_role_operations.sql",
+      "sha256": "4835b5c11bc72c6b06e567cfbd4acd263dac457d9240b25524c47d69b8fa676c"
+    },
+    {
+      "filename": "0007_cg01_role_command_replay_digest.sql",
+      "sha256": "d555958028deac9b5c2c9a5d6ac4c54220fc8eb4a83360522fbffabd0a057bf1"
+    },
+    {
+      "filename": "0008_cg01_account_creation_roles.sql",
+      "sha256": "b9c902f90f854bdcb71a9ec6636d30684b649bdc91b030c3bb86fcf39661ecd0"
+    },
+    {
+      "filename": "0010_cg01_auth_security_policy.sql",
+      "sha256": "1d771cd70d986ab917566fff84e2f27d4647f523ec13d8e70b3205b800764670"
+    },
+    {
+      "filename": "0011_cg01_immutable_access_audit.sql",
+      "sha256": "de33d1f9b34c94bb23e9b6f5f28c0a713a52c839f4569ef61e95b3bef4d2c05d"
+    },
+    {
+      "filename": "0012_cg01_auth_throttle_retention.sql",
+      "sha256": "ef82ea759f228828fb38e054f6d9958cd893c82aa8abda021709a7f084a38bce"
+    },
+    {
+      "filename": "0013_cg21_platform_configuration.sql",
+      "sha256": "1863eee1c9c7e1eeb6dcc50e454ba2c90a19fe22bc95c274f08db76809840181"
+    },
+    {
+      "filename": "0014_cg21_audit_recovery.sql",
+      "sha256": "7349075e0d353284d87520a1ec53e4e150e90b7dc67d5a6c1d014fe33bea727f"
+    },
+    {
+      "filename": "0015_cg21_recovery_authorization.sql",
+      "sha256": "adeaab6c5da1279c239c0750df85de82034e2eea99d4931100fa5c0b37cee2fa"
+    },
+    {
+      "filename": "0016_cg03_protected_proposals.sql",
+      "sha256": "0ba8520befabc6dbc3718fbe548093bd8868004aaf074bdf755c669b7bcf32df"
+    },
+    {
+      "filename": "0017_cg03_immutable_case_decisions.sql",
+      "sha256": "ccd19fcd38ceb282ba0b719fa0d455cca6c6508b4c3b642c8ef95421afae0739"
+    },
+    {
+      "filename": "0018_cg01_protected_approval_effect.sql",
+      "sha256": "9b390807b15ca90ae868a4090ec109c6b989a2ed8f7a63d5a194244fa2a9a1f8"
+    },
+    {
+      "filename": "0019_cg03_owner_finalization.sql",
+      "sha256": "718f03ae5ab0697ad2a2cffc29801b55f7e95fed866b807dab64085289dc8e9f"
+    },
+    {
+      "filename": "0020_cg03_process_version_integrity.sql",
+      "sha256": "0d2a107583f28d074249d87c447dc5e74d54dfbe1af8a4fdda607fe17d6ea7cc"
+    },
+    {
+      "filename": "0021_cg19_protected_case_files.sql",
+      "sha256": "def4d5005d2abd71f23f94979e2d26e9dfaae5c98a2bec98faee211ecdf834ba"
+    },
+    {
+      "filename": "0022_cg01_verified_mobile_contact.sql",
+      "sha256": "e835308fb4968698214faac6aef53b409b824766726be68224ed252e4fa0f586"
+    },
+    {
+      "filename": "0022_cg03_branch_registration_approval.sql",
+      "sha256": "3fa24ddefd71cb50523d9996cbcbed651745d8cfda2b0171164d79c075861e13"
+    },
+    {
+      "filename": "0023_cg19_notifications_notices.sql",
+      "sha256": "a3d4181837ec8233eb75a407a4bfb100d50daec7a4c330b678e822c12c3e5782"
+    },
+    {
+      "filename": "0024_cg19_foundation_support.sql",
+      "sha256": "18de8c316499f1b071ed6088cb408fb0a3e91314d0f3b916c087f076bd4bd863"
+    },
+    {
+      "filename": "0025_cg21_safe_error_message_copy.sql",
+      "sha256": "622bb31b7326c6778443aa537803f89cffa0cf6cf0ca3cfd8dc8e56a836f8396"
+    },
+    {
+      "filename": "0026_cg21_restore_recovery_authorization_action_key.sql",
+      "sha256": "6c47b34df1d08a78ec7a9aecd95c8e0615c634487a8bc368b80d722682100dfe"
+    },
+    {
+      "filename": "0201_cg02_foundation_structure.sql",
+      "sha256": "c1b82c0dec34c1bd26c14f354aee47c0fdd872ddb1b2ef03b29fee6c59648b26"
+    },
+    {
+      "filename": "0202_cg02_branch_registration_drafts.sql",
+      "sha256": "4183553d8865c53bd1641522c01ba9b35fb35874fd9d9d731e9a3cfe382b9731"
+    },
+    {
+      "filename": "0203_cg19_branch_evidence_adapter.sql",
+      "sha256": "ccc1fb36a92d65644900508870350a4f4988e40b2fee749da6f0d9725b19f19c"
+    },
+    {
+      "filename": "0204_cg02_approved_branches_and_links.sql",
+      "sha256": "4ca71fac691add03293e4ae503c4395ce7a093fe2da0d6302cb275e40cd98cfd"
+    },
+    {
+      "filename": "0205_cg02_branch_operation_audit.sql",
+      "sha256": "7e4f28a88bd506b2fc3ff600a1cc9baada9160ec0cd90f28a74eebc05bdae890"
+    },
+    {
+      "filename": "0206_cg19_active_branch_evidence.sql",
+      "sha256": "647d279e8c4b4b37eb9795f592bc3d0ef1e7f587c0f33f6b18b118837c725cf4"
+    },
+    {
+      "filename": "0901_cg09_finance_foundation_accounts.sql",
+      "sha256": "3b4a5f1dcc7c97a738fa8789ebb7c6f8065a130b2e69cd947f874643f088b739"
+    },
+    {
+      "filename": "0902_cg09_voucher_draft_source.sql",
+      "sha256": "4884e96e2c658efe5a400aab49b8b32a96200d2a9a79d425c1186883a830c290"
+    },
+    {
+      "filename": "0903_cg19_finance_voucher_evidence.sql",
+      "sha256": "a9dd949d374c522e612a973569b2e0e22ee96fc67f128441d2accef9d06baa2a"
+    },
+    {
+      "filename": "0904_cg03_finance_voucher_approval.sql",
+      "sha256": "7c560001077195d0e7218b2fa837bf38c1e1e37c5a3165e5b261473d4fe0a9f5"
+    },
+    {
+      "filename": "0905_cg09_voucher_submission_states.sql",
+      "sha256": "7b877942b32b21793a0d55bfdeb1831f2108735a25a871b7f084eed1b5546658"
+    },
+    {
+      "filename": "0906_cg09_voucher_payment_account_source.sql",
+      "sha256": "84fb2319866ab964f9b5c2707173c2f3a8bf64fae9423063472b34a1661a78ec"
+    },
+    {
+      "filename": "0907_cg03_finance_review_source_guard.sql",
+      "sha256": "aef6dc120a1c97045506758a93fefdc4a8aeae61e434851180b00268d29b09c6"
+    },
+    {
+      "filename": "0908_cg09_balanced_voucher_effect.sql",
+      "sha256": "961e310340e7cf3f5751d909b9b30266c2b4be8e7ba767651cabbf96328ac0f4"
+    },
+    {
+      "filename": "0909_cg09_payment_verification.sql",
+      "sha256": "a239a84b2a09b07180df31386bf12364dfed25a019fd45616b72aeded0390fb1"
+    },
+    {
+      "filename": "0910_cg09_expense_claim_drafts.sql",
+      "sha256": "94a1bd05e7427e87eed70e72ad13334b65fb5bee8316853755a3475785dc80c7"
+    },
+    {
+      "filename": "0911_cg09_claim_cg19_verified_bills.sql",
+      "sha256": "3603527476845657c5781aed64ded9eecb87b2435bee6b08a98ee3068fcde7ee"
+    },
+    {
+      "filename": "0912_cg03_finance_reimbursement_review.sql",
+      "sha256": "1e326393bf2be1b220cb3e9bd63cd65a01f2158d17450785bd8dbab5fe01ea15"
+    },
+    {
+      "filename": "0913_cg09_claim_approved_voucher_links.sql",
+      "sha256": "da26a3a585ca7f2f944ed8b690595a9233794642af21d60ed2371b6e4b9a1bc5"
+    },
+    {
+      "filename": "0914_cg09_claim_origin_voucher_provenance.sql",
+      "sha256": "ab2ce97abd3dc0b641bd3f4a2ee303ee283b27808f8b181744496ce3e6519d94"
+    },
+    {
+      "filename": "0915_cg09_immutable_claim_correction_history.sql",
+      "sha256": "20777b8930dfb04a72008e65b915a1402f7a7f4a8fcc17c6aea7434d0416b743"
+    },
+    {
+      "filename": "0916_cg09_original_invoice_staged_drafts.sql",
+      "sha256": "cf93c09688f302816375d0c7c0723d40e3b6e9bfac268d238bbe7232376b76e2"
+    },
+    {
+      "filename": "0917_cg03_original_invoice_approval_posting.sql",
+      "sha256": "f9b184ccb6ed9bf39e8389d24dcdd560db409033a944a98258157a5910f0ef4b"
+    },
+    {
+      "filename": "0918_cg19_original_invoice_issued_document.sql",
+      "sha256": "e43b3b52025e5f3b9d4939cf9e73d5b0f62857ba59cdc862612e9dffb11a8889"
+    },
+    {
+      "filename": "0919_cg09_original_foundation_budgets.sql",
+      "sha256": "01b0d4e05c303440de76567fbdcad8ade5327d98a2b6e4e183d9278d1917903e"
+    },
+    {
+      "filename": "0920_cg03_original_budget_review.sql",
+      "sha256": "654eaf037788bcc0dab6b0aebd20c15b03e47d365472585c1e2a5dd348085b97"
+    },
+    {
+      "filename": "0921_cg09_finance_bank_reconciliation.sql",
+      "sha256": "c90202ea1fb79bc7fd5d7ebc8f9b12e45442f0c9b81a72d4dbe8d6896d06084f"
+    },
+    {
+      "filename": "0922_cg09_original_verified_receipts.sql",
+      "sha256": "760514c349fc7fd088c50b9a146d4e6e404f4b32bc0baffc45c5f7a50983cd2a"
+    },
+    {
+      "filename": "0923_cg19_verified_finance_receipt_document.sql",
+      "sha256": "bc5b141d2ee2a095528516917791ccc9aec88b5a4061fc3595972375a9fc4a4d"
+    },
+    {
+      "filename": "0924_cg03_finance_invoice_budget_decision_integrity.sql",
+      "sha256": "d33c26a0f15b977e8b25dd32374970e9aa48a4be4719b1f136c169ec9ccd487d"
+    },
+    {
+      "filename": "0925_cg09_finance_posted_report_indexes.sql",
+      "sha256": "9f59762f258db71a08faaf0818fd5d2835cdfbf8f667d099a8f9feffe43d4155"
+    },
+    {
+      "filename": "0926_cg09_cg19_original_bank_statement_evidence.sql",
+      "sha256": "44a71203873ae08131b8ee30cb86f6f86be871f08ac9893c16b3060d861ec260"
+    },
+    {
+      "filename": "0927_cg09_budget_current_scope_and_non_reversed_utilization.sql",
+      "sha256": "e292462fa28fb117b4a2a5c0fa921e7e059f6678ed1160502f8fa8f8543f8404"
+    },
+    {
+      "filename": "0928_cg09_authorized_manual_journal_reversal.sql",
+      "sha256": "27cff1674fee30a89090a2fd224557944f12eecc69eee111495ac8ce5fa9fb11"
+    },
+    {
+      "filename": "0929_cg09_protected_unissued_invoice_cancellation.sql",
+      "sha256": "80a4b74bc1f59e0a5cd2b6b1a43ad64de22011c1723449acbeed562455f3fae2"
+    },
+    {
+      "filename": "0930_cg09_issued_invoice_credit_notes_and_refunds.sql",
+      "sha256": "863871ec1ce7fcb53cfac39ac8a1a6794655e400e505aa024527acaadcd7c761"
+    },
+    {
+      "filename": "0931_cg09_credited_invoice_reissue_lineage.sql",
+      "sha256": "a5470c545594e65a956a05e853933d627ae50a140b77721d6296bc9f646e46b4"
+    },
+    {
+      "filename": "0932_cg18_foundation_editorial_publication.sql",
+      "sha256": "82d39a0f2240b3a0bc26a7665c11382b00ced928d65ca20a05e0d6969a275111"
+    },
+    {
+      "filename": "0933_cg03_original_cms_publication_approval.sql",
+      "sha256": "ac91a6b1fdc8e0544b823224e1274b652764eaeab228e4aee7b19b9caa1b522f"
+    },
+    {
+      "filename": "0934_cg19_original_cms_draft_media.sql",
+      "sha256": "9b2ac9ff4ce6f15d4dd2b845d6dad8ac684a4e68a4c7d5e8e50f172f9a5cca43"
+    },
+    {
+      "filename": "0935_cg18_original_navigation_approval_binding.sql",
+      "sha256": "7933a80ea7ce85b29b33d93573389a8ee1e5db7e3d2b29bfcd37e86700e71e31"
+    },
+    {
+      "filename": "0936_cg18_original_site_editorial_media_roles.sql",
+      "sha256": "a0e8e01769468e60ee91117b5b428282c21ffb99e0e648340499e6ac2ec340aa"
+    },
+    {
+      "filename": "0937_cg18_same_page_verified_media_reuse.sql",
+      "sha256": "92545cb7237532a73bf4cb0482f22fe99ad0b5e7328dddf3a96f9a6076ab3d64"
+    },
+    {
+      "filename": "0938_cg18_public_impact_media_and_healthcare.sql",
+      "sha256": "d2d751ce0b01bdbffebfd57b00946b124da0118d0e2ccda5df1414d8ca6ad0e2"
+    },
+    {
+      "filename": "0939_cg18_impact_editorial_photo.sql",
+      "sha256": "45f39909174268db1c30a244792757923a7d30e4ac07e361aa02ddd5ca34c523"
+    },
+    {
+      "filename": "0940_cg18_original_footer_policy_editorial.sql",
+      "sha256": "d24c51ec6c82e681b04d7760a988426e81526b169afa2b2feb5d56c6d56df93e"
+    },
+    {
+      "filename": "0941_cg18_original_contact_photography.sql",
+      "sha256": "8a42aa0979c7736188333cfbad569836eb91c83c4f38542a7409a66ad03b8f8d"
+    },
+    {
+      "filename": "1001_cg10_employee_draft_foundation.sql",
+      "sha256": "c45264d889d89658108f9f4b711686583cee7ac87bf7b66a339fec251e5d63c6"
+    },
+    {
+      "filename": "1401_cg14_pending_provider_centers.sql",
+      "sha256": "145be88ce91305d201aaf6bbd51df5f3b404e809da1e0993923d0bc4e2691238"
+    },
+    {
+      "filename": "1402_cg19_health_draft_evidence.sql",
+      "sha256": "e2abe5d68fa6f6e0b1aa65c1c5c148e11749300dba6d20a52ccc1dcaca50bf00"
+    },
+    {
+      "filename": "1403_cg14_original_provider_center_review.sql",
+      "sha256": "4938fec8f969a465da27c94cfb3a9298f77a1fc7bf2ccd0fc73729a804c860b1"
+    },
+    {
+      "filename": "1404_cg14_doctor_identity_and_center_affiliation.sql",
+      "sha256": "a20641366ad98d03dc0b41ff825082e4646f815f8c82ca7350e860ee2bcc7d19"
+    },
+    {
+      "filename": "1405_cg14_doctor_center_immutable_fee_history.sql",
+      "sha256": "62482fdb186513fd96210644cddb263b9d2e21f38ce15c3f9fa3498ada1e24c2"
+    },
+    {
+      "filename": "1406_cg14_doctor_source_event.sql",
+      "sha256": "87ec42b2ff8df0208f2b98b892dd44742505b7b7b5bd717d8919870f843b7296"
+    },
+    {
+      "filename": "1407_cg19_doctor_original_private_license.sql",
+      "sha256": "626fd8d8630a44d8ee01d76173a32db442f1872f4fb0beef27c8bb4a242a12f1"
+    },
+    {
+      "filename": "1408_cg03_original_doctor_verification_case.sql",
+      "sha256": "021337f2c04d11a12d03969bed3fd85584106c47abd649554fa82613cacda911"
+    },
+    {
+      "filename": "1409_cg14_doctor_center_review_audit.sql",
+      "sha256": "844a6a6df400391ce0a5fd5a63b04312ef6c36534ddbf10b5cf1f2fd06611b4e"
+    },
+    {
+      "filename": "1410_cg14_active_center_representative_scope.sql",
+      "sha256": "f785c613cb09ca51093079a68fbbccc6b61560572bbf20a0b38400776f454faf"
+    },
+    {
+      "filename": "1411_cg19_doctor_private_portrait_source.sql",
+      "sha256": "d1e01e058117d2f063064921a175f89278c58437bdad8992bb5066e8f2c81f18"
+    },
+    {
+      "filename": "1412_cg14_center_content_drafts_and_cg19_support_scope.sql",
+      "sha256": "8f3317ed8b152c92822cac44b303721589e25450030984460581883f9da45db0"
+    },
+    {
+      "filename": "1413_cg03_original_center_content_review.sql",
+      "sha256": "750559c7361f62c8cf01afe9b87262f25b61df0a754f95c96442944bd496e891"
+    },
+    {
+      "filename": "1414_cg14_center_content_publication_lifecycle.sql",
+      "sha256": "fa3fa09205f75f35a2b0c1b4c4bf58125f2a019f210796304fb8ffe58a10e310"
+    },
+    {
+      "filename": "1415_cg19_original_center_content_media_and_rights.sql",
+      "sha256": "11f05286393b3d5e00f9f66bcfdc854c749ffa4378b697c839e5449926200274"
+    },
+    {
+      "filename": "1416_cg14_reference_healthcare_categories.sql",
+      "sha256": "48074ed1031d839b6983dfadebdd72b8a43329514afc6e145469f73c60ab1c58"
+    },
+    {
+      "filename": "1417_cg19_center_support_original_attachments.sql",
+      "sha256": "f4b634513798a2e986fb4a4b73e68c7491e473447a5a2a233d8cb53a17f4da67"
+    },
+    {
+      "filename": "1418_cg14_public_directory_request_throttle.sql",
+      "sha256": "c0a18b06afa1a01eee9e6e11fa1a937d32bb5ccbe2b0e305b5668fdb3f614d1b"
+    },
+    {
+      "filename": "1419_cg14_center_erp_grant_original_cg03_case.sql",
+      "sha256": "5ee644e876dc82ab24fb67f0e8408b6ef18fc6b0dfe43c629398b76f37da4da2"
+    },
+    {
+      "filename": "1420_cg15_doctor_schedule_original_source.sql",
+      "sha256": "66a43ba8736baba05cba48c510b88d6834ff79dfaeb32cbe4b37bc90aab75b64"
+    },
+    {
+      "filename": "1421_cg15_original_doctor_leave_cg03_review.sql",
+      "sha256": "2a3e1910897b61e945faf5ab21391f8ed919c9db0d15f2392000909a9de362da"
+    },
+    {
+      "filename": "1422_cg14_diagnostic_center_license_validity.sql",
+      "sha256": "36ae9b0a5bf239cc26f7e79634424fa39219333874bfc4a4f32d76a10cdf9cca"
+    },
+    {
+      "filename": "1422_cg15_patient_self_consent.sql",
+      "sha256": "61a52b090e3ee88a54be73336224c53b1139ca14efea747ff5136a0e05623dd2"
+    },
+    {
+      "filename": "1423_cg15_center_provisional_patient_intake.sql",
+      "sha256": "0c18422d672f5551f75e62037921a266a6b7fe5ee3d031b81a28989f2019b779"
+    },
+    {
+      "filename": "1424_cg15_consultation_reservation_and_appointments.sql",
+      "sha256": "7b18782a1bfc99feff0b242e9e56c743a27ca13e88be05de1bb2e30dfc98f069"
+    },
+    {
+      "filename": "1425_cg15_visit_queue_and_booking_changes.sql",
+      "sha256": "6bf4e3b9278db9587daecc0ee0aacb4e6c8e1e93db92389944aca721f30b28b3"
+    },
+    {
+      "filename": "1426_cg19_private_consultation_slip.sql",
+      "sha256": "3096c182a5c1542d64fa9affecae8c4e34a2cc23067ba14c71d5229e86211293"
+    },
+    {
+      "filename": "1427_cg01_public_patient_password_identity.sql",
+      "sha256": "5d858118828292d91bc1a1e9d0b7d942a0add17a5822ee601586896c503f27c8"
+    },
+    {
+      "filename": "1428_cg15_in_person_patient_identity_verification.sql",
+      "sha256": "aea88b2c668a57b7f0e64a4ad73c5240724905e836287b242f9384c61af48cad"
+    },
+    {
+      "filename": "1429_cg15_patient_center_intake_claim.sql",
+      "sha256": "ae86c114c9a9f836c6bae690256737b0825367752c7aba741388317619d2be92"
+    },
+    {
+      "filename": "1430_cg15_patient_assisted_booking_authorization.sql",
+      "sha256": "094cdbc0050f7308821aedb8bc378052b270dc94c1c71f56ff8f3210baa5a1be"
+    },
+    {
+      "filename": "1431_cg15_patient_claim_attempt_throttle.sql",
+      "sha256": "803782d5f605ea3d140fb00cd74ab6e8b47cb374e59a573a1fefbf6d7fe92dd4"
+    },
+    {
+      "filename": "1432_cg15_center_day_appointment_index.sql",
+      "sha256": "5333ddabe06d4045bc5756760027f0abad3124fa4fe8f97192338dba683aa75e"
+    },
+    {
+      "filename": "1433_cg19_appointment_event_notification_source.sql",
+      "sha256": "6d15f15139e6a4a43868112f6f9e58cb5bfe6c09e03001642e16bd253d22a7db"
+    },
+    {
+      "filename": "1434_cg15_center_qr_verification_guard.sql",
+      "sha256": "8d46412600db23d1a64316b465e19a1362d1cdb25a7028e13bffb82ebf795c49"
+    },
+    {
+      "filename": "1435_cg19_appointment_pending_recovery_global.sql",
+      "sha256": "5974887a359a24f0dc5487e7c655d074e44a7c9f8c6ed8c55f930e73c0a718ea"
+    },
+    {
+      "filename": "1436_cg14_verified_clinician_account_link.sql",
+      "sha256": "4156163d046f11ed53fa0881b909df668a87ddc488d98bbfde3cfb4c9dbe6d86"
+    },
+    {
+      "filename": "1437_cg15_private_consultation_intent_consent.sql",
+      "sha256": "96c408b9081481c3abac5240cf558726bb4366f90837f305ce65a70ba3dceb4f"
+    },
+    {
+      "filename": "1438_cg19_original_patient_private_files.sql",
+      "sha256": "909c4a424454781b2d4317271c9b8f48dafe29953a02875b50b6b3703b20fd25"
+    },
+    {
+      "filename": "1438_cg19_patient_owned_private_files.sql",
+      "sha256": "4d6fdea87c43adf79248d610978512f10e2b3f2017f23912e3fad93500ac8579"
+    },
+    {
+      "filename": "1439_cg15_private_patient_optional_details.sql",
+      "sha256": "90336e53e73fb65fcc110674d37ea35fa35d04a7d3cc2c71870e9199b5ca0aec"
+    },
+    {
+      "filename": "1440_cg19_patient_specific_clinical_file_grants.sql",
+      "sha256": "a21fb443cc7912ad3b4e7ddc83aff0eb3667e2e4224c5236583348677bc84242"
+    },
+    {
+      "filename": "1441_cg01_shared_family_phone_patient_email_login.sql",
+      "sha256": "5f736bfcf8fa09b6c8967a84ca319137277bd750391d41a666223a3a144fa944"
+    },
+    {
+      "filename": "1441_cg14_professional_license_validity.sql",
+      "sha256": "1311a8a993118064d16420b34d66bd7159b14996561ac80f6dab656000c67acb"
+    },
+    {
+      "filename": "1442_cg15_verified_patient_explicit_secondary_account.sql",
+      "sha256": "6b68d6f1c6cccb1333e8cdf11e944354f73617787b8aa25c2f8a3f631eb59fa2"
+    },
+    {
+      "filename": "1443_cg15_dependent_intake_authorization_context.sql",
+      "sha256": "02d77059bd53c9345db2b4689e6d4ddacaecada0c5efabebc1ef8c12eb37acc7"
+    },
+    {
+      "filename": "1444_cg15_protected_duplicate_patient_review.sql",
+      "sha256": "9b6b10fbb2c5d5bb5062a0048aeb66a06ba6f6931bc962c7a9493ae73386425f"
+    },
+    {
+      "filename": "1445_cg19_patient_file_supplemental_integrity.sql",
+      "sha256": "0176483c6c215d5f82513d7bb7a694aa52737c02e5b0ba79fee4756124f975e9"
+    },
+    {
+      "filename": "1446_cg14_public_partner_application_intake.sql",
+      "sha256": "533428e2a924a550db642f5985f731d8ca354c5527beb5dfa73e37ab8df79ffc"
+    },
+    {
+      "filename": "1601_cg16_lab_test_catalog_and_center_prices.sql",
+      "sha256": "6817927f339a3f61fc7efa29b5224ebff30b00a8fd7f6af0c5a4441df7aeb858"
+    },
+    {
+      "filename": "1602_cg16_original_cg03_lab_price_review.sql",
+      "sha256": "a7a27b6aba5e27321b3d36e5958371baf801cd32a9920e2c58c12712959438c7"
+    },
+    {
+      "filename": "1603_cg16_test_master_validity.sql",
+      "sha256": "317c0595f17d0fb203ae1446dc99af5b183c001a4aa262399ce67bd36a4652c9"
+    },
+    {
+      "filename": "1604_cg16_clinical_order_and_custody_sources.sql",
+      "sha256": "b1d0f6a924010d28d44ec1c4578fbfd0af12f7e0a92465781ac3974e2c0647d1"
+    },
+    {
+      "filename": "1605_cg16_specimen_custody_state_and_event_guard.sql",
+      "sha256": "7f12b438037fccfa88f38f93b2773a9966a7f55a8a03ee67420d9bf3c4098165"
+    },
+    {
+      "filename": "1606_cg16_order_custody_consistency_gate.sql",
+      "sha256": "68dc9aab58865fad4ff72e11c21f4aa958d70fae5963c963fa29023e1fdeb6c6"
+    },
+    {
+      "filename": "1607_cg19_original_lab_result_private_evidence.sql",
+      "sha256": "cad2b74b915a12449d367e15b51707a372e8531d2eaaf429c0df763019538c61"
+    },
+    {
+      "filename": "1608_cg16_original_professional_report_review.sql",
+      "sha256": "782b08cac1249276b10c32f38bf20f09eabe0fa62df8b077b835093b74fe6f0a"
+    },
+    {
+      "filename": "1609_cg16_verified_result_order_event_gate.sql",
+      "sha256": "a9b7de351d84df54cf9de51fef1105226fcf3d1d9825b2c44962b6b441a001d8"
+    },
+    {
+      "filename": "1610_cg16_optional_lab_equipment.sql",
+      "sha256": "eed94f31ee68fe196b9d4b4890c782cf636da0184b078b14e3787d7d870009f2"
+    },
+    {
+      "filename": "1611_cg19_private_lab_quality_evidence.sql",
+      "sha256": "408824ac3a8794e78595c6fa9f9af089102c6808e907b898c9a541f17c35f26b"
+    },
+    {
+      "filename": "1612_cg16_professional_report_release.sql",
+      "sha256": "707bb5e1e89f2140d77039599d9511a86bb5788e7aec1c7e20a37c442181aa58"
+    },
+    {
+      "filename": "1613_cg16_entered_results_for_generated_report.sql",
+      "sha256": "c936350b99f63e73a162db4e93929c9c3a70499eebeac44616fa3efedbdd83fd"
+    },
+    {
+      "filename": "1614_cg16_released_report_correction_source.sql",
+      "sha256": "c8a3ce0f4a6fa43aeb376c2e47064cd6e0daf2198cd87997e92d8e3021666dbb"
+    },
+    {
+      "filename": "1615_cg19_private_lab_report_release_notice.sql",
+      "sha256": "c00dc1032463e1468e920bcc922195183dbb68152c753c0a3a135811c5f26d7e"
+    },
+    {
+      "filename": "1701_cg17_original_assistance_policy_revision.sql",
+      "sha256": "1d249d701f70b5a3e3dab06d0fb94abf526824545a0ac58bde73e5d0861437d3"
+    },
+    {
+      "filename": "1702_cg03_original_policy_full_exception.sql",
+      "sha256": "c5687acce5b67d25ac3ffdef49d88475bf9f449011d886d0860efd961a23807c"
+    },
+    {
+      "filename": "1703_cg17_original_patient_charge.sql",
+      "sha256": "8cc144830a553304a07dbf05093eb57839955d4da1500be270bea20e2c9d346b"
+    },
+    {
+      "filename": "1704_cg17_original_center_manual_collection.sql",
+      "sha256": "83b047c4033f357a7c4af181ba1a742ad490c3723dd7834ac0c5f1e088a95b61"
+    },
+    {
+      "filename": "1705_cg17_center_merchant_and_gateway_order.sql",
+      "sha256": "d12ef49828aa999b12f6d49168ab79a94c0a81bf458d698948c3881ede870d8a"
+    },
+    {
+      "filename": "1705_cg17_original_center_receipt_document.sql",
+      "sha256": "a46e916dd2bc51e2221caa15b9d56c57620eaffd8651f8bc628056f126b24e87"
+    },
+    {
+      "filename": "1706_cg17_completed_consultation_liability.sql",
+      "sha256": "eecce9e2c2d1df7aef6c0ab8bd93157aeec19d5eee08d779da7c1798e3135cb8"
+    },
+    {
+      "filename": "1707_cg17_monthly_provider_settlement.sql",
+      "sha256": "3cbb30f02cc78b56e56c6db6da428ba6071e06392776ce06765d0e932775aeb5"
+    },
+    {
+      "filename": "1708_cg17_verified_provider_payout_allocation.sql",
+      "sha256": "9d94123021a1aa1d513153682885af99a732e1dbe28dcc71c91716346a8b78cd"
+    },
+    {
+      "filename": "1709_cg17_original_unpaid_liability_reversal.sql",
+      "sha256": "d5bc1e2b53dd942ac4d90792be56aa2c0e8be5c29b906f29804e98a51eb1e743"
+    },
+    {
+      "filename": "1710_cg17_claimed_liability_correction_recovery.sql",
+      "sha256": "78e70e2d9c0bbfeb69754b631d78938fc8ec4dcb8f010557c31d9e467e03bb0a"
+    },
+    {
+      "filename": "1711_cg17_protected_nonconsultation_policy.sql",
+      "sha256": "247bb6c352458eb35bd26d24b30da4b087de29fa0eface1eb84286554f83f88f"
+    },
+    {
+      "filename": "1712_cg19_patient_partner_invoice_proof.sql",
+      "sha256": "0d2b475e8e51c8c98d412be64f3b4bf3210f41239f849c043da2f0d30930d230"
+    },
+    {
+      "filename": "1713_cg17_erp_off_partner_service_claim_intake.sql",
+      "sha256": "5e84df875f09f33c22c9287972eb13acd443d728601f00c3bbf7648a85a1aba3"
+    },
+    {
+      "filename": "1713_cg19_a_partner_payment_proof_classification.sql",
+      "sha256": "226453ebfd6832b8aae15c83bd00ff67450818180dbdcc3fbb3568cd89e68812"
+    },
+    {
+      "filename": "1713_cg19_b_cg17_partner_claim_patient_payment_evidence.sql",
+      "sha256": "ebedc0d2b5ceea6a27fc7998cf9f3888b21f438bd329d46c99abdadf1d46eb28"
+    },
+    {
+      "filename": "1713_cg19_c_protected_partner_invoice_read_audit.sql",
+      "sha256": "2e80ad3d7c63cff784b524563a0e5c750b02a685d236d64e782e1c50b315198f"
+    },
+    {
+      "filename": "1714_cg17_partner_service_independent_verification.sql",
+      "sha256": "6b503737e38562d340690baf6a69d54696af216ae3bafade10b476d0a9d1d929"
+    },
+    {
+      "filename": "1715_cg17_partner_liability_existing_finance_extension.sql",
+      "sha256": "0a9e722ddd4bd4775104cd7e404d0a19cdc05aba7a2b7b9a3e61847f97d0bdfb"
+    },
+    {
+      "filename": "1716_cg14_partner_public_service_information.sql",
+      "sha256": "0ab111eac7d16a4e9d17a0a96fc33f4d445ef93447d7ef1439bc6a0edd2875f6"
+    },
+    {
+      "filename": "1901_cg19_client_support_ticket_number.sql",
+      "sha256": "230edb32e52bde0f223d6004775fa3beb4a1bd0ffb159dac137de2120243b3c6"
+    },
+    {
+      "filename": "1902_cg19_client_email_source_drafts.sql",
+      "sha256": "fcd3c898615a45c45ba9fe595e119082586a9268cd2e3041ab5936ce5601b580"
+    },
+    {
+      "filename": "1903_cg19_client_support_states.sql",
+      "sha256": "a15685a4ca860e58dfaba277dd92f95262bf13722b3de09870a6da1dc5333587"
+    },
+    {
+      "filename": "1904_cg19_support_status_notes.sql",
+      "sha256": "a65e6a50cfae60e50eb32040fb63e1054b31e5314c026f7c29da687aafc4bfa5"
+    },
+    {
+      "filename": "1905_cg19_email_body_channel_limit.sql",
+      "sha256": "ac2f82f244f9cb84003c1ca7393a04be87e93a8dc5787612928a64279a4594d0"
+    },
+    {
+      "filename": "2001_cg20_saved_reports_runs_and_schedules.sql",
+      "sha256": "5c905819e985ea916e9dc4f8a6155312cb1f2a3569e4abb8d7764de35b42148d"
+    },
+    {
+      "filename": "2002_cg19_protected_mis_artifact.sql",
+      "sha256": "d003ea89c8ce14531fe5bf128a6f2bec69dc4bbb84725359623f7e186d65ce7d"
+    },
+    {
+      "filename": "2003_cg19_mis_report_ready_notices.sql",
+      "sha256": "46cd946d093b43be86ab0aac47327d88ee555b609906776541808f446792b33d"
+    },
+    {
+      "filename": "2004_cg10_original_cg03_cg19_enrollment_sources.sql",
+      "sha256": "97cac58334bc0c1636a33ceef2f0e533c331f43d4c5cd35a728f8b9647b36422"
+    },
+    {
+      "filename": "2005_cg10_original_manager_scope.sql",
+      "sha256": "f40cfcdfbec5beb8067e006e8d88f85ecc6b5b710d66f8e643f36a001bf2cd05"
+    },
+    {
+      "filename": "2006_cg10_protected_employee_private_details.sql",
+      "sha256": "2b30a35665ba775bf750769701d2a42eb31740a5039e48c64ff524cce84d4f17"
+    },
+    {
+      "filename": "2007_cg10_original_identity_role_proposal.sql",
+      "sha256": "d4a2b2b48dfb79fe96bcf9c968bed899dcade5907422ade135f56bdf7ae854cc"
+    },
+    {
+      "filename": "2008_cg10_employee_public_bio_consent.sql",
+      "sha256": "8aa8f3150f57cffeeea8f49d9d50cc944004b79172e23b5c4545bd32a8d55e1a"
+    },
+    {
+      "filename": "2009_cg10_shift_attendance_foundation.sql",
+      "sha256": "d4b297939f88e0d448a4a1ff24c672e2c279234106230bf614add038c0b176a0"
+    },
+    {
+      "filename": "2010_cg10_leave_policy.sql",
+      "sha256": "b3f9647d813e18618d5b54ae07a06e0a6cb94fbfde6235337b5b2c874f379837"
+    },
+    {
+      "filename": "2011_cg10_leave_original_review.sql",
+      "sha256": "71e0aaec9d0b48d87f52ef1ea2207992d57657a1dea1c59eeb7c568cccc3084b"
+    },
+    {
+      "filename": "2012_cg10_approved_leave_attendance.sql",
+      "sha256": "41aee3b718774efe768b88d9c03775035465701b96b18538f4404146212c0f02"
+    },
+    {
+      "filename": "2013_cg10_attendance_correction_review.sql",
+      "sha256": "f0aa29299410fac58008dc4fad382b7f2b6ea41f5fd2a161d170ee6de5c30e72"
+    },
+    {
+      "filename": "2014_cg10_initial_nonworking_attendance.sql",
+      "sha256": "12296cbc266ef295997e0ec7adad8eade900e76cd37bc59156b7a1adf426beae"
+    },
+    {
+      "filename": "2015_cg10_private_attendance_review_audit.sql",
+      "sha256": "027eb768187033f2f5657aaaed1c38bd0433cdda226f75e9bcd62af28d25f4b1"
+    },
+    {
+      "filename": "2016_cg10_appraisals.sql",
+      "sha256": "c20b2d4f63d426e1b9cc20d7157a88cb761a2824fc9785d33473f1ff758d650f"
+    },
+    {
+      "filename": "2017_cg10_employment_change_original_source.sql",
+      "sha256": "aa016dd95c75bc060674fcef4e29c23bf84ee2676a49858514e70d4e2c3d579c"
+    },
+    {
+      "filename": "2018_cg10_hr_document_original_source.sql",
+      "sha256": "10d1c41f4344c9c765aae388a5ba201920bbbf97e73153c58c809ff2d8535f29"
+    },
+    {
+      "filename": "2019_cg19_hr_document_dispatch_receipt.sql",
+      "sha256": "82bb92e0ee67935bbd8f35b9cd9ab74a2320cb034f7ad7a87a7771e78ef1ca05"
+    },
+    {
+      "filename": "2020_cg19_hr_document_received_copy.sql",
+      "sha256": "0556cd123ea12180fe7b9bcdf69865100537bab194b32baef21d13625c1880ed"
+    },
+    {
+      "filename": "2021_cg19_hr_template_signatory_assets.sql",
+      "sha256": "c6cb26b5c3a440a2c3202c88d1f4a1fa872f690b5230c6e839e67b06ec178d34"
+    },
+    {
+      "filename": "2022_cg09_cg10_original_employee_allowance_origin.sql",
+      "sha256": "ecaec119fc5675e46dc884244e401aef2cf356a5f1a85aff30e03df95b100c1c"
+    },
+    {
+      "filename": "2023_cg19_shared_owner_constraint_reconciliation.sql",
+      "sha256": "8378873188d1bb8de0fbf5c9137d747b0aa30d1dd728b65c4ebb577c0fb78f18"
+    },
+    {
+      "filename": "2024_cg19_hr_staff_received_copy.sql",
+      "sha256": "bf421e1582e68e3e7f46f3ecd50ef61f3c73bc65c74c0124b18db7427b4381a4"
+    },
+    {
+      "filename": "2025_cg10_original_enrollment_evidence_categories.sql",
+      "sha256": "049a67d937a32dff8bb2a330e63d03bd4a882c782df131fa53792a148ade8cbd"
+    },
+    {
+      "filename": "3001_cg12_catalog_locations.sql",
+      "sha256": "bf72e8a37de6e6c0f44fab1dfb9a5da28a2c29e8cefc738190bd81e6e8d6c687"
+    },
+    {
+      "filename": "3002_cg12_stock_receipts.sql",
+      "sha256": "0d600254ab0d2a96a6e042e16280f44f25c4bab356a8572778a1ba3b7d0cfe52"
+    },
+    {
+      "filename": "3003_cg19_inventory_receipt_evidence.sql",
+      "sha256": "b2a5f775c8f98dd9d9ed6f55a1675fc4c3e4de225b5f223bcd6689e5cd1e0eb0"
+    },
+    {
+      "filename": "3004_cg12_material_requests.sql",
+      "sha256": "1cf89595f82d34880a5159efdb44d4aed8bb7618defb4286839f89baea2fcba6"
+    },
+    {
+      "filename": "3005_cg12_stock_operations.sql",
+      "sha256": "f5f234865af6640ef9b44ef3e16379525935bf9e26a2b80261a4b4fb3b34c3bc"
+    },
+    {
+      "filename": "3006_cg19_inventory_movement_evidence.sql",
+      "sha256": "8a5cb651bf9a2ae673088291c06de62fcfc3e652ddc0ede455c567fd5601cd44"
+    },
+    {
+      "filename": "3007_cg12_stock_reporting.sql",
+      "sha256": "fa6fc59e859bca462b5a12db1cfdacd8b14084a4fd95b9f8899152ae06390be2"
+    },
+    {
+      "filename": "3008_cg12_approved_line_history.sql",
+      "sha256": "85aa7ca852de1b0e4aa8a260166c4b5f7a7446b9fe107a8be531720fb9d9c514"
+    },
+    {
+      "filename": "3009_cg12_low_alert_initialization.sql",
+      "sha256": "4ea4a85e3e28162036d589d817205113144f0564f889141dd4516c4e7f372159"
+    },
+    {
+      "filename": "3101_cg05_projects.sql",
+      "sha256": "6e2e2206287fdf1ffb4c349a37f9d044e6aa303c1426cb96691862a75c746faa"
+    },
+    {
+      "filename": "3102_cg19_project_cover_evidence.sql",
+      "sha256": "fa1f46901ca1ff119108f91d56a93cb5e73b4c47e5fa890bdd0b4d8f62761b6a"
+    },
+    {
+      "filename": "3103_cg09_project_finance_source.sql",
+      "sha256": "ce35efe90a8cce430e3d9f2b3b68b48a78cad4727759845d34727283e45a839d"
+    },
+    {
+      "filename": "3104_cg05_project_public_eligibility.sql",
+      "sha256": "12411759a50ee2b10434e978dd771ea14acda3ab83b12cbbd5fc4122a09dd2da"
+    },
+    {
+      "filename": "3105_cg05_public_cover_consent.sql",
+      "sha256": "17b5d8eb92a7a3b1d4b75eee3afef7b1aeb31ba820672e07b953ee54f690e39c"
+    },
+    {
+      "filename": "3106_cg05_project_tasks.sql",
+      "sha256": "3465d626f62c58ebec0f52408ddc0f1c6ff4f264659579c877c6dd431e21106f"
+    },
+    {
+      "filename": "3107_cg05_project_activity.sql",
+      "sha256": "bc96eaeb036431aa18efd8f021cfa4902c890989a34b1218304294e155c674ef"
+    },
+    {
+      "filename": "3108_cg19_activity_evidence.sql",
+      "sha256": "59199a6e3dda3644ae4d39737e73b2d5baab8cacde4705dde17d86a837ad60c5"
+    },
+    {
+      "filename": "3109_cg05_event_public_eligibility.sql",
+      "sha256": "41fd58e1e73f350ccdf67937d6deac2dd75176e0ea0ac44febc560b5b1064297"
+    },
+    {
+      "filename": "3110_cg05_activity_event_integrity.sql",
+      "sha256": "fbacd266779fbbffb501884280192dc497065662515eb448fa1de0a7e099ba42"
+    },
+    {
+      "filename": "3111_cg05_field_visits.sql",
+      "sha256": "cf813ce770b812eb441eff16e5d23c28a20a07655fe2ca683427f67d3d3faa0c"
+    },
+    {
+      "filename": "3112_cg19_visit_evidence.sql",
+      "sha256": "0e5607335fc14852b38e1d0130be534ace37930a5082c92ee2a1e3d601215d3c"
+    },
+    {
+      "filename": "3113_cg03_field_visit_review.sql",
+      "sha256": "f48ad170775e24b87f1ff9748fc2efd792ac02ea0681c89a3da0e791afa8eddb"
+    },
+    {
+      "filename": "3114_cg05_visit_review_integrity.sql",
+      "sha256": "b013e930f82e6fd530d9f44a7a285bd27d368add8809a1b08ae7528a79ddf7bf"
+    },
+    {
+      "filename": "3115_cg05_operations_export_audit.sql",
+      "sha256": "43a1640a0f494a61eaf22e4873608becce75b34d001dcac0bd0ad904e2e629bf"
+    },
+    {
+      "filename": "3116_cg03_visit_review_route.sql",
+      "sha256": "d92f6f11aa5e5c5f57b46d0b698787a7d1a46d299609ec3e215e078beb7bd8fc"
+    },
+    {
+      "filename": "3117_cg05_project_reference_sequence.sql",
+      "sha256": "d93486ea9ece443cd29bceacc3e1e20a9554da36aaa9e87545f9255deef07f68"
+    },
+    {
+      "filename": "3201_cg04_membership_tiers.sql",
+      "sha256": "ad8b776495f5feaa309bdd8c4a99e51f52ffa6847c5b2b919403727f15ee6eff"
+    },
+    {
+      "filename": "3202_cg04_membership_application_draft.sql",
+      "sha256": "493885301986fface13e8b4a908923202e0433c373251492f7dcebd41376831e"
+    },
+    {
+      "filename": "3203_cg19_membership_evidence.sql",
+      "sha256": "03865d1f2f7321d72bdd66a28339d6e554d112a8c48bcbb3a8c791e8b5b3c032"
+    },
+    {
+      "filename": "3204_cg03_membership_review.sql",
+      "sha256": "6d050c7427668a0e9aabf7513a03a0002b8f48bb15ac0661bd0612a3b0136c31"
+    },
+    {
+      "filename": "3205_cg01_public_community_account.sql",
+      "sha256": "1ef5da6fba4b24fae34bec15ad8f687765812c2c04d16b378eace3ad09d661fb"
+    },
+    {
+      "filename": "3206_cg09_membership_fee_source.sql",
+      "sha256": "5a3008ef00190071625c4fd3318586620131eeaeceedc7c5daf5bbd16869ca58"
+    },
+    {
+      "filename": "3207_cg04_initial_member_activation.sql",
+      "sha256": "a2f26f08b1061795dbfd421b90e3132b94a46efe45bc37d6fe247666ab23c6f6"
+    },
+    {
+      "filename": "3208_cg04_membership_renewal.sql",
+      "sha256": "0a8a9361a343e8369a14c1e97a804d52f78e1444195c08b07309bb8e7d2f1783"
+    },
+    {
+      "filename": "3209_cg04_membership_roster.sql",
+      "sha256": "30252b82fa3e57f7f85d20bf8da0c1dc4a702d6e0a12ffa1fbb3ea980210ee02"
+    },
+    {
+      "filename": "3210_cg09_membership_refund_guard_alignment.sql",
+      "sha256": "d775adbec4834c6f03223a37b6d42d82f8e6a40b3b99a6ae4ca691c77c7910e0"
+    },
+    {
+      "filename": "3211_cg19_verified_member_document_pack.sql",
+      "sha256": "2ded05e4884637591ae0da13031acd2152678fb586adb72db144aad4fcb4ee90"
+    },
+    {
+      "filename": "3212_cg04_volunteer_intake.sql",
+      "sha256": "53468be442a1d109555adbc2f80c57626fc34cdbc3100d949e07ff34732d0768"
+    },
+    {
+      "filename": "3213_cg19_volunteer_evidence.sql",
+      "sha256": "19766e28d44c83aa811be474879dfc6abf4bb7ee3d3b198a0a5e232d99f6c349"
+    },
+    {
+      "filename": "3214_cg03_volunteer_original_review.sql",
+      "sha256": "4e18b2c9cee0b2bab8f180d4c05b47317df28f8b1d68a27636d96e5bc05e25d8"
+    },
+    {
+      "filename": "3215_cg04_verified_volunteer_activation.sql",
+      "sha256": "20d772000ec16004bc061724363b813743ad0ae5a1b1dfe173a6928d73999a76"
+    },
+    {
+      "filename": "3216_cg04_volunteer_roster_export_audit.sql",
+      "sha256": "a1f5254b3f3e2837c553422fc743d14b142e8087c9dcb116f8b4b07b603e0b1a"
+    },
+    {
+      "filename": "3217_cg19_verified_volunteer_card.sql",
+      "sha256": "2e461f75bb98207cd36b669b1230d4fa1d0cdb6c342eb336a743af70d508b342"
+    },
+    {
+      "filename": "3218_cg04_current_volunteer_cg05_assignment.sql",
+      "sha256": "f15387e4d1c708d5047cd1d5334312a2281146a336e6730b365c23aae233b87a"
+    },
+    {
+      "filename": "3219_cg04_volunteer_cg09_claim_origin.sql",
+      "sha256": "c1d2962bb118ac944cb0a60dc04b5838b98064b045d90552d664ce5b37fcc79f"
+    },
+    {
+      "filename": "3220_cg04_volunteer_staff_draft_intake.sql",
+      "sha256": "ed5f265e44b080d36e0b37e6d1a36f0dd4a0ab60e0b46485f13ec12516332d3f"
+    },
+    {
+      "filename": "3301_cg07_campaign_draft.sql",
+      "sha256": "666e54ee51fcb2dc029e8cfc954db2e0313288bfc8a1559a6a2cb49f3edbcb84"
+    },
+    {
+      "filename": "3302_cg07_original_cg03_campaign_review.sql",
+      "sha256": "9b741141ce9a0862cdb9cc7f52d104ac1fa0b72e35e368e817fb7005f231b7d7"
+    },
+    {
+      "filename": "3303_cg07_campaign_status_proof.sql",
+      "sha256": "d1e5fb078d6a6226f339ef662d9f35b0a9ab5e18bdb10b1867f5d21ea0ba6c38"
+    },
+    {
+      "filename": "3304_cg19_campaign_verified_media.sql",
+      "sha256": "d1d5bf74bb79773f4b4affda9adcd5123b950ff5501c5cb6a249c651e4f101b6"
+    },
+    {
+      "filename": "3305_cg07_campaign_original_lifecycle.sql",
+      "sha256": "19d36c2c7ebdb42e445796fbd7491ef25beb5730f91d6022a863fa2903426cd0"
+    },
+    {
+      "filename": "3306_cg07_donation_source.sql",
+      "sha256": "762aae46e38b7c692f019321547c1c4d910563af140afa380dbc7f87e99e8236"
+    },
+    {
+      "filename": "3307_cg07_cash_collection.sql",
+      "sha256": "19c691903c6e81459b4153020c1132c99b3787ca677cf56d8dd840d8f03a73a7"
+    },
+    {
+      "filename": "3308_cg07_razorpay_payment_links.sql",
+      "sha256": "2e44a6744ae3eb7512b7d0c0b843481ef3c34af82615fa4f4582e7bc98089d05"
+    },
+    {
+      "filename": "3309_cg19_donation_receipt_document.sql",
+      "sha256": "cdaff6ef11f86d7dc1204a442ce22f4b25c3a4ea85a47c7a66de78a1701e7e96"
+    },
+    {
+      "filename": "3310_cg07_donation_refund_source.sql",
+      "sha256": "122664f3f2c879faf674363b1402fb8572c0acba5d27bd43729c2c559e5697a8"
+    },
+    {
+      "filename": "3311_cg07_payment_channel_guard.sql",
+      "sha256": "29473be2a740e393b9d6384a445f7fdc542df6abe326829ad0eadd0aa7f77ad8"
+    },
+    {
+      "filename": "3312_cg19_donation_refund_correction.sql",
+      "sha256": "1dbd630f4db0e58b60c88eb338da0d9aa6069586b084eb57316aafc38435d847"
+    },
+    {
+      "filename": "3313_cg19_donation_receipt_message.sql",
+      "sha256": "fa4adb1618656220f08628e7bd4605c7851769df667fa398645f4fc33dbfdfd1"
+    },
+    {
+      "filename": "3314_cg07_signed_captured_payment.sql",
+      "sha256": "204979fb4568bb3e460e100720bc2bdfd24f9b8da497be386a2667ab675fc4ca"
+    },
+    {
+      "filename": "3315_cg19_donation_private_proof.sql",
+      "sha256": "3b3b257d819d814e9468076347ff65328365bf8c77c11262556b793321eefbf8"
+    },
+    {
+      "filename": "3316_cg07_donation_bank_reconciliation.sql",
+      "sha256": "393cd74d67d4fddef3c83d8037ca4ca5621c6845e72496d37ef9322b80dc2564"
+    },
+    {
+      "filename": "3317_cg07_verified_provider_refund.sql",
+      "sha256": "a43084e08b274021dafaf6dd0d8c7f98345b7b4e5297872d4ff3a7a6443d7767"
+    },
+    {
+      "filename": "3318_cg07_refund_channel_lock.sql",
+      "sha256": "fa804ea8c83ef6fb38fc5a8565d82e0164691988d139445559f072b4a96a0c2a"
+    },
+    {
+      "filename": "3319_cg07_donation_branch_provenance.sql",
+      "sha256": "ee700f487a1fdf9db879609013da7226563b8889c07c95a1a0c57da48013b0f4"
+    },
+    {
+      "filename": "3320_cg02_delegated_staff_scope.sql",
+      "sha256": "c8e8a797be257d623996c8c4dd5b22ef35ffeb898b2870678807963f9fa129d8"
+    },
+    {
+      "filename": "3321_cg20_immutable_report_branch_scope.sql",
+      "sha256": "3c37549f09560d3c085933a092d28719ba7b58e5be763f824277011914b112b5"
+    },
+    {
+      "filename": "3401_cg08_csr_partner_drafts.sql",
+      "sha256": "9e8b9c0468e5afb9c3302bcc02a2571fc06639f6dfaa7c9c27abeb0c88374cd1"
+    },
+    {
+      "filename": "3402_cg19_csr_agreement_evidence.sql",
+      "sha256": "b678fd2a76970f3de3a92e703b111c43aa60910e7f58160f6caef1e96961c152"
+    },
+    {
+      "filename": "3403_cg03_csr_partner_review.sql",
+      "sha256": "96a7adf8223f2dd92ffe271cf7524a13ebca1855bb1ec59307f8fdfef6841fa1"
+    },
+    {
+      "filename": "3404_cg08_partner_public_release.sql",
+      "sha256": "63593d61ce6d50f688f1f6dbc9811174e77c635e15688b17a6ef81a52cd3c6e9"
+    },
+    {
+      "filename": "3405_cg18_csr_partner_editorial.sql",
+      "sha256": "9af3f3312087a59132ded55abb02aac00d8b3bf8ba7c53722af60be856e3cae3"
+    },
+    {
+      "filename": "3406_cg08_csr_funding_proposals.sql",
+      "sha256": "0c1ce4e6f6b05362ab456b750feb58df2215482c0d781a1f8e974ca8cc657771"
+    },
+    {
+      "filename": "3407_cg19_csr_funding_agreement_evidence.sql",
+      "sha256": "fc7c8ce4983e4b93febcc5bc5fb2550e585de0547b9db478ddf0698e0dbca4c1"
+    },
+    {
+      "filename": "3408_cg03_csr_funding_review.sql",
+      "sha256": "268700c7afa15144be7d826eba4109fd57612f1296523e3f43954c5b9b9f7fb5"
+    },
+    {
+      "filename": "3409_cg09_csr_verified_bank_receipt_links.sql",
+      "sha256": "b92b40fa88b20aa985aad087905342d8b4f02337d099fcfc349b805f308ddd90"
+    },
+    {
+      "filename": "3410_cg09_csr_budget_effect_links.sql",
+      "sha256": "8bf5ee6d28a9a6a6cf75a966e400ea3baf1f5a5c54204fa91495161c68804195"
+    },
+    {
+      "filename": "3411_cg08_funding_report_scope_index.sql",
+      "sha256": "6bce317604290ea910a31ce1a1774e96b1b9432609c700880434a08172373750"
+    },
+    {
+      "filename": "3412_cg09_budget_itemized_revision.sql",
+      "sha256": "b546c3134be3fd23d1c7f2f1d7c189ab02c2c1f71259e90e1914af2eabf42597"
+    },
+    {
+      "filename": "3413_cg09_original_budget_deallocation.sql",
+      "sha256": "bb8cdf3ca568c0107af5fcf14b39dfa6f5290ccdc299acdc19ef649a758fec50"
+    },
+    {
+      "filename": "3414_cg09_budget_item_revision_freeze.sql",
+      "sha256": "19d73a3162665a5fd7c9b284a3c0450c2802e600c5a26eae05151abf13537093"
+    },
+    {
+      "filename": "3501_cg13_referral_programme_reward_catalog.sql",
+      "sha256": "b4c0050ada1f42d2cb493b500d308ad93dd8584450f3c082aac515f8fb0f3291"
+    },
+    {
+      "filename": "3502_cg13_reward_catalog_page_access_indexes.sql",
+      "sha256": "536ff78013740f7871d5ebb2cb8c01286d31b2e49312d490fd5576665395a2b6"
+    },
+    {
+      "filename": "3503_cg13_us002_verified_referral_codes.sql",
+      "sha256": "a414ebfa8fd17d8237e7e79068e0c8b8d63232d5468021e912ae0b969641f411"
+    },
+    {
+      "filename": "3504_cg13_us002_referral_resolution_guard.sql",
+      "sha256": "4d8671b51c22e8b4e0ce69c846a6e2cff9817141c764b071c93b15244032692d"
+    },
+    {
+      "filename": "3505_cg13_us002_committed_application_attribution.sql",
+      "sha256": "424d1a324ca1c7ecf5a1e94bea026c5ace24d9e62716427dd34b02da0c689c7d"
+    },
+    {
+      "filename": "3506_cg13_us002_verified_points_rank_ledger.sql",
+      "sha256": "2681a0f2b5acdc16d6a292bd228710989240af23ebec7a835708820102e2b5d3"
+    },
+    {
+      "filename": "3507_cg13_us003_digital_reward_holds.sql",
+      "sha256": "fddd43a1ca181a8887d0462382578900b853ce76b7570e26a633bbbf8b13afe2"
+    },
+    {
+      "filename": "3508_cg19_original_on_platform_recognition.sql",
+      "sha256": "d2e7ae172e9ada750288d4ae16cf5b9a19147c1d35f7245e67b17248c8882f55"
+    },
+    {
+      "filename": "3509_cg12_original_reward_stock_hold.sql",
+      "sha256": "3fa61a590c589820e9114db82a09650b5856117f2a2c2ae59d1fe8a99c56b252"
+    },
+    {
+      "filename": "3510_cg12_reward_original_issue_operation_link.sql",
+      "sha256": "0288644031700b16b4a24529108b7f00567da7fe948b482b710b7125bf7b765b"
+    },
+    {
+      "filename": "3511_cg19_original_reward_recipient_handover.sql",
+      "sha256": "a64a53bda5dcbfd262ec98c0d1619d46ecddf9b731a35419a7c8e1722360a4fb"
+    },
+    {
+      "filename": "3601_cg06_beneficiary_private_intake.sql",
+      "sha256": "d0f7cf9d9695346a33482109a732d3c5a7a4e51dc91b4da05c542a26ad777ba4"
+    },
+    {
+      "filename": "3602_cg03_original_beneficiary_verification.sql",
+      "sha256": "3d67fd1b8050246b5f9956f79d4710d1400b84b6fc3c91db974b35656ced7d4c"
+    },
+    {
+      "filename": "3603_cg19_private_beneficiary_evidence.sql",
+      "sha256": "71f829914c0452f579852ef519447c876cc668706754d6cac54786f4cd118338"
+    },
+    {
+      "filename": "3604_cg06_assistance_case.sql",
+      "sha256": "75f5358ace242f2f0dcd2783c73033ff820108d1076d5237015440dbd2175703"
+    },
+    {
+      "filename": "3605_cg06_original_aid_fulfillment.sql",
+      "sha256": "85a6c3d56822458509066798f6af12b23379b4666960ee60b4c0081f51c154f8"
+    },
+    {
+      "filename": "3606_cg06_protected_report_audit.sql",
+      "sha256": "82719a81d812bc324582634ebc27f0281d49e496f7f49257618511be1dc3ab82"
+    },
+    {
+      "filename": "3701_cg11_compensation_foundation.sql",
+      "sha256": "ce269601fcd5ce632fd4666e7e427fdbada3fc35e0c917f1dbe08a9c86382039"
+    },
+    {
+      "filename": "3702_cg03_payroll_compensation_review.sql",
+      "sha256": "b3860b07c682925687c7895b0a40956f028c16aac89ea265546a80a4f11deaea"
+    },
+    {
+      "filename": "3703_cg21_payroll_audit_transport.sql",
+      "sha256": "b34ae5d491ece35c231f8274d584e2f622a2cdb1576b54c1cb058e08c8679c32"
+    },
+    {
+      "filename": "3704_cg11_payroll_run_period_draft.sql",
+      "sha256": "d2d75705db1b2eb87f15ddb673173b4b7c4b872344d8ea1b39b39b73fe734b64"
+    },
+    {
+      "filename": "3705_cg03_original_payroll_run_review.sql",
+      "sha256": "5477b6559815d5f689c0c8457d6b3bbe6059b4a3943b215a7e8ccc6d61a63b05"
+    },
+    {
+      "filename": "3706_cg11_original_payroll_accrual.sql",
+      "sha256": "3bd13b1ac2bf3d15ef60ed8593b45447569cd5d838da7d24795b11f785297721"
+    },
+    {
+      "filename": "3707_cg11_payroll_payment_source.sql",
+      "sha256": "0acfdd6137ff0888a68fd002f47346dd664b0f36f1aa1c63104eaff2699a6d40"
+    },
+    {
+      "filename": "3708_cg19_private_payroll_payslip.sql",
+      "sha256": "93a05b028f3dbf38ff6bfa7ec60f0c64921981febca8d371fdf16df39eef1efc"
+    },
+    {
+      "filename": "3709_cg11_verified_bank_settlement.sql",
+      "sha256": "9befcf0b7c37891d232ec07621dd0b0e3a1343a912ed1a7520a9086d82afb100"
+    },
+    {
+      "filename": "3710_cg21_payroll_audit_transition.sql",
+      "sha256": "4ff818772f01985d2d88304227ce6b41ee004c44a379dfdab3442e6498fd292b"
+    },
+    {
+      "filename": "3711_cg19_payroll_private_notice.sql",
+      "sha256": "ab41e0e2b71f6d6839445f0233b8f34a8c4b80a6fb7a208b36ef2cc8bec058ed"
+    },
+    {
+      "filename": "3712_cg11_original_beneficiary_bank_proof.sql",
+      "sha256": "71715fba53c58b6ba4e1a538b597a9a401170a0efba92e205168ed0d4dbbba2a"
+    },
+    {
+      "filename": "3713_cg11_verified_failed_bank_transfer.sql",
+      "sha256": "d2f55c168bc647183ad0660bce12c08dc35983a32c4344c2c2171d76ee82a4e4"
+    },
+    {
+      "filename": "3714_cg19_payroll_event_capture.sql",
+      "sha256": "54c02d2e7d1051d492d1122d53370d134226e5be87b000232395832e07cf8d90"
+    },
+    {
+      "filename": "3715_cg19_payroll_automatic_notices.sql",
+      "sha256": "9c31a528f1a2544e13a6430a54355dc33367d148d32d5b0d19f32d74f52b8172"
+    },
+    {
+      "filename": "3716_cg19_verified_payroll_resend.sql",
+      "sha256": "9c01b72bcc493dc4e59e3ae4f5e061723ec29b161bdfc8ffbf4f36c3b1ed8425"
+    },
+    {
+      "filename": "3717_cg11_branch_allocated_accrual.sql",
+      "sha256": "52594a28da84bbf2cd649b613e4a05f81858c8b1af171e7c5cac9a730f6a2307"
+    },
+    {
+      "filename": "3718_cg11_branch_allocated_settlement.sql",
+      "sha256": "9a3378925bb4845915f3886d1f076d748c3f8f4db463cde7524d02a77a1f3af5"
+    },
+    {
+      "filename": "3719_cg11_verified_bank_return.sql",
+      "sha256": "3f76a1cc5fe9d6419b45c576b89d50bd2b039ad58371ca641f122629650a62dd"
+    },
+    {
+      "filename": "3720_cg11_return_reconciliation_and_notice.sql",
+      "sha256": "6b924ba1b84d744fd1ed09a2459ba863ddb580d42a69864ca400d0045905a4e7"
+    },
+    {
+      "filename": "3721_cg11_bank_release_funding_guard.sql",
+      "sha256": "1a177f491e6d687f20c25a5a21546b3cdae1c5f64b920e580511c79c3aae0979"
+    },
+    {
+      "filename": "3722_cg11_original_provider_readback.sql",
+      "sha256": "9ab47cf45cfa8e3b2baabe8c726f68e052a62e6348c19ce9aa355c6b19340ce3"
+    },
+    {
+      "filename": "3723_cg11_protected_provider_dispatch.sql",
+      "sha256": "2bc47f5e81160914aa6a8c3a802d33371e51032a8ee97014904042dd54a8672d"
+    },
+    {
+      "filename": "3724_cg11_provider_dispatch_cas.sql",
+      "sha256": "f347addd0773ff7befb21d72b81dd5792dea1fd2e28a735258a9650f0753b8c9"
+    },
+    {
+      "filename": "9999_cg19_newsletter_consent.sql",
+      "sha256": "f7ae9a9344988ea915e6f936ca1aa2479ae64d5813834f2685e94c50d119f5ba"
+    },
+    {
+      "filename": "9999_cg20_project_report_sources.sql",
+      "sha256": "f65846e8031fbaca008af1eb2e278cee10496416830e99e0370e1931f08f5ad6"
+    }
+  ],
+  "sqlSha256": "09ff3722aef357748231fa63c2c6560d55db6d62e5726b325352dbe255297dd1"
+}

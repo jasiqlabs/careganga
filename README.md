@@ -24,3 +24,7 @@ Read **[AGENTS.md](AGENTS.md)** before every planning, design, development, revi
 - Treat the [always-on agent rule](.agents/rules/real-api-truthfulness.md) and [shared NFR baseline](docs/business-requirements/06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md) as mandatory quality gates.
 - The repo includes `.gitignore`, `.editorconfig`, a root npm workspace and tracked lockfile, the NestJS backend, Next.js Web, Public/Internal Expo Android and shared contracts/tokens. Use `npm ci` locally before asserting buildability.
 - **Verification is local/manual.** Do not introduce `.github/workflows/`, CI pipelines or automated GitHub Actions; do not claim tests were executed unless they were.
+
+## Greenfield DB feature branch (24 November 2026)
+
+For the database simplification child branch, use the committed single PostgreSQL 17 baseline and [Hostinger deployment guide](docs/deployment/hostinger-greenfield-database.md). No historical replay on installation or startup; actual developer acceptance is described in the [database test handoff](docs/qa/CAREGANGA-GREENFIELD-DB-DEVELOPER-HANDOFF-20261124.md).
