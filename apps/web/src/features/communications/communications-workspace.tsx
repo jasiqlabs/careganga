@@ -102,7 +102,17 @@ async function req<T>(path: string, method: "GET" | "POST" = "GET", body?: objec
     throw Error("UNKNOWN");
   }
   if (response.status === 401) throw Error("LOGIN");
-  if (response.status === 403) throw Error("DENIED");
+  if (response.status === 403) {
+    try {
+      const err = (await response.json()) as { message?: string };
+      if (err?.message && String(err.message).toLowerCase().includes("password")) {
+        throw Error("PASSWORD_INCORRECT");
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message === "PASSWORD_INCORRECT") throw e;
+    }
+    throw Error("DENIED");
+  }
   if (response.status === 409) throw Error("CONFLICT");
   if (response.status === 400) throw Error("INVALID");
   if (!response.ok) throw Error("UNKNOWN");
@@ -136,7 +146,9 @@ async function mobile<T>(path: string, method: "GET" | "POST" = "GET", body?: ob
 
 const explain = (e: unknown) => {
   const code = e instanceof Error ? e.message : "UNKNOWN";
-  return code === "DENIED"
+  return code === "PASSWORD_INCORRECT"
+    ? "The entered password is incorrect. Please re-enter your current account password."
+    : code === "DENIED"
     ? "Your current role does not permit this action."
     : code === "LOGIN"
     ? "Your session expired. Sign in again."
@@ -217,6 +229,12 @@ export function CommunicationsWorkspace({
   const [audienceFilter, setAudienceFilter] = useState("ALL");
 
   // Composer Form States
+  const defaultExpiry = () => {
+    const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   const [composerOpen, setComposerOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -227,7 +245,7 @@ export function CommunicationsWorkspace({
   const [email, setEmail] = useState(false);
   const [sms, setSms] = useState(false);
   const [schedule, setSchedule] = useState("");
-  const [expiry, setExpiry] = useState("");
+  const [expiry, setExpiry] = useState(defaultExpiry);
   const [href, setHref] = useState("");
 
   // Review & Security States
@@ -337,6 +355,7 @@ export function CommunicationsWorkspace({
       setTitle("");
       setBody("");
       setSchedule("");
+      setExpiry(defaultExpiry());
       setHref("");
       setComposerOpen(false);
       await reload();

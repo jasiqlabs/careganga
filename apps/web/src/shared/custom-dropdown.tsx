@@ -116,7 +116,7 @@ export function CustomDropdown({
           outline: "none",
           boxShadow: isOpen ? "0 0 0 3px rgba(79, 70, 229, 0.12)" : "none",
           transition: "all 0.15s ease-in-out",
-          boxBox: "border-box",
+          boxSizing: "border-box",
         }}
       >
         <span

@@ -480,7 +480,7 @@ export function FoundationSupportWorkspace({
               }}
               onClick={() => setTab("CASES")}
             >
-              Contact Messages (C39)
+              Contact Messages
             </button>
           )}
           {mayEditFaq && (
@@ -1437,7 +1437,7 @@ export function FoundationSupportWorkspace({
                   {mayManage && (
                     <div className="cg19-drawer-card">
                       <strong style={{ fontSize: "0.9rem", color: "#1e293b", display: "block", marginBottom: "0.75rem" }}>
-                        Case Status &amp; Resolution (C42)
+                        Case Status &amp; Resolution
                       </strong>
 
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
