@@ -438,6 +438,9 @@ export class CmsEditorialService{
   * Root lock serializes normal create and concurrent server startups.
   */
  async initializeReleaseBaseline():Promise<void>{
+  // Normal restarts only read the one-time marker; no writes or content parsing.
+  const done=await this.db.query("SELECT 1 FROM cms_release_install i JOIN access_realm r ON r.id=i.foundation_root_id WHERE r.realm_key='FOUNDATION_ROOT' AND i.release_key='CAREGANGA_INITIAL_EDITORIAL_V1'");
+  if(done.rowCount){console.log("CMS initial release already installed; no content changes.");return;}
   await verifyReleaseIllustrations();
   await this.withTx(async tx=>{
    await tx.query("INSERT INTO access_realm(realm_key) VALUES('FOUNDATION_ROOT') ON CONFLICT(realm_key) DO NOTHING");
