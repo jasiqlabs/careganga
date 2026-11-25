@@ -1068,3 +1068,18 @@
  .cg-site-report-panel .cg-site-report-date-label{display:inline;font-weight:700;color:#52657a}
  .cg-site-report-panel .cg-site-evidence-table tbody a[download]{display:flex;justify-content:center;align-items:center;background:#194a3a;color:#fff;min-height:44px;text-decoration:none;border-radius:.5rem;padding:.45rem .6rem}
 }
+
+/* Keep information and service discovery actions unobstructed. */
+.cg-site:has(.cg-site-page-impact,.cg-site-ngo-layout,.cg-site-page-healthcare)>.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+.cg-site-page-impact .cg-site-impact-pillars .cg-site-impact-card h3{font-size:clamp(1rem,1.7vw,1.35rem)}
+.cg-site-page-impact .cg-site-impact-pillars .cg-site-impact-card p{margin:.4rem 0}
+@media(max-width:400px){.cg-site-page-impact .cg-site-impact-pillars .cg-site-impact-grid{grid-template-columns:minmax(0,1fr)}}
+.cg-site-ngo-layout .cg-site-legal-status{max-width:100%;overflow-wrap:anywhere}
+.cg-site-page-healthcare .cg-site-healthcare-grid .cg-site-action{text-align:center;overflow-wrap:anywhere}
+.cg-site-page-healthcare .cg-site-healthcare{padding:clamp(1rem,2.4vw,2rem)}
+.cg-site-page-healthcare .cg-site-healthcare-grid{gap:1rem}
+.cg-site-page-healthcare .cg-site-healthcare-grid .cg-site-impact-card{padding:1rem;border-color:#d9e6d9}
+.cg-site-page-healthcare .cg-site-healthcare-grid .cg-site-impact-card h3{margin:.2rem 0;color:#194a3a}
+.cg-site-page-healthcare .cg-site-healthcare-grid .cg-site-impact-card p{margin:.2rem 0 .65rem}
+.cg-site-page-healthcare .cg-site-healthcare-grid .cg-site-action,.cg-site-page-healthcare .cg-health-discovery button{background:#194a3a;color:#fff!important;border-radius:.6rem}
+@media(min-width:1200px){.cg-site-page-healthcare .cg-site-healthcare-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
