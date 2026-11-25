@@ -488,10 +488,20 @@ export class CmsEditorialService{
  }
  async releaseMedia(key:string){
   if(!releaseIllustration(key))throw new NotFoundException();
-  const visible=()=>this.db.query("SELECT 1 FROM cms_release_asset a JOIN cms_page_revision v ON v.id=a.page_revision_id AND v.foundation_root_id=a.foundation_root_id JOIN cms_page p ON p.id=v.page_id AND p.foundation_root_id=v.foundation_root_id JOIN access_realm r ON r.id=p.foundation_root_id JOIN cms_page_effective e ON e.page_id=p.id AND e.foundation_root_id=p.foundation_root_id JOIN cms_publication pub ON pub.id=e.publication_id AND pub.foundation_root_id=e.foundation_root_id AND pub.page_revision_id=v.id WHERE r.realm_key='FOUNDATION_ROOT' AND p.archived_at IS NULL AND pub.state='EFFECTIVE' AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) AND a.asset_key=$1 LIMIT 1",[key]);
+  const visible=()=>this.db.query("SELECT 1 FROM cms_release_asset a JOIN cms_page_revision v ON v.id=a.page_revision_id AND v.foundation_root_id=a.foundation_root_id JOIN cms_page p ON p.id=v.page_id AND p.foundation_root_id=v.foundation_root_id JOIN access_realm r ON r.id=p.foundation_root_id JOIN cms_page_effective e ON e.page_id=p.id AND e.foundation_root_id=p.foundation_root_id JOIN cms_publication pub ON pub.id=e.publication_id AND pub.foundation_root_id=e.foundation_root_id AND pub.page_revision_id=v.id WHERE r.realm_key='FOUNDATION_ROOT' AND p.archived_at IS NULL AND pub.state='EFFECTIVE' AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) AND a.asset_key=$1 AND NOT EXISTS(SELECT 1 FROM cms_asset_placement uploaded WHERE uploaded.foundation_root_id=a.foundation_root_id AND uploaded.page_revision_id=a.page_revision_id AND uploaded.role=a.role AND uploaded.sort_order=a.sort_order) AND EXISTS(SELECT 1 FROM cms_section_revision sec WHERE sec.foundation_root_id=a.foundation_root_id AND sec.page_revision_id=a.page_revision_id AND ((a.role='HERO' AND sec.section_kind='HERO' AND sec.order_no=a.sort_order AND sec.structured_fields->>'visible' IS DISTINCT FROM 'false' AND sec.structured_fields->>'textOnly' IS DISTINCT FROM 'true') OR (a.role='ABOUT' AND sec.section_kind='RICH_TEXT' AND sec.order_no=a.sort_order AND sec.structured_fields->>'variant'='SPLIT') OR (a.role='PROMO' AND sec.section_kind='CTA' AND sec.order_no=a.sort_order) OR (a.role='FEATURE' AND sec.section_kind='FEATURE_CARDS' AND CASE WHEN jsonb_typeof(sec.structured_fields->'cards')='array' THEN jsonb_array_length(sec.structured_fields->'cards')>a.sort_order ELSE false END))) LIMIT 1",[key]);
   if(!(await visible()).rowCount)throw new NotFoundException();
   const bytes=await releaseIllustrationBytes(key);
   if(!(await visible()).rowCount)throw new NotFoundException();
+  return bytes;
+ }
+ async releaseMediaPreview(bearer:string,key:string){
+  const actor=await this.sessions.requireAction(bearer,"cms.content.view");
+  if(!releaseIllustration(key))throw new NotFoundException();
+  const placed=()=>this.db.query("SELECT 1 FROM cms_release_asset a JOIN cms_page_revision v ON v.id=a.page_revision_id AND v.foundation_root_id=a.foundation_root_id JOIN cms_page p ON p.id=v.page_id AND p.foundation_root_id=v.foundation_root_id WHERE a.foundation_root_id=$1 AND a.asset_key=$2 AND p.archived_at IS NULL LIMIT 1",[actor.realmId,key]);
+  if(!(await placed()).rowCount)throw new NotFoundException();
+  const bytes=await releaseIllustrationBytes(key);
+  const fresh=await this.sessions.requireAction(bearer,"cms.content.view");
+  if(fresh.realmId!==actor.realmId||!(await placed()).rowCount)throw new NotFoundException();
   return bytes;
  }
  async list(bearer:string,scope?:string){
