@@ -42,3 +42,6 @@
 .profileNote{color:#4d6072;font-size:.9rem}
 .doctorLayout .dataCard a:global(.primary),.doctorLayout .sideColumn a:global(.primary){width:100%;min-height:48px}
 .doctorLayout .feeLine{font-size:1rem;line-height:1.55}
+
+.centerBadge{display:inline-block;padding:.3rem .65rem;border-radius:999px;background:#dceee0;color:#194a3a;font-weight:750}
+.profilePage .dataCard a:global(.primary){width:100%;min-height:48px}
