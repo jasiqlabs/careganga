@@ -15650,3 +15650,11 @@ button:disabled {
 .cg-lab-grid:has(>.cg-lab-card:only-child){grid-template-columns:minmax(0,680px);justify-content:center}
 .cg-health-public-chrome>.cg-lab-directory~.cg-site-floating{position:static;padding:.75rem clamp(1rem,6vw,7rem) max(.75rem,env(safe-area-inset-bottom));background:#080d14;align-items:center}
 .cg-health-public-chrome>.cg-lab-directory~.cg-site-footer{padding-bottom:2rem}
+
+/* Keep the membership page and its verification controls unobstructed. */
+.cg-membership-page~.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+.cg-membership-page .cg04-public-plan{overflow-wrap:anywhere}
+.cg-membership-page .cg04-public :is(button,a.cg04-primary){min-height:44px}
+.cg-membership-page .cg04-public-actions a.cg04-primary{color:#fff}
+@media(max-width:570px){.cg-membership-page .cg04-search-row input{min-width:0}.cg-membership-page .cg04-public-plan{gap:1rem}}
+.cg-membership-page a.cg04-hero-cta{color:#202216}
