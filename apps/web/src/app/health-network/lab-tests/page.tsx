@@ -67,9 +67,9 @@ export default async function PublicLabTestsPage({searchParams}:Props){
       <p>Test code: {offer.code}</p>
       {offer.sampleType&&<p>Sample category: {offer.sampleType.replaceAll("_"," ")}</p>}
       {offer.description&&<p>{offer.description}</p>}
-      <p><strong>{rupees(offer.patientPriceMinor)}</strong> · Current patient price</p>
+      <p className="cg-lab-price"><span>Current patient price</span><strong>{rupees(offer.patientPriceMinor)}</strong></p>
       {Number(offer.basePriceMinor)>Number(offer.patientPriceMinor)&&
-       <p>Base commercial price: {rupees(offer.basePriceMinor)}
+       <p className="cg-lab-saving">Base commercial price: {rupees(offer.basePriceMinor)}
         {" · Partner commercial saving: "}
         {rupees(String(Number(offer.basePriceMinor)-Number(offer.patientPriceMinor)))}
        </p>}
