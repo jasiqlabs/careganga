@@ -127,11 +127,11 @@ async function publishedNavigation():Promise<{login:boolean;paths:string[];membe
    volunteer:data.volunteerJoin?.visible===true&&data.volunteerJoin?.path==="/volunteer",paths};
  }catch{return {login:false,paths:[],member:false,volunteer:false};}
 }
-function CmsButton({title,onPress,secondary=false}:{
- title:string;onPress:()=>void;secondary?:boolean}){
- return <Pressable accessibilityRole="button" onPress={onPress}
-  style={[styles.action,secondary&&styles.secondary]}>
-  <Text style={[styles.actionText,secondary&&styles.secondaryText]}>{title}</Text>
+function CmsButton({title,onPress,secondary=false,selected}:{
+ title:string;onPress:()=>void;secondary?:boolean;selected?:boolean}){
+ return <Pressable accessibilityRole="button" accessibilityState={selected===undefined?undefined:{selected}} onPress={onPress}
+  style={[styles.action,secondary&&styles.secondary,selected===true&&styles.filterSelected]}>
+  <Text style={[styles.actionText,secondary&&styles.secondaryText,selected===true&&styles.filterSelectedText]}>{title}</Text>
  </Pressable>;
 }
 /** Public Android receives the same original immutable public DTO as Next.js.
@@ -154,14 +154,15 @@ function NativeTeamDirectory(){
   setPeople(out);setUnavailable(results.some(r=>r.state==="UNAVAILABLE"));setLoading(false);
  },[]);
  useEffect(()=>{void refresh();const sub=AppState.addEventListener("change",state=>{if(state==="active")void refresh();});return()=>{request.current++;sub.remove();};},[refresh]);
- const filtered=people.filter(p=>(!name.trim()||p.name.toLowerCase().includes(name.trim().toLowerCase()))&&(!designation||p.designation===designation));
- return <View style={styles.sections}><View style={styles.hero}>{!!text(intro?.eyebrow)&&<Text style={styles.eyebrow}>{text(intro?.eyebrow)}</Text>}<Text accessibilityRole="header" style={styles.bigHeading}>{text(intro?.heading)||"Team Directory"}</Text>{!!text(intro?.body)&&<Text style={styles.heroBody}>{text(intro?.body)}</Text>}</View><View style={styles.card}><Text accessibilityRole="header" style={styles.heading}>Team Directory</Text>
+ const selectedDesignation=people.some(p=>p.designation===designation)?designation:"";
+ const filtered=people.filter(p=>(!name.trim()||p.name.toLowerCase().includes(name.trim().toLowerCase()))&&(!selectedDesignation||p.designation===selectedDesignation));
+ return <View style={styles.sections}><View style={[styles.hero,styles.directoryHero]}>{!!text(intro?.eyebrow)&&<Text style={[styles.eyebrow,styles.directoryHeroText]}>{text(intro?.eyebrow)}</Text>}<Text accessibilityRole="header" style={[styles.bigHeading,styles.directoryHeroText]}>{text(intro?.heading)||"Team Directory"}</Text>{!!text(intro?.body)&&<Text style={[styles.heroBody,styles.directoryHeroText]}>{text(intro?.body)}</Text>}</View><View style={styles.card}><Text accessibilityRole="header" style={styles.heading}>Team Directory</Text>
   <Text style={styles.body}>Only independently published, currently consented names and designations are displayed.</Text>
-  <TextInput accessibilityLabel="Search by name" placeholder="Search by name" maxLength={120} value={name} onChangeText={setName} style={{borderWidth:1,borderRadius:8,padding:10}}/>
-  <View style={styles.nav}>{["",...new Set(people.map(p=>p.designation))].map(v=><CmsButton key={v} title={v||"All designations"} secondary={designation!==v} onPress={()=>setDesignation(v)}/>)}</View>
+  <TextInput accessibilityLabel="Search by name" placeholder="Search by name" maxLength={120} value={name} onChangeText={setName} style={styles.search}/>
+  <View style={styles.actions}>{["",...new Set(people.map(p=>p.designation))].map(v=><CmsButton key={v} title={v||"All designations"} secondary={selectedDesignation!==v} selected={selectedDesignation===v} onPress={()=>setDesignation(v)}/>)}</View>
   <CmsButton title="Reset filters" secondary onPress={()=>{setName("");setDesignation("");}}/><CmsButton title="Refresh current profiles" secondary onPress={()=>void refresh()}/>
   {unavailable&&<Text accessibilityRole="alert">Some approved team information could not be verified.</Text>}
-  {loading?<ActivityIndicator/>:filtered.length?filtered.map((p,i)=><View key={i} style={styles.person}><Text style={styles.heading}>{p.name}</Text><Text style={styles.role}>{p.designation}</Text></View>):<View style={styles.person}><Text style={styles.heading}>{name.trim()||designation?"No matching profiles":"No public profiles yet"}</Text><Text style={styles.muted}>{name.trim()||designation?"Try another name or designation.":"Consented team profiles will appear here once published."}</Text></View>}
+  {loading?<ActivityIndicator/>:filtered.length?filtered.map((p,i)=><View key={i} style={styles.person}><Text style={styles.heading}>{p.name}</Text><Text style={styles.role}>{p.designation}</Text></View>):<View style={styles.person}><Text style={styles.heading}>{unavailable?"No current matching profiles could be confirmed":name.trim()||designation?"No matching profiles":"No public profiles yet"}</Text><Text style={styles.muted}>{unavailable?"Try again later before relying on the directory.":name.trim()||designation?"Try another name or designation.":"Consented team profiles will appear here once published."}</Text></View>}
  </View></View>;
 }
 /** Same current public Gallery projection as the Web financial report route.
@@ -183,14 +184,16 @@ function NativeFinancialReports(){
    return a&&base&&text(item.title)&&text(item.asOfDate)?[{title:text(item.title),date:text(item.asOfDate),href:new URL(a.src,base).toString()}]:[];
   })): [];
  const years=Array.from(new Set(records.map(v=>v.date.slice(0,4)).filter(v=>/^\d{4}$/.test(v)))).sort((a,b)=>b.localeCompare(a));
- const matching=records.filter(v=>year==="ALL"||v.date.startsWith(year+"-"));
+ const selectedYear=years.includes(year)?year:"ALL";
+ const matching=records.filter(v=>selectedYear==="ALL"||v.date.startsWith(selectedYear+"-"));
  return <View style={styles.card}>
   <Text accessibilityRole="header" style={styles.heading}>Financial Reports</Text>
   <Text style={styles.body}>Current Foundation-published financial reports only.</Text>
   {loading?<ActivityIndicator accessibilityLabel="Checking current financial reports"/>:result.state==="UNAVAILABLE"?<Text accessibilityRole="alert">Published financial reports cannot currently be verified.</Text>:<>
-   <View style={styles.actions}>{["ALL",...years].map(v=><CmsButton key={v} title={v==="ALL"?"All years":v} secondary={year!==v} onPress={()=>setYear(v)}/>)}</View>
+   <Text style={styles.body}>Document year</Text>
+   <View style={styles.actions}>{["ALL",...years].map(v=><CmsButton key={v} title={v==="ALL"?"All years":v} secondary={selectedYear!==v} selected={selectedYear===v} onPress={()=>setYear(v)}/>)}</View>
    <CmsButton title="Reset filters" secondary onPress={()=>setYear("ALL")}/>
-   {!matching.length?<Text style={styles.muted}>No approved financial report is available for the selected year.</Text>:matching.map((v,i)=><View key={v.href+"-"+i} style={styles.person}><Text style={styles.heading}>{v.title}</Text><Text>{v.date}</Text><CmsButton title="View document" onPress={()=>{setOpenError("");void Linking.openURL(v.href).catch(()=>setOpenError("This document could not be opened. Please try again."));}}}/></View>)}
+   {!matching.length?<Text style={styles.muted}>{records.length?"No approved financial report is available for the selected year.":"No reports published yet."}</Text>:matching.map((v,i)=><View key={v.href+"-"+i} style={styles.person}><Text style={styles.heading}>{v.title}</Text><Text>{v.date}</Text><CmsButton title="View document" onPress={()=>{setOpenError("");void Linking.openURL(v.href).catch(()=>setOpenError("This document could not be opened. Please try again."));}}/></View>)}
   </>}
   {!!openError&&<Text accessibilityRole="alert">{openError}</Text>}
   <CmsButton title="Refresh reports" secondary onPress={()=>void refresh()}/>
@@ -680,14 +683,16 @@ const styles=StyleSheet.create({
  image:{width:"100%",height:225,borderRadius:9},
  actions:{flexDirection:"row",flexWrap:"wrap",gap:8},
  action:{backgroundColor:publicColors.amber,borderRadius:8,alignItems:"center",
-  justifyContent:"center",minHeight:48,paddingVertical:10,paddingHorizontal:16},
- actionText:{color:"#17263c",fontWeight:"700",fontSize:15},
+  justifyContent:"center",minHeight:48,paddingVertical:10,paddingHorizontal:16,maxWidth:"100%"},
+ actionText:{color:"#17263c",fontWeight:"700",fontSize:15,textAlign:"center",flexShrink:1},
+ filterSelected:{backgroundColor:t.primary,borderColor:t.primary},filterSelectedText:{color:t.primaryText},
+ directoryHero:{backgroundColor:t.selectedSurface,borderWidth:1,borderColor:t.border},directoryHeroText:{color:t.sidebar},
  secondary:{backgroundColor:t.surface,borderWidth:1,borderColor:t.border},
  secondaryText:{color:t.text},
  person:{borderWidth:1,borderColor:t.border,borderRadius:8,
   padding:12,gap:5,backgroundColor:"#f8fafc"},
  teamPhoto:{width:"100%",height:180,borderRadius:8},
  role:{fontWeight:"700",color:t.primary,fontSize:14},
- search:{borderWidth:1,borderColor:"#7fa792",borderRadius:8,minHeight:46,
+ search:{borderWidth:1,borderColor:"#7fa792",borderRadius:8,minHeight:48,
   paddingHorizontal:12,color:t.text}
 });
