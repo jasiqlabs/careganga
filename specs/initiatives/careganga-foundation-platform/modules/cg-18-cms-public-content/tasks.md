@@ -723,3 +723,46 @@ Baseline from current Web route inventory and earlier local QA evidence. This is
 
 #### 25 November — second-pass PUB-10 / PUB-13 / SV-09 native public partner offers
 - Exact NativePublicPartnerOffers baseline blob bcb8d23efae64ea82f0530c5c5746c810f13d71c verified locally. Executed full component with React 19/esbuild/React Native Web/Chromium, exact selected public theme tokens, representative parent, synthetic API and external network blocked. 24/36 before, 36/36 after at 320/390/768/1280. Reproduced delayed retry from old center overwriting new center listing, non-INR payload presented as rupee price, and undersized retry action. Unified initial/retry sequence guard and center-scoped view; require INR on public offer DTO; 48px retry; green heading, cream cards and readable fee hierarchy consistent with preceding healthcare reference review. Checked current INR amount, no guaranteed discount, no overflow, stale retry rejection, wrong currency rejection, price on enquiry, empty panel and no JS exceptions. Inspected 390px post-fix screenshot; no dedicated original partner-offer panel identified, shared healthcare design language used rather than exact screenshot claim. Commit 3d0f30af098a63d4c3cfbac09b197fa7e2bd760e, exact tested blob 882b810c70b3ac28b4b79e5412d965e43773615c. Evidence /mnt/data/cg-recheck/partner-{before,after}-{width}.png, partner-{before,after}-results.json, test-partner.py. Actual backend DTO, full center detail and Android device execution remain OPEN, no real offer created or changed, no merge/deploy.
+
+#### 25 November — public route inventory and assembled healthcare page visual QA
+- Current branch Git tree at 0c32c72576e429a92f4a6214186d22535bde5a14: 2,651 entries, recursive response not truncated, 36 non-admin Next App Router page files. Includes two redirect-only entries and dynamic templates; actual published slugs and query/filter states must also be exercised (not represented as only 36 final screens). Staff routes excluded from this public inventory. Reopened root AGENTS.md and the indexed 47-capture public parity contract. Existing PUB/SV acceptance remains OPEN; this checklist is an expanded view in the same tracker, not a replacement for existing QA IDs.
+- /verify-appointment assembled offline with actual route blob 84290486c03f5d184aa79e8af5827407ebda7fa4, exact shared HealthcarePublicChrome blob a69d1f75d1631b61846feb6ece510aec8efc71e4, verifier/header/newsletter source matching their committed blobs; SiteFooter extracted from current file, unrendered WhatsApp SVG fixture not byte-identical, Next Link/pathname and CMS data adapters, selected committed CSS and mocked verify API. No network. 42/54 before across 320/390/768/1280/1440/1920: generic healthcare chrome CSS overrode shared newsletter dark input and gold CTA. Scope generic form/focus/button rules to :where(.cg-public-shell) preserving specificity; initial more-specific selector regression reduced 48px verification control and was corrected before commit. Checked main shell usage in all eight other healthcare route sources. Final 54/54 including original footer colors, verifier touch target, valid result, no horizontal overflow or JS exceptions. Inspected full-page 390/1440 screenshots. Source fix 31153cb1567179ddcb2fcbd1a3c0a4175e649cde, blob d71c6793841bb6ee141400913eb4e91f01314686, readback verified. Evidence /mnt/data/cg-recheck/full-route/{before,after}-{width}.png, {before,after}-results.json, test.py and build.cjs. Missing logo asset is a fixture limitation; no exact client asset match, actual Next navigation, provider/backend, or production acceptance asserted. Shared footer/healthcare cascade is fixed; remaining routes require page-by-page execution and inspection.
+
+| # | Route template | Second-pass page execution status |
+|---|---|---|
+| 1 | `/` | PENDING — second-pass assembled page manual inspection |
+| 2 | `/80g` | REDIRECT — execution pending; destination visual separate |
+| 3 | `/about` | PENDING — second-pass assembled page manual inspection |
+| 4 | `/about/team` | PENDING — second-pass assembled page manual inspection |
+| 5 | `/blog` | PENDING — second-pass assembled page manual inspection |
+| 6 | `/blog/[slug]` | PENDING — second-pass assembled page manual inspection |
+| 7 | `/campaigns` | PENDING — second-pass assembled page manual inspection |
+| 8 | `/campaigns/[slug]` | PENDING — second-pass assembled page manual inspection |
+| 9 | `/collaboration` | PENDING — second-pass assembled page manual inspection |
+| 10 | `/collaboration/healthcare-partner` | PENDING — second-pass assembled page manual inspection |
+| 11 | `/contact` | PENDING — second-pass assembled page manual inspection |
+| 12 | `/donate` | PENDING — second-pass assembled page manual inspection |
+| 13 | `/events` | PENDING — second-pass assembled page manual inspection |
+| 14 | `/gallery` | PENDING — second-pass assembled page manual inspection |
+| 15 | `/health-network` | PENDING — second-pass assembled page manual inspection |
+| 16 | `/health-network/doctors/[doctorRef]` | PENDING — second-pass assembled page manual inspection |
+| 17 | `/health-network/doctors/[doctorRef]/schedule` | PENDING — second-pass assembled page manual inspection |
+| 18 | `/health-network/lab-tests` | PENDING — second-pass assembled page manual inspection |
+| 19 | `/healthcare` | PENDING — second-pass assembled page manual inspection |
+| 20 | `/healthcare/centers/[slug]` | PENDING — second-pass assembled page manual inspection |
+| 21 | `/impact` | REDIRECT — execution pending; destination visual separate |
+| 22 | `/membership` | PENDING — second-pass assembled page manual inspection |
+| 23 | `/membership/apply` | PENDING — second-pass assembled page manual inspection |
+| 24 | `/ngo-information` | PENDING — second-pass assembled page manual inspection |
+| 25 | `/ngo-information/[section]` | PENDING — second-pass assembled page manual inspection |
+| 26 | `/notices` | PENDING — second-pass assembled page manual inspection |
+| 27 | `/our-impact` | PENDING — second-pass assembled page manual inspection |
+| 28 | `/our-work` | PENDING — second-pass assembled page manual inspection |
+| 29 | `/patients/me` | PENDING — second-pass assembled page manual inspection |
+| 30 | `/patients/me/appointments/[bookingRef]` | PENDING — second-pass assembled page manual inspection |
+| 31 | `/policies/[slug]` | PENDING — second-pass assembled page manual inspection |
+| 32 | `/publications` | PENDING — second-pass assembled page manual inspection |
+| 33 | `/upcoming-projects` | PENDING — second-pass assembled page manual inspection |
+| 34 | `/verify-appointment` | ASSEMBLED_OFFLINE_54_OF_54 — visual inspected; full Next/backend pending |
+| 35 | `/videos` | PENDING — second-pass assembled page manual inspection |
+| 36 | `/volunteer` | PENDING — second-pass assembled page manual inspection |
