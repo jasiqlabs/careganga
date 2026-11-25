@@ -33,3 +33,12 @@
 @media(max-width:800px){.sectionNav{flex-wrap:wrap;overflow:visible}.sectionNav a{white-space:normal}.panel .cardGrid{grid-template-columns:minmax(0,1fr)}}
 .panel a:not(:global(.primary)),.profileHero a{color:#194a3a}
 .doctorLayout .cardGrid{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+
+/* Keep patient-facing profile actions and clinical information unobstructed. */
+.profilePage~:global(.cg-site-floating){position:static;padding:.75rem clamp(1rem,6vw,7rem) max(.75rem,env(safe-area-inset-bottom));background:#080d14;align-items:center}
+.profilePage~:global(.cg-site-footer){padding-bottom:2rem}
+.doctorIntro p{margin:.55rem 0}
+.doctorIntro :global(.cg-eyebrow){display:inline-block;padding:.3rem .65rem;border-radius:999px;background:#dceee0;color:#194a3a;font-weight:750}
+.profileNote{color:#4d6072;font-size:.9rem}
+.doctorLayout .dataCard a:global(.primary),.doctorLayout .sideColumn a:global(.primary){width:100%;min-height:48px}
+.doctorLayout .feeLine{font-size:1rem;line-height:1.55}
