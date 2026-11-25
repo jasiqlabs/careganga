@@ -9,6 +9,7 @@ export type CmsMediaType="PHOTO"|"VIDEO"|"PUBLICATION";
 const text=(v:unknown)=>typeof v==="string"?v:"";
 const records=(v:unknown):RecordFields[]=>Array.isArray(v)?
  v.filter(x=>x&&typeof x==="object"&&!Array.isArray(x)).slice(0,12):[];
+const singular:Record<CmsMediaType,string>={PHOTO:"photo",VIDEO:"video",PUBLICATION:"publication"};
 const labels:Record<CmsMediaType,string>={
  PHOTO:"photos",VIDEO:"videos",PUBLICATION:"publications"
 };
@@ -42,7 +43,7 @@ export function CmsGalleryGridClient({fields,assets,mediaType="PHOTO"}:{
  const reset=()=>{setCategory("ALL");setYear("ALL");setSearch("");};
  const emptyKey=mediaType==="VIDEO"?"videosEmptyText":
   mediaType==="PUBLICATION"?"publicationsEmptyText":"photosEmptyText";
- const empty=text(fields[emptyKey])||
+ const empty=entries.length===0?(text(fields[emptyKey])||"No approved "+labels[mediaType]+" published yet."):
   "No approved "+labels[mediaType]+" match these filters.";
  return <div className="cg-site-gallery-browser">
   <div className="cg-site-gallery-filters" aria-label={"Filter approved "+labels[mediaType]}>
@@ -71,7 +72,7 @@ export function CmsGalleryGridClient({fields,assets,mediaType="PHOTO"}:{
   </div>}
   <p className="cg-site-provenance" role="status" aria-live="polite">
    {matches.length} approved {matches.length===1?
-    labels[mediaType].slice(0,-1):labels[mediaType]} match
+    singular[mediaType]:labels[mediaType]} match
   </p>
   {matches.length===0?<div className="cg-site-gallery-empty">
    <p>{empty}</p>
