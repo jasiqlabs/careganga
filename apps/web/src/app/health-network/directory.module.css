@@ -80,3 +80,12 @@
 @media(max-width:850px){.categories{flex-wrap:wrap;overflow-x:visible}.categories a{flex:0 1 auto;max-width:100%;overflow-wrap:anywhere}.list .actions a{flex:1 1 130px}}
 @media(max-width:480px){.hero nav a{flex:1 1 120px}.actions a{flex:1 1 100%}.categories a{font-size:.82rem;padding:.45rem .65rem}}
 @media(min-width:851px){.list .actions a{flex:0 0 auto}}
+
+/* Keep clinical listings and their filters clear of floating donation actions. */
+.directoryPage~:global(.cg-site-floating){position:static;padding:.75rem clamp(1rem,6vw,7rem) max(.75rem,env(safe-area-inset-bottom));background:#080d14;align-items:center}
+.directoryPage~:global(.cg-site-footer){padding-bottom:2rem}
+.grid:has(>.card:only-child){grid-template-columns:minmax(0,640px)}
+.card .fee{display:flex;flex-wrap:wrap;gap:.35rem;align-items:baseline;padding:.65rem .75rem;background:#f5f8ef;border:1px solid #d8e7dc;border-radius:.65rem;color:#4d6072;font-size:.88rem}
+.fee strong{font-size:1.2rem;color:#194a3a;font-variant-numeric:tabular-nums}
+.filterForm button{min-height:48px}
+@media(max-width:480px){.filterForm button{width:100%}.filterForm a{justify-content:center;width:100%}}
