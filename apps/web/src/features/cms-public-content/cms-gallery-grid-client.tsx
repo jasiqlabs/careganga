@@ -23,12 +23,22 @@ export function CmsGalleryGridClient({fields,assets,mediaType="PHOTO"}:{
  const [category,setCategory]=useState("ALL");
  const [year,setYear]=useState("ALL");
  const [search,setSearch]=useState("");
- const entries=useMemo(()=>records(fields.items).map((item,index)=>{
-  const mediaOrder=Number.isSafeInteger(item.originalIndex)&&Number(item.originalIndex)>=0?
-   Number(item.originalIndex):index;
-  return {item,index,asset:assets.find(a=>a.role==="GALLERY"&&a.order===mediaOrder)};
- }).filter(({item,asset})=>item.mediaType===mediaType&&Boolean(asset?.src)),
- [fields.items,assets,mediaType]);
+ const entries=useMemo(()=>{
+  const candidates=records(fields.items);
+  return candidates.flatMap((item,index)=>{
+   if(item.mediaType!==mediaType||!Number.isSafeInteger(item.originalIndex)||Number(item.originalIndex)<0||
+    Number(item.originalIndex)>100||candidates.filter(v=>v.originalIndex===item.originalIndex).length!==1||
+    !text(item.title).trim()||!text(item.source).trim())return [];
+   const day=text(item.asOfDate),stamp=new Date(day+"T00:00:00Z");
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isFinite(stamp.getTime())||stamp.toISOString().slice(0,10)!==day||day>new Date().toISOString().slice(0,10))return [];
+   const placements=assets.filter(a=>a&&a.role==="GALLERY"&&a.order===item.originalIndex);
+   if(placements.length!==1)return [];
+   const asset=placements[0];
+   if(typeof asset.altText!=="string"||!asset.altText.trim()||typeof asset.src!=="string"||
+    !/^\/api\/public\/content\/media\/[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(asset.src))return [];
+   return [{item,index,asset}];
+  });
+ },[fields.items,assets,mediaType]);
  const categories=useMemo(()=>Array.from(new Set(entries.map(({item})=>
   text(item.category)).filter(Boolean))).sort((a,b)=>a.localeCompare(b)),[entries]);
  const years=useMemo(()=>Array.from(new Set(entries.map(({item})=>
