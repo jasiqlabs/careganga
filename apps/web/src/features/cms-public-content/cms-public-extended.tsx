@@ -88,9 +88,15 @@ export function CmsImpactGroup({section,assets,navigation}:{
 export function CmsCompliance({section,assets}:{
  section:PublicCmsSection;assets:Asset[]}){
  const f=section.fields;
- const safeDocument=(a:Asset)=>a.role==="DOCUMENT"&&/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(a.src);
+ const safeDocument=(a:Asset)=>a.role==="DOCUMENT"&&/^\/api\/public\/content\/media\/[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(a.src);
  const supported=f.verification==="VERIFIED",proof=assets.find(safeDocument);
- const documents=records(f.documents).map((record,i)=>({record,document:assets.find(a=>a.order===i&&safeDocument(a))})).filter(entry=>entry.document);
+ const documents=Array.isArray(f.documents)?f.documents.slice(0,6).flatMap((raw,i)=>{
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))return [];
+  const record=raw as Record<string,unknown>;
+  if(!text(record.title).trim()||!/^\d{4}-\d{2}-\d{2}$/.test(text(record.asOfDate)))return [];
+  const document=assets.find(a=>a.order===i&&safeDocument(a));
+  return document?[{record,document}]:[];
+ }):[];
  return <section className="cg-site-content cg-site-legal">
   <p className="cg-site-eyebrow">Registration &amp; public disclosures</p>
   <h1>{text(f.heading)}</h1>
@@ -119,7 +125,7 @@ export function CmsCompliance({section,assets}:{
     </article>;
    })}</div>
   </section>}
-  {supported&&proof?.src&&records(f.documents).length===0&&
+  {supported&&proof?.src&&(f.documents===undefined||Array.isArray(f.documents)&&f.documents.length===0)&&
    <a className="cg-site-action" href={proof.src} download>
     View approved supporting document</a>}
   {text(f.importantNote)&&<aside className="cg-site-legal-important">
