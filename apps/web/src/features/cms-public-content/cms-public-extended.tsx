@@ -175,14 +175,14 @@ export function CmsHealthcare({section,assets}:{
  const code=(v:Record<string,unknown>)=>codes[text(v.title).trim().toLowerCase()]??"";
  return <section className="cg-site-content cg-site-healthcare">
   <p className="cg-site-eyebrow">Healthcare Assistance</p>
-  <h1>{text(f.heading)}</h1><p className="cg-site-article-lead">{text(f.intro)}</p>
+  <h2 className="cg-site-healthcare-heading">{text(f.heading)}</h2><p className="cg-site-article-lead">{text(f.intro)}</p>
   <form className="cg-health-discovery" action="/health-network" method="get" aria-label="Find healthcare services"><input type="hidden" name="tab" value="centers"/><label>Center or provider<input type="search" name="q" maxLength={80} placeholder="Find a verified center"/></label><label>Service category<select name="category"><option value="">All centers</option>{categories.filter(v=>code(v)).map((v,i)=><option key={i} value={code(v)}>{text(v.title)}</option>)}</select></label><label>PIN code (optional)<input name="pin" inputMode="numeric" maxLength={6} pattern="[1-9][0-9]{5}" placeholder="Six-digit PIN"/></label><button className="cg-site-action" type="submit">Search centers</button></form>
   <div className="cg-site-healthcare-grid">{categories.map((v,i)=>
    <article key={i} className="cg-site-impact-card">
     {photo(assets.find(a=>a.role==="FEATURE"&&a.order===i),"cg-health-category-photo")}
-    {assets.find(a=>a.role==="FEATURE"&&a.order===i)?.altText.startsWith("AI-generated illustration")&&<p className="cg-site-provenance">AI-generated illustration.</p>}
-    <h2>{text(v.title)}</h2><p>{text(v.description)}</p>
-    <Link className="cg-site-action" href={"/health-network?tab=centers"+(code(v)?"&category="+encodeURIComponent(code(v)):"")}>Find centers</Link>
+    {assets.find(a=>a.role==="FEATURE"&&a.order===i)?.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<p className="cg-site-provenance">Illustration; not a photograph of a verified facility.</p>}
+    <h3>{text(v.title)}</h3><p>{text(v.description)}</p>
+    <Link className="cg-site-action" href={"/health-network?tab=centers"+(code(v)?"&category="+encodeURIComponent(code(v)):"")} aria-label={"Find centers — "+text(v.title)}>Find centers</Link>
    </article>)}</div>
   {f.ctaPath==="/contact"&&text(f.ctaLabel)&&
    <Link className="cg-site-action" href="/contact">{text(f.ctaLabel)}</Link>}
