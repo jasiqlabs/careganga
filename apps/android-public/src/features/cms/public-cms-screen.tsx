@@ -140,27 +140,29 @@ function CmsButton({title,onPress,secondary=false}:{
 function NativeTeamDirectory(){
  const [people,setPeople]=useState<{name:string;designation:string}[]>([]),[name,setName]=useState(""),[designation,setDesignation]=useState("");
  const [loading,setLoading]=useState(true),[unavailable,setUnavailable]=useState(false);
+ const [intro,setIntro]=useState<Fields|null>(null);
  const request=useRef(0);
  const refresh=useCallback(async()=>{
-  const key=++request.current;setLoading(true);setPeople([]);setUnavailable(false);
+  const key=++request.current;setLoading(true);setPeople([]);setUnavailable(false);setIntro(null);
   const results=await Promise.all([published("about"),published("home")]);
   if(key!==request.current)return;
   const out:{name:string;designation:string}[]=[];
   for(const r of results)if(r.state==="PUBLISHED"&&r.page)
    for(const sec of r.page.sections)if(sec.kind==="TEAM"&&Array.isArray(sec.fields.members))
     for(const p of sec.fields.members)if(p&&p.consentConfirmed===true&&typeof p.name==="string"&&typeof p.designation==="string"&&!out.some(x=>x.name===p.name&&x.designation===p.designation))out.push({name:p.name,designation:p.designation});
+  const about=results[0];setIntro(about.state==="PUBLISHED"&&about.page?about.page.sections.find(s=>s.kind==="RICH_TEXT"&&s.fields.placement==="TEAM")?.fields??null:null);
   setPeople(out);setUnavailable(results.some(r=>r.state==="UNAVAILABLE"));setLoading(false);
  },[]);
  useEffect(()=>{void refresh();const sub=AppState.addEventListener("change",state=>{if(state==="active")void refresh();});return()=>{request.current++;sub.remove();};},[refresh]);
  const filtered=people.filter(p=>(!name.trim()||p.name.toLowerCase().includes(name.trim().toLowerCase()))&&(!designation||p.designation===designation));
- return <View style={styles.card}><Text accessibilityRole="header" style={styles.heading}>Team Directory</Text>
+ return <View style={styles.sections}><View style={styles.hero}>{!!text(intro?.eyebrow)&&<Text style={styles.eyebrow}>{text(intro?.eyebrow)}</Text>}<Text accessibilityRole="header" style={styles.bigHeading}>{text(intro?.heading)||"Team Directory"}</Text>{!!text(intro?.body)&&<Text style={styles.heroBody}>{text(intro?.body)}</Text>}</View><View style={styles.card}><Text accessibilityRole="header" style={styles.heading}>Team Directory</Text>
   <Text style={styles.body}>Only independently published, currently consented names and designations are displayed.</Text>
   <TextInput accessibilityLabel="Search by name" placeholder="Search by name" maxLength={120} value={name} onChangeText={setName} style={{borderWidth:1,borderRadius:8,padding:10}}/>
   <View style={styles.nav}>{["",...new Set(people.map(p=>p.designation))].map(v=><CmsButton key={v} title={v||"All designations"} secondary={designation!==v} onPress={()=>setDesignation(v)}/>)}</View>
   <CmsButton title="Reset filters" secondary onPress={()=>{setName("");setDesignation("");}}/><CmsButton title="Refresh current profiles" secondary onPress={()=>void refresh()}/>
   {unavailable&&<Text accessibilityRole="alert">Some approved team information could not be verified.</Text>}
-  {loading?<ActivityIndicator/>:filtered.length?filtered.map((p,i)=><View key={i} style={styles.person}><Text style={styles.heading}>{p.name}</Text><Text style={styles.role}>{p.designation}</Text></View>):<Text>No currently approved matching profiles.</Text>}
- </View>;
+  {loading?<ActivityIndicator/>:filtered.length?filtered.map((p,i)=><View key={i} style={styles.person}><Text style={styles.heading}>{p.name}</Text><Text style={styles.role}>{p.designation}</Text></View>):<View style={styles.person}><Text style={styles.heading}>{name.trim()||designation?"No matching profiles":"No public profiles yet"}</Text><Text style={styles.muted}>{name.trim()||designation?"Try another name or designation.":"Consented team profiles will appear here once published."}</Text></View>}
+ </View></View>;
 }
 export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApply,onVolunteerApply,onLoginVisibility,onHealthcareDirectory,onPatientProfile}: {
  onContact:()=>void;onPartnerApplication:()=>void;onMembershipApply:(planCode:string)=>void;onVolunteerApply:()=>void;
