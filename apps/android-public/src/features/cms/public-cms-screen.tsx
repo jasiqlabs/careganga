@@ -295,7 +295,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   if(!route)return false;
   if(route==="/membership")return memberJoin;
   if(route==="/volunteer")return volunteerJoin;
-  if(route==="/"||route==="/contact"||route==="/collaboration"||publishedPaths.includes("/collaboration"))return true;
+  if(route==="/"||route==="/contact"||route==="/collaboration")return true;
   if(route==="/videos"||route==="/publications")return publishedPaths.includes("/gallery");
   return publishedPaths.includes(route);
  };
