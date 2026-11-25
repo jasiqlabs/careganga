@@ -21,7 +21,7 @@ export default async function VerifiedDoctor({params}:Props){
  const {doctorRef}=await params,doctor=await publicDoctor(doctorRef);
  if(!doctor)notFound();
  const bookable=doctor.centers.some(c=>c.fee!==null);
- return <HealthcarePublicChrome><main className="cg-public-shell">
+ return <HealthcarePublicChrome><main className={"cg-public-shell "+styles.profilePage}>
   <header className="cg-public-header">
    <nav aria-label="Breadcrumb"><Link href="/">CareGanga</Link>{" / "}
     <Link href="/health-network?tab=doctors">Doctors</Link></nav>
@@ -33,7 +33,7 @@ export default async function VerifiedDoctor({params}:Props){
    {doctor.specialties.length>0&&<p>Specialties: {doctor.specialties.join(", ")}</p>}
    {Number.isSafeInteger(doctor.experienceYears)&&doctor.experienceYears>=0&&<p>Experience: {doctor.experienceYears} {doctor.experienceYears===1?"year":"years"}</p>}
    {doctor.bio&&<p>{doctor.bio}</p>}
-   {doctor.notice&&<p>{doctor.notice}</p>}
+   <p className={styles.profileNote}>Contact the center to confirm timings.</p>
   </section>
   <div className={styles.detailGrid+" "+styles.doctorLayout}><div className={styles.mainColumn}>
   <section className={"cg-public-section "+styles.panel}>
@@ -54,7 +54,7 @@ export default async function VerifiedDoctor({params}:Props){
   </section>
   </div><div className={styles.sideColumn}>
   <section className={"cg-public-section "+styles.panel}>
-   <h2>Doctor working hours</h2>
+   <h2>Consultation times &amp; booking</h2>
    {bookable?<p><Link className="cg-health-link-action primary" href={"/health-network/doctors/"+encodeURIComponent(doctorRef)+"/schedule"}>
     View available times & book an in-person appointment</Link></p>:<p role="status">Appointment booking is not currently offered for this profile.</p>}
    <p>Doctor schedules are live advisory previews. Verified patients can request
