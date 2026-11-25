@@ -1,0 +1,8 @@
+@keyframes spinSlow{0%{transform:rotate(0)}
+@keyframes spinReverse{0%{transform:rotate(360deg)}
+@keyframes pulseGlow{0%,to{opacity:.3;transform:scale(.95)}
+.animate-spin-slow{animation:6s linear infinite spinSlow}
+.animate-spin-reverse{animation:8s linear infinite spinReverse}
+.animate-pulse-glow{animation:3s ease-in-out infinite pulseGlow}
+@keyframes letterBounce{0%,to{color:inherit;transform:translateY(0)scaleY(1)scaleX(1)}
+.letter-wave{animation:4s cubic-bezier(.34,1.56,.64,1) infinite letterBounce;animation-delay:calc(var(--i,0) * 80ms);transform-origin:bottom;display:inline-block

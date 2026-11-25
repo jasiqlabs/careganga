@@ -5,6 +5,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {IconArrowLeft, IconCheckCircle, IconRefresh} from "../dashboard/dashboard-icons";
 import {BranchNativeUploader} from "./branch-native-uploader";
 import {BranchNativeEvidenceHistory} from "./branch-native-evidence-history";
 import {BranchStaffAccessNative} from "./branch-staff-access-native";
@@ -209,9 +210,21 @@ export function BranchRegistrationScreen({token,canManage,canAdmin,onExit,onExpi
   return <SafeAreaView style={styles.page} edges={["left","right"]}>
     <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==="ios"?"padding":undefined}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text accessibilityRole="header" style={styles.title}>Branch registration</Text>
-        <Text style={styles.help}>CareGanga Foundation · Seven-stage draft workflow</Text>
-        {button("Back to staff home",onExit,busy)}
+        <View style={styles.headerRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            onPress={onExit}
+            disabled={busy}
+            style={styles.backBtn}
+          >
+            <IconArrowLeft size={18} color="#334155" />
+          </Pressable>
+          <View style={styles.headerInfo}>
+            <Text accessibilityRole="header" style={styles.title}>Branch registration</Text>
+            <Text style={styles.help}>CareGanga Foundation · Seven-stage draft workflow</Text>
+          </View>
+        </View>
         {loading?<ActivityIndicator accessibilityLabel="Checking branch drafts"/>:null}
         {!!message&&<Text accessibilityRole="alert" style={styles.notice}>{message}</Text>}
         {pending&&button("Check original save",()=>void checkOriginal(),busy)}
@@ -236,7 +249,21 @@ export function BranchRegistrationScreen({token,canManage,canAdmin,onExit,onExpi
         {!selected&&!creating&&canAdmin&&
          <BranchStaffAccessNative token={token} onExpired={onExpired}/>}
         {creating&&<View style={styles.card}>
-          <Text style={styles.heading}>Start branch</Text>
+          <View style={styles.headerRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              onPress={()=>setCreating(false)}
+              disabled={busy}
+              style={styles.backBtn}
+            >
+              <IconArrowLeft size={18} color="#334155" />
+            </Pressable>
+            <View style={styles.headerInfo}>
+              <Text style={styles.heading}>Start branch</Text>
+              <Text style={styles.help}>New branch registration draft</Text>
+            </View>
+          </View>
           {input("Branch name",name,setName)}
           {input("Branch type",branchType,setBranchType)}
           {input("Opening date (YYYY-MM-DD)",openingDate,setOpeningDate)}
@@ -244,8 +271,21 @@ export function BranchRegistrationScreen({token,canManage,canAdmin,onExit,onExpi
           {button("Cancel",()=>setCreating(false),busy)}
         </View>}
         {selected&&!creating&&<View style={styles.card}>
-          <Text style={styles.heading}>{selected.branchName}</Text>
-          <Text style={styles.help}>{selected.status.replaceAll("_"," ")} · Revision {selected.version}</Text>
+          <View style={styles.headerRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              onPress={()=>{setSelected(null);setStatus(null);setMessage("");}}
+              disabled={busy}
+              style={styles.backBtn}
+            >
+              <IconArrowLeft size={18} color="#334155" />
+            </Pressable>
+            <View style={styles.headerInfo}>
+              <Text style={styles.heading}>{selected.branchName}</Text>
+              <Text style={styles.help}>{selected.status.replaceAll("_"," ")} · Revision {selected.version}</Text>
+            </View>
+          </View>
           <View style={styles.stepRow}>{titles.map((title,i)=><Pressable key={title}
             style={[styles.stepButton,step===i+1&&styles.selected]}
             accessibilityRole="button" accessibilityState={{disabled:i+1>selected.currentStep+1}}
@@ -327,8 +367,12 @@ export function BranchRegistrationScreen({token,canManage,canAdmin,onExit,onExpi
               a signed agreement and a distinct Super Admin final approval can activate a branch.
               Save this final reviewed step before submitting.</Text>
             <Pressable accessibilityRole="checkbox" accessibilityState={{checked:reviewed}}
-              onPress={()=>setReviewed(x=>!x)} style={styles.option}>
-              <Text style={styles.optionTitle}>{reviewed?"☑":"☐"} I reviewed this draft</Text></Pressable>
+              onPress={()=>setReviewed(x=>!x)} style={[styles.option,styles.checkOption]}>
+              <View style={styles.checkIconWrap}>
+                {reviewed ? <IconCheckCircle size={20} color="#16A34A" /> : <View style={styles.checkboxUnchecked} />}
+              </View>
+              <Text style={styles.optionTitle}>I reviewed this draft</Text>
+            </Pressable>
           </>}
           <View style={styles.actions}>
             {button("Previous",()=>setStep(x=>x-1),step<=1||busy)}
@@ -359,7 +403,6 @@ export function BranchRegistrationScreen({token,canManage,canAdmin,onExit,onExpi
             {button("Refresh real approval status",
               ()=>void loadStatus(selected.recordRef).catch(e=>setMessage(friendly(e))),busy)}
           </View>}
-          {button("Back to drafts",()=>{setSelected(null);setStatus(null);setMessage("");},busy)}
         </View>}
       </ScrollView>
     </KeyboardAvoidingView>
@@ -370,9 +413,16 @@ const styles=StyleSheet.create({
   content:{padding:18,gap:12,paddingBottom:96},
   title:{fontSize:24,fontWeight:"800",color:theme.sidebar},
   help:{fontSize:13,color:theme.mutedText},
-  card:{padding:16,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,borderRadius:14,gap:12,
-    shadowColor:theme.sidebar,shadowOpacity:0.045,
-    shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
+  card:{padding:16,borderWidth:1,borderColor:"#E2E8F0",backgroundColor:"#FFFFFF",borderRadius:14,gap:12,
+    shadowColor:"#0F172A",shadowOpacity:0.04,
+    shadowOffset:{width:0,height:2},shadowRadius:6,elevation:2},
+  headerRow:{flexDirection:"row",alignItems:"center",gap:12,marginBottom:4},
+  backBtn:{width:36,height:36,backgroundColor:"#FFFFFF",borderRadius:8,borderWidth:1,
+    borderColor:"#CBD5E1",alignItems:"center",justifyContent:"center"},
+  headerInfo:{flex:1},
+  checkOption:{flexDirection:"row",alignItems:"center",gap:10},
+  checkIconWrap:{width:24,height:24,alignItems:"center",justifyContent:"center"},
+  checkboxUnchecked:{width:18,height:18,borderRadius:4,borderWidth:2,borderColor:"#94A3B8"},
   heading:{fontSize:17,fontWeight:"700",color:theme.text},
   field:{gap:5},label:{fontSize:14,fontWeight:"600",color:theme.text},
   input:{minHeight:48,padding:10,borderWidth:1,borderColor:theme.border,borderRadius:10,

@@ -32,6 +32,7 @@
     "test:cg07-donation-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg07-donation-db-integrity.test.ts",
     "test:cg02-staff-scope": "tsx --test test/cg02-staff-scope-contract.test.ts",
     "test:cg02-staff-scope-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg02-staff-scope-db-integrity.test.ts",
+    "test:cg02-all-25-qa": "tsx --test test/cg02-all-25-qa-scenarios.test.ts",
     "test:cg20-multibranch-manager": "tsx --test test/cg20-multibranch-manager-contract.test.ts",
     "test:cg20-multibranch-scope-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg20-multibranch-scope-db-integrity.test.ts",
     "test:cg08-partner": "tsx --test test/cg08-partner-contract.test.ts",

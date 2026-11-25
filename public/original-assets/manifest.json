@@ -1,0 +1,26 @@
+{
+  "downloaded": [
+    {
+      "url": "https://careganga.com/favicon.ico",
+      "file": "favicon.ico",
+      "size": 123911
+    },
+    {
+      "url": "https://careganga.com/apple-touch-icon.png",
+      "file": "apple-touch-icon.png",
+      "size": 45701
+    },
+    {
+      "url": "https://uthhanecom.gergstore.com/assets/images/DonateUs/donateUs.webp",
+      "file": "donateUs.webp",
+      "size": 124532
+    },
+    {
+      "url": "https://www.casa-india.org/blog/wp-content/uploads/2023/08/Flood-Relief-Operations.jpg",
+      "file": "Flood-Relief-Operations.jpg",
+      "size": 146278
+    }
+  ],
+  "errors": [],
+  "total": 4
+}

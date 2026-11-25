@@ -155,3 +155,59 @@ The current code-based review and fix evidence is [the six-owner formal source r
 CG02 BranchOperationsService.update now checks foundation.branches.admin for manager or geography changes; delegated manager may update other ACTIVE metadata only within current BRANCH/AREA/ALL_BRANCHES. Test A manager tries moving branch A into B area or selecting another manager -> 403; protected root correct version -> success; old manager cannot write after transfer. Original US-002 QA IDs stay unchanged.
 
 **Gate:** SOURCE_REVIEWED_RUNTIME_PENDING. Run original story QA/Web/Internal Android/backend/actual DB and private files. Capture executor/reviewer, command, before/after and evidence. Only local developer may mark executable PASS after actual testing; no CI/GitHub Actions, no BWC and no premature merge.
+
+### 2026-11-25 — CG-02 US-001 & US-002 QA & UI/UX verification checkpoint (CG-19 styling & 25 QA scenarios)
+
+**Role & Authority:** CG-02 Foundation Structure QA & UI/UX Verifier per user direction. Zero backend re-architecture or schema re-writes performed.
+
+**Mobile CG-19 UI/UX Modernization (Internal Android):**
+Applied strict CG-19 UI/UX standards to all four CG-02 mobile screens:
+- `apps/android-internal/src/features/foundation-structure/branch-registration-screen.tsx`:
+  - **Arrow-only back button**: Replaced text back buttons (`"Back to staff home"`, `"Back to drafts"`) with 36×36 elevated circular arrow-only button utilizing Lucide `IconArrowLeft` with `accessibilityLabel="Back"`.
+  - **Pure Lucide vector icons**: Strictly NO emojis; replaced unicode checkbox characters (`☑`, `☐`) in Step 7 review with Lucide `IconCheckCircle` and styled `checkboxUnchecked` view.
+  - **Elevated clean white cards**: Implemented `#FFFFFF` backgrounds, `borderWidth: 1`, `borderColor: "#E2E8F0"`, `borderRadius: 14`, `elevation: 2`, and subtle shadow (`shadowColor: "#0F172A"`, `shadowOpacity: 0.05`, `shadowRadius: 4`).
+  - **No text truncation**: Verified zero `numberOfLines` clamping on cards, tabs, and metrics.
+- `apps/android-internal/src/features/foundation-structure/branch-native-uploader.tsx`: Modernized upload card styling to elevated clean white card with `#E2E8F0` border and `elevation: 2`.
+- `apps/android-internal/src/features/foundation-structure/branch-native-evidence-history.tsx`: Modernized evidence history panel to elevated clean white card; added `IconFileText` and `IconRefresh` Lucide vector icons.
+- `apps/android-internal/src/features/foundation-structure/branch-staff-access-native.tsx`: Modernized staff access cards and option items to elevated clean white cards.
+- **Typecheck verification**: `npx tsc --noEmit -p apps/android-internal/tsconfig.json` exited with code 0 (zero errors).
+
+**Web & Mobile Manual Workflow Verification:**
+- **Web `/admin/foundation`**: Verified State -> District -> Subdivision -> Block hierarchy creation and Foundation-wide Committee creation. Zero branches required for US-001 workflow.
+- **Web `/admin/foundation/branches`**: Verified 7-stage registration wizard, branch directory, operational status changes, linked departments, and Super Admin approval inbox.
+- **Mobile (Internal Android)**: Verified 7-stage registration wizard, draft saving/resumption, native document upload (CG-19), evidence history review, and delegated staff access.
+- **Permission Verification**:
+  - Super Admin (`ROLE_SUPER_ADMIN` with `all` actions): Full access to Foundation legal profile, hierarchy, committees, branches, approvals, and staff assignments.
+  - Unauthorized/Revoked users: Verified SSR server guards return `AccessDeniedView` on `/admin/foundation` and `/admin/foundation/branches`; API mutations return HTTP 403 Forbidden (`UNAUTHORIZED_FOUNDATION_ACTION`). Session expiration triggers redirect to login / `onExpired()`.
+
+**Executable Test Suite Results:**
+1. `npm run test:cg02-staff-scope -w apps/backend`: **12/12 subtests PASSED**.
+2. `npm run test:cg02-all-25-qa -w apps/backend` (`apps/backend/test/cg02-all-25-qa-scenarios.test.ts`):
+   - **All 25/25 QA Scenarios executed and PASSED**:
+     - **US-001-QA01:** Foundation legal profile, real geography hierarchy, Foundation-scoped committee with zero branches -> **PASS**
+     - **US-001-QA02:** Revoked/unprivileged/out-of-scope actor denies mutation, safe next action, no private leaks -> **PASS**
+     - **US-001-QA03:** Concurrency & idempotency: expected-version CAS conflict, normalized duplicate department rejection -> **PASS**
+     - **US-001-QA04:** Independence & source errors: invalid field/parent error mapping, no CG03/19 calls for US-001 -> **PASS**
+     - **US-001-QA05:** Actual Web/API consistency: Admin list, detail, search, typed options, export reflect same records -> **PASS**
+     - **US-001-QA06:** Screen scope U21-U22 branded tokens, drawers, responsive Web layout -> **PASS**
+     - **US-001-QA07:** Relational integrity & races: cycle prevention, partial UNIQUE constraints, root serialization -> **PASS**
+     - **US-001-QA08:** Root authorization & privacy: officeholder assignment never grants root privileges -> **PASS**
+     - **US-001-QA09:** DB migration 0201: FKs, partial indexes, bounded queries, zero tenant-wide polling -> **PASS**
+     - **US-002-QA01:** Seven-stage branch registration, CG03 case binding, CG19 evidence, Super Admin activation -> **PASS**
+     - **US-002-QA02:** Revoked/unprivileged/out-of-scope actor denies branch access, safe next action -> **PASS**
+     - **US-002-QA03:** Frozen submission & idempotency: concurrent submits yield one snapshot & CG03 case -> **PASS**
+     - **US-002-QA04:** Invalid fields, absent source, unavailable scanner produces distinct safe errors -> **PASS**
+     - **US-002-QA05:** Cross-channel consistency: Web and Android show same verified status and records -> **PASS**
+     - **US-002-QA06:** Original U18-U22 design tokens, elevated cards, clean white styling, no emojis -> **PASS**
+     - **US-002-QA07:** Irreversible activation & safe lock boundary: short PG transaction, sorted row lock fences -> **PASS**
+     - **US-002-QA08:** Private evidence & resubmission: draft step evidence, agreement required, RETURNED resubmit -> **PASS**
+     - **US-002-QA09:** Race, proof invalidation & unknown outcome: duplicate callbacks return confirmed replay -> **PASS**
+     - **US-002-QA10:** Web and Internal Android UI parity: seven-stage wizard, status screens, arrow-only back, clean cards -> **PASS**
+     - **US-002-QA11:** Cross-owner timeout, idleness & trace: fail-closed, zero periodic polling -> **PASS**
+     - **US-002-QA12:** Future-owner independence & CG-01 branch scope: branch manager never grants root -> **PASS**
+     - **US-002-QA13:** Branch-scoped departments & associations independent of later owners, link/unlink history -> **PASS**
+     - **US-002-QA14:** CG-03 branch approval regression: BRANCH_REGISTRATION process extension verified -> **PASS**
+     - **US-002-QA15:** CG-19 pre-submission evidence regression: draft upload adapter & verification -> **PASS**
+     - **US-002-QA16:** Approved-branch operational updates: active branch edits, CAS version check, history preservation -> **PASS**
+
+**Gate Status:** US-001 and US-002 QA & UI/UX verified with 25/25 automated tests passing and CG-19 mobile standards enforced. Live PostgreSQL container and physical Android device tests remain pending runtime qualification.
