@@ -465,85 +465,93 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
           {/* 1. Total Notifications */}
           <View style={styles.kpiCard}>
             <View style={[styles.kpiIconWrap, { backgroundColor: "#DBEAFE" }]}>
-              <IconSend size={15} color="#2563EB" />
+              <IconSend size={16} color="#2563EB" />
             </View>
             <View style={styles.kpiInfo}>
-              <Text style={styles.kpiLabel}>Total Notifications</Text>
+              <Text style={styles.kpiLabel} numberOfLines={1}>Total Notifications</Text>
               <Text style={styles.kpiValue}>{totalNotifications}</Text>
-              <Text style={styles.kpiSub}>All time</Text>
+              <Text style={styles.kpiSub} numberOfLines={1}>All time</Text>
             </View>
           </View>
 
           {/* 2. Active Notices */}
           <View style={styles.kpiCard}>
             <View style={[styles.kpiIconWrap, { backgroundColor: "#DCFCE7" }]}>
-              <IconMegaphone size={15} color="#16A34A" />
+              <IconMegaphone size={16} color="#16A34A" />
             </View>
             <View style={styles.kpiInfo}>
-              <Text style={styles.kpiLabel}>Active Notices</Text>
+              <Text style={styles.kpiLabel} numberOfLines={1}>Active Notices</Text>
               <Text style={[styles.kpiValue, { color: "#16A34A" }]}>{activeNotices}</Text>
-              <Text style={styles.kpiSub}>Currently live</Text>
+              <Text style={styles.kpiSub} numberOfLines={1}>Currently live</Text>
             </View>
           </View>
 
           {/* 3. Recipients Reached */}
           <View style={styles.kpiCard}>
             <View style={[styles.kpiIconWrap, { backgroundColor: "#FEF3C7" }]}>
-              <IconUsers size={15} color="#D97706" />
+              <IconUsers size={16} color="#D97706" />
             </View>
             <View style={styles.kpiInfo}>
-              <Text style={styles.kpiLabel}>Recipients Reached</Text>
+              <Text style={styles.kpiLabel} numberOfLines={1}>Recipients Reached</Text>
               <Text style={[styles.kpiValue, { color: "#D97706" }]}>{recipientsReached}</Text>
-              <Text style={styles.kpiSub}>Across channels</Text>
+              <Text style={styles.kpiSub} numberOfLines={1}>Across channels</Text>
             </View>
           </View>
 
           {/* 4. In-App Delivered */}
           <View style={styles.kpiCard}>
             <View style={[styles.kpiIconWrap, { backgroundColor: "#F3E8FF" }]}>
-              <IconMail size={15} color="#9333EA" />
+              <IconMail size={16} color="#9333EA" />
             </View>
             <View style={styles.kpiInfo}>
-              <Text style={styles.kpiLabel}>In-App Delivered</Text>
+              <Text style={styles.kpiLabel} numberOfLines={1}>In-App Delivered</Text>
               <Text style={[styles.kpiValue, { color: "#9333EA" }]}>{inAppDelivered}</Text>
-              <Text style={styles.kpiSub}>Personal inbox</Text>
+              <Text style={styles.kpiSub} numberOfLines={1}>Personal inbox</Text>
             </View>
           </View>
 
           {/* 5. Draft Notices */}
           <View style={styles.kpiCard}>
             <View style={[styles.kpiIconWrap, { backgroundColor: "#FEE2E2" }]}>
-              <IconFileText size={15} color="#DC2626" />
+              <IconFileText size={16} color="#DC2626" />
             </View>
             <View style={styles.kpiInfo}>
-              <Text style={styles.kpiLabel}>Draft Notices</Text>
+              <Text style={styles.kpiLabel} numberOfLines={1}>Draft Notices</Text>
               <Text style={[styles.kpiValue, { color: "#DC2626" }]}>{draftNotices}</Text>
-              <Text style={styles.kpiSub}>Pending review</Text>
+              <Text style={styles.kpiSub} numberOfLines={1}>Pending review</Text>
             </View>
           </View>
 
           {/* 6. Scheduled */}
           <View style={styles.kpiCard}>
             <View style={[styles.kpiIconWrap, { backgroundColor: "#CCFBF1" }]}>
-              <IconCalendar size={15} color="#0D9488" />
+              <IconCalendar size={16} color="#0D9488" />
             </View>
             <View style={styles.kpiInfo}>
-              <Text style={styles.kpiLabel}>Scheduled</Text>
+              <Text style={styles.kpiLabel} numberOfLines={1}>Scheduled</Text>
               <Text style={[styles.kpiValue, { color: "#0D9488" }]}>{scheduledNotices}</Text>
-              <Text style={styles.kpiSub}>Queued to go out</Text>
+              <Text style={styles.kpiSub} numberOfLines={1}>Queued to go out</Text>
             </View>
           </View>
         </View>
 
-        {/* Main Workspace Navigation Tabs with Lucide Icons (NO EMOJIS!) */}
-        <View style={styles.tabBar}>
+        {/* Main Workspace Navigation Tabs with Lucide Icons (NO EMOJIS! STRICT SINGLE LINE) */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabBarScroll}
+          contentContainerStyle={styles.tabScrollContainer}
+        >
           <Pressable
             accessibilityRole="tab"
             onPress={() => setActiveTab("NOTICES")}
             style={[styles.tabButton, activeTab === "NOTICES" && styles.tabButtonActive]}
           >
             <IconMegaphone size={16} color={activeTab === "NOTICES" ? "#4F46E5" : "#64748B"} />
-            <Text style={[styles.tabButtonText, activeTab === "NOTICES" && styles.tabButtonTextActive]}>
+            <Text
+              numberOfLines={1}
+              style={[styles.tabButtonText, activeTab === "NOTICES" && styles.tabButtonTextActive]}
+            >
               Notices & Broadcasts
             </Text>
           </Pressable>
@@ -554,7 +562,10 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
             style={[styles.tabButton, activeTab === "INBOX" && styles.tabButtonActive]}
           >
             <IconInbox size={16} color={activeTab === "INBOX" ? "#4F46E5" : "#64748B"} />
-            <Text style={[styles.tabButtonText, activeTab === "INBOX" && styles.tabButtonTextActive]}>
+            <Text
+              numberOfLines={1}
+              style={[styles.tabButtonText, activeTab === "INBOX" && styles.tabButtonTextActive]}
+            >
               My Notifications ({unreadInboxCount > 0 ? unreadInboxCount : inbox.length})
             </Text>
           </Pressable>
@@ -569,6 +580,7 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
           >
             <IconMail size={16} color={activeTab === "EMAIL_TEMPLATES" ? "#4F46E5" : "#64748B"} />
             <Text
+              numberOfLines={1}
               style={[
                 styles.tabButtonText,
                 activeTab === "EMAIL_TEMPLATES" && styles.tabButtonTextActive
@@ -577,7 +589,7 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
               Email Templates (52)
             </Text>
           </Pressable>
-        </View>
+        </ScrollView>
 
         {/* External Channel Readiness Banner */}
         <View style={styles.readinessBanner}>
@@ -857,175 +869,173 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
               </Pressable>
             </View>
 
-            {/* Broadcast Notices List / Cards matching Screenshot 2 */}
-            <View style={styles.card}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.cardHeading}>Notice Broadcasts ({filteredNotices.length})</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  style={styles.refreshBtn}
-                  disabled={loading}
-                  onPress={() => void loadData()}
-                >
-                  <IconRefresh size={12} color="#475569" />
-                  <Text style={styles.refreshBtnText}>Refresh</Text>
-                </Pressable>
-              </View>
+            {/* Broadcast Notices List / Standalone Elevated Cards */}
+            <View style={styles.noticeListHeaderRow}>
+              <Text style={styles.noticeListHeading}>Notice Broadcasts ({filteredNotices.length})</Text>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.refreshBtn}
+                disabled={loading}
+                onPress={() => void loadData()}
+              >
+                <IconRefresh size={12} color="#475569" />
+                <Text style={styles.refreshBtnText}>Refresh</Text>
+              </Pressable>
+            </View>
 
-              {loading ? (
-                <ActivityIndicator color="#4F46E5" style={{ paddingVertical: 24 }} />
-              ) : !filteredNotices.length ? (
-                <View style={styles.emptyContainer}>
-                  <IconBell size={32} color="#CBD5E1" />
-                  <Text style={styles.emptyText}>No broadcast notices match the current filters.</Text>
-                </View>
-              ) : (
-                filteredNotices.map((n) => (
-                  <View key={n.noticeRef} style={styles.noticeTableCard}>
-                    {/* Top Row: Title & Badges */}
-                    <View style={styles.noticeTableTop}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.noticeTableTitle}>{n.title}</Text>
-                        <Text style={styles.noticeTableExpiry}>
-                          Expires: {n.expiresAt ? new Date(n.expiresAt).toLocaleDateString() : "No Expiry"}
+            {loading ? (
+              <ActivityIndicator color="#4F46E5" style={{ paddingVertical: 24 }} />
+            ) : !filteredNotices.length ? (
+              <View style={[styles.noticeCard, styles.emptyContainer]}>
+                <IconBell size={32} color="#CBD5E1" />
+                <Text style={styles.emptyText}>No broadcast notices match the current filters.</Text>
+              </View>
+            ) : (
+              filteredNotices.map((n) => (
+                <View key={n.noticeRef} style={styles.noticeCard}>
+                  {/* Top Row: Title & Badges */}
+                  <View style={styles.noticeTableTop}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.noticeTableTitle}>{n.title}</Text>
+                      <Text style={styles.noticeTableExpiry}>
+                        Expires: {n.expiresAt ? new Date(n.expiresAt).toLocaleDateString() : "No Expiry"}
+                      </Text>
+                    </View>
+
+                    <View style={styles.badgeRow}>
+                      <View
+                        style={[
+                          styles.priorityBadge,
+                          n.priority === "URGENT" || n.priority === "IMPORTANT"
+                            ? styles.priorityUrgent
+                            : styles.priorityNormal
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.priorityBadgeText,
+                            n.priority === "URGENT" || n.priority === "IMPORTANT"
+                              ? styles.priorityTextUrgent
+                              : styles.priorityTextNormal
+                          ]}
+                        >
+                          {n.priority}
                         </Text>
                       </View>
 
-                      <View style={styles.badgeRow}>
-                        <View
-                          style={[
-                            styles.priorityBadge,
-                            n.priority === "URGENT" || n.priority === "IMPORTANT"
-                              ? styles.priorityUrgent
-                              : styles.priorityNormal
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.priorityBadgeText,
-                              n.priority === "URGENT" || n.priority === "IMPORTANT"
-                                ? styles.priorityTextUrgent
-                                : styles.priorityTextNormal
-                            ]}
-                          >
-                            {n.priority}
-                          </Text>
-                        </View>
-
-                        <View
-                          style={[
-                            styles.statusBadge,
-                            n.state === "APPROVED" || n.state === "ACTIVE"
-                              ? styles.statusBadgeGreen
-                              : n.state === "DRAFT"
-                              ? styles.statusBadgeAmber
-                              : n.state === "SCHEDULED"
-                              ? styles.statusBadgeBlue
-                              : styles.statusBadgeGray
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.statusBadgeText,
-                              n.state === "APPROVED" || n.state === "ACTIVE"
-                                ? styles.statusTextGreen
-                                : n.state === "DRAFT"
-                                ? styles.statusTextAmber
-                                : n.state === "SCHEDULED"
-                                ? styles.statusTextBlue
-                                : styles.statusTextGray
-                            ]}
-                          >
-                            {n.state === "APPROVED" ? "ACTIVE" : n.state}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* Notice Body */}
-                    <Text style={styles.noticeTableBody} numberOfLines={2}>
-                      {n.body}
-                    </Text>
-
-                    {/* Audience & Channels Details Bar */}
-                    <View style={styles.audienceChannelsBar}>
-                      <View style={styles.audienceInfo}>
-                        <Text style={styles.audienceCountText}>{n.audienceCount} recipients</Text>
-                        <Text style={styles.audienceKindText}>{n.audienceKind.replace(/_/g, " ")}</Text>
-                      </View>
-
-                      <View style={styles.channelsList}>
-                        {n.channels.map((ch) => (
-                          <View
-                            key={ch}
-                            style={[
-                              styles.chPill,
-                              ch === "EMAIL" && { backgroundColor: "#CCFBF1" },
-                              ch === "SMS" && { backgroundColor: "#F3E8FF" }
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.chPillText,
-                                ch === "EMAIL" && { color: "#0F766E" },
-                                ch === "SMS" && { color: "#7E22CE" }
-                              ]}
-                            >
-                              {ch}
-                            </Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-
-                    {/* Action Buttons Row matching Web Screenshot 2 */}
-                    <View style={styles.noticeActionRow}>
-                      {n.state === "DRAFT" && (
-                        <Pressable
-                          style={styles.actionBtnApprove}
-                          onPress={() =>
-                            setReviewAction({
-                              type: "APPROVE",
-                              ref: n.noticeRef,
-                              revision: n.revision,
-                              title: n.title
-                            })
-                          }
-                        >
-                          <IconCheckCircle size={14} color="#FFFFFF" />
-                          <Text style={styles.actionBtnApproveText}>Approve</Text>
-                        </Pressable>
-                      )}
-
-                      {n.state !== "CANCELLED" && (
-                        <Pressable
-                          style={styles.actionBtnCancel}
-                          onPress={() =>
-                            setReviewAction({
-                              type: "CANCEL",
-                              ref: n.noticeRef,
-                              revision: n.revision,
-                              title: n.title
-                            })
-                          }
-                        >
-                          <IconXCircle size={14} color="#DC2626" />
-                          <Text style={styles.actionBtnCancelText}>Cancel</Text>
-                        </Pressable>
-                      )}
-
-                      <Pressable
-                        style={styles.actionBtnOutline}
-                        onPress={() => void loadTelemetry(n.noticeRef)}
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          n.state === "APPROVED" || n.state === "ACTIVE"
+                            ? styles.statusBadgeGreen
+                            : n.state === "DRAFT"
+                            ? styles.statusBadgeAmber
+                            : n.state === "SCHEDULED"
+                            ? styles.statusBadgeBlue
+                            : styles.statusBadgeGray
+                        ]}
                       >
-                        <IconBarChart2 size={14} color="#64748B" />
-                        <Text style={styles.actionBtnOutlineText}>Delivery</Text>
-                      </Pressable>
+                        <Text
+                          style={[
+                            styles.statusBadgeText,
+                            n.state === "APPROVED" || n.state === "ACTIVE"
+                              ? styles.statusTextGreen
+                              : n.state === "DRAFT"
+                              ? styles.statusTextAmber
+                              : n.state === "SCHEDULED"
+                              ? styles.statusTextBlue
+                              : styles.statusTextGray
+                          ]}
+                        >
+                          {n.state === "APPROVED" ? "ACTIVE" : n.state}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                ))
-              )}
-            </View>
+
+                  {/* Notice Body */}
+                  <Text style={styles.noticeTableBody} numberOfLines={2}>
+                    {n.body}
+                  </Text>
+
+                  {/* Audience & Channels Details Bar */}
+                  <View style={styles.audienceChannelsBar}>
+                    <View style={styles.audienceInfo}>
+                      <Text style={styles.audienceCountText}>{n.audienceCount} recipients</Text>
+                      <Text style={styles.audienceKindText}>{n.audienceKind.replace(/_/g, " ")}</Text>
+                    </View>
+
+                    <View style={styles.channelsList}>
+                      {n.channels.map((ch) => (
+                        <View
+                          key={ch}
+                          style={[
+                            styles.chPill,
+                            ch === "EMAIL" && { backgroundColor: "#CCFBF1" },
+                            ch === "SMS" && { backgroundColor: "#F3E8FF" }
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.chPillText,
+                              ch === "EMAIL" && { color: "#0F766E" },
+                              ch === "SMS" && { color: "#7E22CE" }
+                            ]}
+                          >
+                            {ch}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Action Buttons Row matching Web Screenshot 2 */}
+                  <View style={styles.noticeActionRow}>
+                    {n.state === "DRAFT" && (
+                      <Pressable
+                        style={styles.actionBtnApprove}
+                        onPress={() =>
+                          setReviewAction({
+                            type: "APPROVE",
+                            ref: n.noticeRef,
+                            revision: n.revision,
+                            title: n.title
+                          })
+                        }
+                      >
+                        <IconCheckCircle size={14} color="#FFFFFF" />
+                        <Text style={styles.actionBtnApproveText}>Approve</Text>
+                      </Pressable>
+                    )}
+
+                    {n.state !== "CANCELLED" && (
+                      <Pressable
+                        style={styles.actionBtnCancel}
+                        onPress={() =>
+                          setReviewAction({
+                            type: "CANCEL",
+                            ref: n.noticeRef,
+                            revision: n.revision,
+                            title: n.title
+                          })
+                        }
+                      >
+                        <IconXCircle size={14} color="#DC2626" />
+                        <Text style={styles.actionBtnCancelText}>Cancel</Text>
+                      </Pressable>
+                    )}
+
+                    <Pressable
+                      style={styles.actionBtnOutline}
+                      onPress={() => void loadTelemetry(n.noticeRef)}
+                    >
+                      <IconBarChart2 size={14} color="#64748B" />
+                      <Text style={styles.actionBtnOutlineText}>Delivery</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))
+            )}
 
             {/* Delivery Summary Card matching Web Screenshot 2 */}
             <View style={styles.deliverySummaryCard}>
@@ -1130,78 +1140,76 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
               )}
             </View>
 
-            {/* My Notifications List */}
-            <View style={styles.card}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.cardHeading}>My Notifications ({inbox.length})</Text>
-                <Pressable style={styles.refreshBtn} disabled={loading} onPress={() => void loadData()}>
-                  <IconRefresh size={12} color="#475569" />
-                  <Text style={styles.refreshBtnText}>Refresh</Text>
-                </Pressable>
+            {/* My Notifications List / Standalone Cards */}
+            <View style={styles.noticeListHeaderRow}>
+              <Text style={styles.noticeListHeading}>My Notifications ({inbox.length})</Text>
+              <Pressable style={styles.refreshBtn} disabled={loading} onPress={() => void loadData()}>
+                <IconRefresh size={12} color="#475569" />
+                <Text style={styles.refreshBtnText}>Refresh</Text>
+              </Pressable>
+            </View>
+
+            {loading ? (
+              <ActivityIndicator color="#4F46E5" style={{ paddingVertical: 24 }} />
+            ) : !inbox.length ? (
+              <View style={[styles.noticeCard, styles.emptyContainer]}>
+                <IconInbox size={32} color="#CBD5E1" />
+                <Text style={styles.emptyText}>No notifications for your current account.</Text>
               </View>
-
-              {loading ? (
-                <ActivityIndicator color="#4F46E5" style={{ paddingVertical: 24 }} />
-              ) : !inbox.length ? (
-                <View style={styles.emptyContainer}>
-                  <IconInbox size={32} color="#CBD5E1" />
-                  <Text style={styles.emptyText}>No notifications for your current account.</Text>
-                </View>
-              ) : (
-                inbox.map((item) => (
-                  <View
-                    key={item.notificationRef}
-                    style={[
-                      styles.inboxCard,
-                      !item.read ? styles.inboxCardUnread : styles.inboxCardRead
-                    ]}
-                  >
-                    <View style={styles.inboxTopRow}>
-                      <View
-                        style={[
-                          styles.inboxIconBox,
-                          !item.read ? styles.inboxIconUnread : styles.inboxIconRead
-                        ]}
-                      >
-                        <IconBell size={16} color={!item.read ? "#15803D" : "#64748B"} />
-                      </View>
-
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.inboxTitle}>{item.title}</Text>
-                        <Text style={styles.inboxDate}>
-                          {new Date(item.receivedAt).toLocaleDateString()} at{" "}
-                          {new Date(item.receivedAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          })}
-                        </Text>
-                      </View>
-
-                      <View style={styles.chPill}>
-                        <Text style={styles.chPillText}>{item.channel}</Text>
-                      </View>
-
-                      {!item.read && <View style={styles.unreadDot} />}
+            ) : (
+              inbox.map((item) => (
+                <View
+                  key={item.notificationRef}
+                  style={[
+                    styles.inboxStandaloneCard,
+                    !item.read ? styles.inboxCardUnread : styles.inboxCardRead
+                  ]}
+                >
+                  <View style={styles.inboxTopRow}>
+                    <View
+                      style={[
+                        styles.inboxIconBox,
+                        !item.read ? styles.inboxIconUnread : styles.inboxIconRead
+                      ]}
+                    >
+                      <IconBell size={16} color={!item.read ? "#15803D" : "#64748B"} />
                     </View>
 
-                    <Text style={styles.inboxBody}>{item.body}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.inboxTitle}>{item.title}</Text>
+                      <Text style={styles.inboxDate}>
+                        {new Date(item.receivedAt).toLocaleDateString()} at{" "}
+                        {new Date(item.receivedAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </Text>
+                    </View>
 
-                    {!item.read && (
-                      <View style={styles.inboxActionRow}>
-                        <Pressable
-                          style={styles.btnMarkRead}
-                          disabled={busy}
-                          onPress={() => void markInboxRead(item.notificationRef)}
-                        >
-                          <IconCheck size={14} color="#16A34A" />
-                          <Text style={styles.btnMarkReadText}>Mark as read</Text>
-                        </Pressable>
-                      </View>
-                    )}
+                    <View style={styles.chPill}>
+                      <Text style={styles.chPillText}>{item.channel}</Text>
+                    </View>
+
+                    {!item.read && <View style={styles.unreadDot} />}
                   </View>
-                ))
-              )}
-            </View>
+
+                  <Text style={styles.inboxBody}>{item.body}</Text>
+
+                  {!item.read && (
+                    <View style={styles.inboxActionRow}>
+                      <Pressable
+                        style={styles.btnMarkRead}
+                        disabled={busy}
+                        onPress={() => void markInboxRead(item.notificationRef)}
+                      >
+                        <IconCheck size={14} color="#16A34A" />
+                        <Text style={styles.btnMarkReadText}>Mark as read</Text>
+                      </Pressable>
+                    </View>
+                  )}
+                </View>
+              ))
+            )}
           </>
         )}
 
@@ -1594,81 +1602,131 @@ const styles = StyleSheet.create({
   kpiGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8
+    gap: 10
   },
   kpiCard: {
-    flex: 1,
-    minWidth: "30%",
+    width: "48%",
+    flexGrow: 1,
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    padding: 10,
+    padding: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
     elevation: 1
   },
   kpiIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    flexShrink: 0
   },
   kpiInfo: {
-    flex: 1
+    flex: 1,
+    justifyContent: "center"
   },
   kpiValue: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "900",
-    color: "#0F172A"
+    color: "#0F172A",
+    lineHeight: 22
   },
   kpiLabel: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: "700",
     color: "#475569"
   },
   kpiSub: {
-    fontSize: 9.5,
-    color: "#94A3B8"
+    fontSize: 10,
+    color: "#94A3B8",
+    marginTop: 1
   },
-  tabBar: {
+  tabBarScroll: {
+    flexGrow: 0,
+    marginBottom: 6
+  },
+  tabScrollContainer: {
     flexDirection: "row",
-    backgroundColor: "#E2E8F0",
-    borderRadius: 10,
-    padding: 3,
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
+    padding: 4,
     gap: 4
   },
   tabButton: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
+    paddingHorizontal: 14,
     paddingVertical: 9,
-    borderRadius: 7
+    borderRadius: 9,
+    gap: 6,
+    flexShrink: 0
   },
   tabButtonActive: {
     backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
+    shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1
+    shadowRadius: 3,
+    elevation: 2
   },
   tabButtonText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#64748B"
+    color: "#64748B",
+    flexShrink: 0
   },
   tabButtonTextActive: {
     color: "#4F46E5",
     fontWeight: "800"
+  },
+  noticeListHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 2,
+    marginTop: 6,
+    marginBottom: 2
+  },
+  noticeListHeading: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0F172A",
+    letterSpacing: -0.2
+  },
+  noticeCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 16,
+    gap: 12,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2
+  },
+  inboxStandaloneCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 16,
+    gap: 10,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2
   },
   readinessBanner: {
     backgroundColor: "#FFFFFF",
@@ -2025,11 +2083,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    padding: 8,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 10,
+    padding: 10,
     borderWidth: 1,
-    borderColor: "#F1F5F9"
+    borderColor: "#E2E8F0"
   },
   audienceInfo: {
     gap: 1
