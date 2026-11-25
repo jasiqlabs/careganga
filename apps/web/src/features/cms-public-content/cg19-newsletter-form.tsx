@@ -39,7 +39,7 @@ export function Cg19NewsletterForm(){
   finally{setBusy(false);}
  }
  return <div>
-  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+  <div className="cg-site-newsletter-actions">
    <button type="button" disabled={busy} aria-pressed={action==="SUBSCRIBE"} onClick={()=>reset("SUBSCRIBE")}>Subscribe</button>
    <button type="button" disabled={busy} aria-pressed={action==="WITHDRAW"} onClick={()=>reset("WITHDRAW")}>Unsubscribe</button>
   </div>
@@ -47,7 +47,7 @@ export function Cg19NewsletterForm(){
    <label className="cg-site-newsletter-field"><span className="cg-site-sr-only">Newsletter email address</span>
     <input type="email" autoComplete="email" maxLength={254} value={email} required disabled={busy||step==="CODE"}
      placeholder="Enter your email" onChange={e=>setEmail(e.target.value)}/></label>
-   {step==="REQUEST"&&action==="SUBSCRIBE"&&<label style={{display:"flex",alignItems:"flex-start",gap:6,margin:"8px 0",fontSize:12}}>
+   {step==="REQUEST"&&action==="SUBSCRIBE"&&<label className="cg-site-newsletter-consent">
     <input type="checkbox" checked={consent} disabled={busy} onChange={e=>setConsent(e.target.checked)}/>
     I agree to receive CareGanga Foundation newsletters by email. I can unsubscribe at any time.</label>}
    {step!=="REQUEST"&&<label className="cg-site-newsletter-field">
@@ -58,8 +58,8 @@ export function Cg19NewsletterForm(){
    <button type="submit" disabled={busy||step==="REQUEST"&&action==="SUBSCRIBE"&&!consent} className="cg-site-newsletter-button">
     {busy?"Processing…":step==="REQUEST"?"Send verification code":step==="KEY"?"Withdraw consent":"Confirm "+(action==="SUBSCRIBE"?"subscription":"withdrawal")}</button>
   </form>
-  {action==="WITHDRAW"&&step!=="KEY"&&<button type="button" disabled={busy} onClick={()=>reset("WITHDRAW","KEY")}>Use private withdrawal key</button>}
-  {step!=="REQUEST"&&<button type="button" disabled={busy} onClick={()=>reset(action)}>Change email or request a new code</button>}
+  {action==="WITHDRAW"&&step!=="KEY"&&<button className="cg-site-newsletter-secondary" type="button" disabled={busy} onClick={()=>reset("WITHDRAW","KEY")}>Use private withdrawal key</button>}
+  {step!=="REQUEST"&&<button className="cg-site-newsletter-secondary" type="button" disabled={busy} onClick={()=>reset(action)}>Change email or request a new code</button>}
   {feedback&&<p role="status" aria-live="polite" className="cg-site-muted">{feedback}</p>}
  </div>;
 }
