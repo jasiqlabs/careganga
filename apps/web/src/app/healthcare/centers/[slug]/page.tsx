@@ -73,7 +73,7 @@ export default async function VerifiedCenterPage({params}:Params){
   currentConsultationBenefits({centerSlug:slug}),
   publicPartnerOffers(slug)
  ]);
- return <HealthcarePublicChrome><main className="cg-public-shell">
+ return <HealthcarePublicChrome><main className={"cg-public-shell "+styles.profilePage}>
    <header className="cg-public-header">
      <nav aria-label="Healthcare navigation">
        <Link href="/">CareGanga</Link><span aria-hidden="true"> / </span>
@@ -83,7 +83,7 @@ export default async function VerifiedCenterPage({params}:Params){
    <section className={"cg-public-section "+styles.profileHero} aria-labelledby="center-title">
      {c.approvedPresentation?.media[0]&&<div className={styles.heroPhoto}>{/* eslint-disable-next-line @next/next/no-img-element */}<img alt={c.approvedPresentation.media[0].altText} src={"/healthcare/centers/"+encodeURIComponent(slug)+"/photos/"+encodeURIComponent(c.approvedPresentation.media[0].fileRef)}/></div>}
      <div>
-     <p className="cg-eyebrow">Verified healthcare center</p>
+     <p className={"cg-eyebrow "+styles.centerBadge}>Verified healthcare center</p>
      <h1 id="center-title">{c.centerName}</h1>
      <p className="cg-lead">{c.providerName}</p>
      <p>{format(c.type)} · {c.address}, {c.pinCode}</p>
@@ -205,7 +205,7 @@ export default async function VerifiedCenterPage({params}:Params){
    </section>}
    <section id="contact" className={"cg-public-section "+styles.panel}>
      <h2>Location &amp; contact</h2><p>{c.address}, {c.pinCode}</p>{c.publicPhone&&<p><a href={"tel:"+c.publicPhone}>{c.publicPhone}</a></p>}
-     <p>Online booking, clinical advice and online payment are not offered on this page. Confirm services and fees before visiting.</p>
+     <p>Use the available doctor links to check appointment times. This profile does not confirm a booking, payment or medical advice. Confirm services and fees before visiting.</p>
      <Link href="/health-network">Browse verified centers and doctors</Link>
      <p><Link href="/contact">Contact CareGanga</Link></p>
    </section>
