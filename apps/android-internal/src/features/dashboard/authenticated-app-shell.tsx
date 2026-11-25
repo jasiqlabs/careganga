@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, StyleSheet, BackHandler } from "react-native";
+import { View, StyleSheet, BackHandler, Platform } from "react-native";
 import type { CG01SessionView } from "@careganga/api-contracts";
 import {
   getAuthorizedModules,
@@ -44,6 +44,7 @@ export function AuthenticatedAppShell({
 
   // Hardware Android Back button handler
   useEffect(() => {
+    if (Platform.OS === "web") return;
     const onBackPress = () => {
       if (isDrawerOpen) {
         setIsDrawerOpen(false);
