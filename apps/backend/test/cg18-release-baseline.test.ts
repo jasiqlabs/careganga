@@ -2,6 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import type {Pool} from "pg";
 import {CmsEditorialService} from "../src/modules/cg-18-cms-public-content/application/cms-editorial.service";
+import {initialEditorialRelease} from "../src/modules/cg-18-cms-public-content/application/cms-initial-editorial-release";
 import {releaseIllustrations,verifyReleaseIllustrations} from "../src/modules/cg-18-cms-public-content/application/cms-release-illustrations";
 
 // Exercises the actual initializer and content parser using a deterministic
@@ -53,4 +54,15 @@ test("existing CMS pages are preserved, including intentionally unpublished page
  assert.ok(!x.published.includes("home"));
  assert.ok(!x.published.includes("about"));
  assert.equal(x.assets.length,10,"do not attach default images to existing Home; initialize missing Healthcare");
+});
+
+test("new Home release follows the original volunteer then accountability section order",()=>{
+ const home=initialEditorialRelease.find(page=>page.slug==="home");assert.ok(home);
+ const sections=[...home.sections].sort((a,b)=>a.order-b.order);
+ const promo=sections.findIndex(s=>s.kind==="CTA");
+ const accountability=sections.findIndex(s=>s.kind==="RICH_TEXT"&&s.fields.heading==="Accountability & Transparency");
+ const features=sections.findIndex(s=>s.kind==="FEATURE_CARDS");
+ assert.ok(promo>=0&&promo<accountability&&accountability<features);
+ assert.equal(sections[promo].order,30,"preserve existing bundled PROMO role/order");
+ assert.equal(sections.find(s=>s.kind==="RICH_TEXT"&&s.fields.variant==="SPLIT")?.order,20,"preserve ABOUT media placement");
 });
