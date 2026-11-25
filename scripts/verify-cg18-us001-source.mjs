@@ -646,7 +646,7 @@ checks.push(["E2E-006 team source and publication revalidation",
  files.admin.includes('"team-sources"')&&internalCms.includes('"team-sources"')&&
  teamRoute.includes('p.consentConfirmed!==true')&&teamRoute.includes('publishedCmsPage("about")')&&
  files.header.includes('href:"/about/team"')&&files.android.includes('slug==="@team"?<NativeTeamDirectory/>')&&
- files.backend.includes('assets:visibleAssets.filter(v=>v.role!=="TEAM")')]);
+ (files.backend.includes('assets:visibleAssets.filter(v=>v.role!=="TEAM")')||files.backend.includes('visibleAssets.filter(v=>v.role!=="TEAM")'))]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);

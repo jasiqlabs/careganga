@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Pool } from "pg";
 
@@ -6,7 +6,17 @@ type Entry = { filename: string; sha256: string };
 let required: readonly Entry[] | undefined;
 function contract(): readonly Entry[] {
   if (required) return required;
-  const entries: unknown = JSON.parse(readFileSync(resolve(__dirname,"../../../db/schema-contract.json"),"utf8"));
+  const candidates = [
+    resolve(__dirname, "../../../dist/db/schema-contract.json"),
+    resolve(__dirname, "../../../db/schema-contract.json"),
+    resolve(process.cwd(), "dist/db/schema-contract.json"),
+    resolve(process.cwd(), "apps/backend/dist/db/schema-contract.json")
+  ];
+  let path = candidates[0];
+  for (const c of candidates) {
+    if (existsSync(c)) { path = c; break; }
+  }
+  const entries: unknown = JSON.parse(readFileSync(path, "utf8"));
   if (!Array.isArray(entries) || !entries.length ||
       entries.some(e => !e || typeof e.filename !== "string" || !/^\d+_cg\d+_[a-z0-9_-]+\.sql$/.test(e.filename) ||
         typeof e.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(e.sha256)) ||
