@@ -41,7 +41,10 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
       "refund-and-cancellation","grievance-redressal",
       "copyright-and-intellectual-property"].includes(slug)))
    throw Error();
-  return {state:"PUBLISHED",page:p as PublicCmsPage};
+  const page=p as PublicCmsPage;
+  if(page.kind==="ARTICLE"&&(page.canonicalPath!=="/blog/"+slug||page.sections.length!==1||page.sections[0].kind!=="ARTICLE_BODY"))throw Error();
+  if(page.kind==="POLICY"&&(page.canonicalPath!=="/policies/"+slug||page.sections.length<1||page.sections.length>12||page.sections.some(section=>section.kind!=="RICH_TEXT")||page.assets.length>0))throw Error();
+  return {state:"PUBLISHED",page};
  }catch{return {state:"UNAVAILABLE",page:null};}
 }
 
