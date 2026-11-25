@@ -15658,3 +15658,10 @@ button:disabled {
 .cg-membership-page .cg04-public-actions a.cg04-primary{color:#fff}
 @media(max-width:570px){.cg-membership-page .cg04-search-row input{min-width:0}.cg-membership-page .cg04-public-plan{gap:1rem}}
 .cg-membership-page a.cg04-hero-cta{color:#202216}
+
+/* Keep private clinical details and protected actions clear of public CTAs. */
+.cg-private-appointment-page~.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+.cg-health-appointment-detail .cg-health-document-panel{display:grid;align-content:start;gap:.5rem}
+.cg-health-appointment-detail .cg-health-document-panel p{margin:.25rem 0}
+.cg-health-appointment-detail .cg-health-document-panel button{width:100%}
+.cg-health-appointment-detail .cg-health-document-panel h2{padding-bottom:.6rem;border-bottom:1px solid #dce7dc;margin:0 0 .25rem}
