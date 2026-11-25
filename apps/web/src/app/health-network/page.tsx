@@ -51,7 +51,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
  if(result.next)next.set("after",result.next);
  if(canReschedule){next.set("reschedule",rescheduleRef);
   next.set("version",String(rescheduleVersion));}
- return <HealthcarePublicChrome><main className="cg-public-shell">
+ return <HealthcarePublicChrome><main className={"cg-public-shell "+styles.directoryPage}>
   <header className="cg-public-header">
    <nav aria-label="Breadcrumb">
     <Link href="/">CareGanga</Link><span aria-hidden="true"> / </span>
@@ -213,7 +213,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
        {Number.isInteger(d.experienceYears)&&d.experienceYears>=0&&
         <p>{d.experienceYears} {d.experienceYears===1?"year":"years"} of experience</p>}
        <p>{d.address}, {d.pinCode}</p>
-       <p><strong>{d.fee?rupee(d.fee.amountMinor):"Fee not listed"}</strong>
+       <p className={styles.fee}><strong>{d.fee?rupee(d.fee.amountMinor):"Fee not listed"}</strong>
         {d.fee?" · In-person consultation":""}</p>
        <div className={styles.actions}>
         <Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
@@ -222,7 +222,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
          href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)+"/schedule?center="+encodeURIComponent(d.centerSlug)}>
          Check appointment times</Link>}
        </div>
-       {canReschedule&&<p><Link href={"/health-network/doctors/"+
+       {canReschedule&&d.fee&&<p><Link href={"/health-network/doctors/"+
         encodeURIComponent(d.doctorRef)+"/schedule?center="+encodeURIComponent(d.centerSlug)+"&reschedule="+
         encodeURIComponent(rescheduleRef)+"&version="+rescheduleVersion}>
         Choose a time with this doctor</Link></p>}
