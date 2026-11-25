@@ -7,7 +7,8 @@ import {CmsPublicPage} from "./cms-public-page";
 import {CmsNgoSidebar} from "./cms-ngo-pages";
 import {publishedCmsPage,publishedCmsNavigation} from "./cms-public-source";
 import {publicLabOffers,rupees} from "../diagnostics/public-lab-offers";
-import {currentConsultationBenefits,formatRupees} from "../healthcare-assistance/public-consultation-benefits";
+import {currentConsultationBenefits} from "../healthcare-assistance/public-consultation-benefits";
+import {ConsultationBenefitCards} from "../healthcare-assistance/approved-consultation-benefits";
 
 /** One SSR source for each approved Foundation editorial route.
  * The Home publication supplies only shared original CMS footer content.
@@ -32,7 +33,7 @@ export async function CmsEditorialRoute({slug,extra,expectedKind}:{slug:string;e
   {slug==="healthcare"&&<section className="cg-site-content"
    aria-label="Verified healthcare consultation booking">
    <h2>Find &amp; book healthcare services</h2>
-   {benefits?.state==="READY"&&benefits.items.length>0&&<div className="cg-health-benefit-strip"><h3>Current Foundation consultation support</h3><p>{benefits.disclaimer}</p><div>{benefits.items.slice(0,4).map((item,i)=><article key={item.centerSlug+":"+i}><strong>{item.centerName}</strong><p>{item.doctorName||"Approved center policy"}</p><b>{item.mode==="PERCENT"&&item.percentBasisPoints!==null?(item.percentBasisPoints/100)+"% possible support":formatRupees(item.fixedSupportMinor??"0")+" possible support"}</b><p>Maximum {formatRupees(item.maximumSupportMinor)}</p><Link href={"/healthcare/centers/"+encodeURIComponent(item.centerSlug)}>View center</Link></article>)}</div></div>}
+
    <p>CareGanga lists only currently verified healthcare providers and doctors.
     Where live working hours and consultation fees are available, an eligible
     patient can request an in-person appointment. Center payment methods and assistance are checked against the actual booking.</p>
@@ -42,6 +43,7 @@ export async function CmsEditorialRoute({slug,extra,expectedKind}:{slug:string;e
    <p>Bookings depend on a current available slot and final confirmation.
     This is not an approval for financial assistance.</p>
   </section>}
+  {benefits&&<ConsultationBenefitCards response={benefits}/>}
   {extra??null}
   {slug==="healthcare"&&labOffers?.state==="READY"&&labOffers.items.length>0&&
    <section className="cg-site-content" aria-label="Currently approved partner laboratory tests">

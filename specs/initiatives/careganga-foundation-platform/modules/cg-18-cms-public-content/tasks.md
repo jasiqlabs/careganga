@@ -730,9 +730,9 @@ Baseline from current Web route inventory and earlier local QA evidence. This is
 
 | # | Route template | Second-pass page execution status |
 |---|---|---|
-| 1 | `/` | PENDING — second-pass assembled page manual inspection |
+| 1 | `/` | ASSEMBLED_OFFLINE_60_OF_60 — 390/1440 visual review; full Next/backend/assets pending |
 | 2 | `/80g` | REDIRECT_OFFLINE_3_OF_3 — actual Next permanentRedirect 308 to /ngo-information; HTTP and destination visual pending |
-| 3 | `/about` | PENDING — second-pass assembled page manual inspection |
+| 3 | `/about` | ASSEMBLED_OFFLINE_54_OF_54 — 390/1440 visual review; full Next/backend/assets pending |
 | 4 | `/about/team` | ASSEMBLED_OFFLINE_156_OF_156 — manual 390/1440 visual inspection; full Next/backend pending |
 | 5 | `/blog` | ASSEMBLED_OFFLINE_168_OF_168 — visual inspected; full Next/backend and original page assets pending |
 | 6 | `/blog/[slug]` | ASSEMBLED_OFFLINE_150_OF_150 — article/policy reading page inspected; actual approved content/full Next/backend pending |
@@ -748,15 +748,15 @@ Baseline from current Web route inventory and earlier local QA evidence. This is
 | 16 | `/health-network/doctors/[doctorRef]` | ASSEMBLED_OFFLINE_144_OF_144 — visual inspected; full Next/backend pending |
 | 17 | `/health-network/doctors/[doctorRef]/schedule` | ASSEMBLED_OFFLINE_162_OF_162 — selection visual inspected; actual booking widgets/Next/backend pending |
 | 18 | `/health-network/lab-tests` | ASSEMBLED_OFFLINE_132_OF_132 — visual inspected; full Next/backend pending |
-| 19 | `/healthcare` | PENDING — second-pass assembled page manual inspection |
+| 19 | `/healthcare` | ASSEMBLED_OFFLINE_66_OF_66 — 390/1440 visual review; full Next/backend/assets pending |
 | 20 | `/healthcare/centers/[slug]` | ASSEMBLED_OFFLINE_126_OF_126 — visual inspected; full Next/backend pending |
 | 21 | `/impact` | REDIRECT_OFFLINE_3_OF_3 — actual Next permanentRedirect 308 to /our-impact; HTTP and destination visual pending |
 | 22 | `/membership` | ASSEMBLED_OFFLINE_132_OF_132 — both tabs exercised; full Next/backend and original assets pending |
 | 23 | `/membership/apply` | PENDING — second-pass assembled page manual inspection |
-| 24 | `/ngo-information` | PENDING — second-pass assembled page manual inspection |
-| 25 | `/ngo-information/[section]` | PENDING — second-pass assembled page manual inspection |
+| 24 | `/ngo-information` | ASSEMBLED_OFFLINE_48_OF_48 — 390/1440 visual review; full Next/backend/assets pending |
+| 25 | `/ngo-information/[section]` | ASSEMBLED_OFFLINE_240_OF_240 — 390/1440 visual review; full Next/backend/assets pending |
 | 26 | `/notices` | ASSEMBLED_OFFLINE_162_OF_162 — manual 390/1440 visual inspection; full Next/backend pending |
-| 27 | `/our-impact` | PENDING — second-pass assembled page manual inspection |
+| 27 | `/our-impact` | ASSEMBLED_OFFLINE_48_OF_48 — 390/1440 visual review; full Next/backend/assets pending |
 | 28 | `/our-work` | ASSEMBLED_OFFLINE_150_OF_150 — project catalogue inspected; actual approved data/assets/full Next/backend pending |
 | 29 | `/patients/me` | PARTIAL_OFFLINE — lab report component 90/90; full patient profile route inspection pending |
 | 30 | `/patients/me/appointments/[bookingRef]` | ASSEMBLED_OFFLINE_186_OF_186 — detail inspected; contribution adapter/actual PDF/Next/backend pending |
@@ -847,3 +847,5 @@ Baseline from current Web route inventory and earlier local QA evidence. This is
 
 ### 2026-11-25 — continuation: Impact, 80G and healthcare component visual regression
 - Restored and visually inspected original Batch01 NGO/impact captures and healthcare Batch01 1000159167.jpg. Executed actual CmsImpactGroup, CmsCompliance, CmsHealthcare renderer excerpts, current header and footer excerpts in React/Chromium with selected committed site/global CSS, synthetic data and external requests denied. Parent composition, Link/pathname, NGO sidebar and newsletter are adapters; real logo/media absent. 162/174 before, 174/174 after, six widths 320/390/768/1280/1440/1920. Twelve fixed-donation overlay failures at 768+ corrected with scoped normal flow, clinical cards/search use green actions and compact padding, small-width pillars and legal status wrap. Inspected before impact/mobile and NGO/desktop, after healthcare/mobile and impact/desktop. Evidence /mnt/data/cg-final/{before,after}-{impact,compliance,healthcare}-{width}.png, visual-{before,after}.json and fixture.tsx/visual-test.py. Full route, actual clinical owner data, original asset and Android/independent acceptance remain open; no increment to 25/34. Existing PUB and original QA unchanged.
+
+- Six additional page templates (Home, About, Impact, Healthcare, NGO landing, NGO child route with PAN/registration/annual/financial variants) assembled from current route/renderer/header/footer source excerpts, selected committed CSS, in-memory React/Chromium and synthetic data, with Next Link/notFound, newsletter and data adapters; no network. Baseline 84/86 at 390px, reproduced duplicate Healthcare benefits request and two support panels. Consolidated into one typed support card projection and one request, retained current fees/cap/disclaimer and center link. Final 516/516 across six widths and nine route variants; inspected 390/1440 visual contact sheet. Evidence /mnt/data/cg-final/assembled-{before,after}.json and assembled-review.jpg plus screenshots and scripts. Counts 31/34 assembled-offline, three private/application templates remain. Exact original media, actual owner records, full Next/backend/Android and independent acceptance pending; original canonical QA unchanged; no merge/deploy.
