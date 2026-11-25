@@ -1026,3 +1026,11 @@
 .cg-public-donation-form{width:100%;min-width:0;overflow-wrap:anywhere}
 .cg-public-donation-form button:disabled{opacity:.6;cursor:not-allowed!important}
 .cg-public-donation-form input:not([type=checkbox]):read-only,.cg-public-donation-form textarea:read-only{background:#f4f7f5!important}
+
+/* Balanced standalone media results and accessible discovery controls. */
+.cg-site-gallery .cg-site-filter-reset{min-height:44px}
+.cg-site-gallery .cg-site-gallery-grid:has(>.cg-site-gallery-card:only-child){grid-template-columns:minmax(0,640px);justify-content:center}
+.cg-site-gallery .cg-site-gallery-card>a.cg-site-action{margin-top:1rem;min-height:44px;display:inline-flex;align-items:center;justify-content:center;white-space:normal;overflow-wrap:anywhere}
+.cg-site:has(.cg-site-page-gallery)>.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+.cg-site-gallery .cg-site-gallery-card>a.cg-site-action{background:#194a3a;color:#fff;border:1px solid #194a3a;border-radius:.65rem;padding:.65rem 1rem;font-weight:750;text-decoration:none}
+.cg-site-gallery .cg-site-gallery-card>a.cg-site-action:focus-visible{outline:3px solid #194a3a;outline-offset:3px}
