@@ -16344,6 +16344,31 @@ button:disabled {
   color: #b91c1c;
 }
 
+/* Universal Custom Dropdown Icon & Styling */
+.cg-custom-dropdown-root svg {
+  width: 11px !important;
+  height: 11px !important;
+  min-width: 11px !important;
+  min-height: 11px !important;
+  max-width: 11px !important;
+  max-height: 11px !important;
+}
+
+/* Universal compact sizing for button & input icons */
+.cg19-input-group svg,
+.cg19-btn-apply svg,
+.cg19-btn-reset svg,
+.cg19-btn-faq-edit svg,
+.cg19-btn-faq-publish svg,
+.cg19-btn-faq-withdraw svg {
+  width: 13px !important;
+  height: 13px !important;
+  min-width: 13px !important;
+  min-height: 13px !important;
+  max-width: 13px !important;
+  max-height: 13px !important;
+}
+
 /* Enhanced Tab Pills */
 .cg19-tab-pill {
   display: inline-flex;

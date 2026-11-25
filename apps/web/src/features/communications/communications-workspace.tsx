@@ -699,7 +699,7 @@ export function CommunicationsWorkspace({
               style={{ padding: "0.55rem 1rem", fontSize: "0.85rem" }}
               onClick={() => setComposerOpen((p) => !p)}
             >
-              <PlusCircle className="w-4 h-4" />
+              <PlusCircle size={13} strokeWidth={2} style={{ width: "13px", height: "13px" }} />
               <span>{composerOpen ? "Close Composer" : "Draft New Notice"}</span>
             </button>
           )}
@@ -722,7 +722,12 @@ export function CommunicationsWorkspace({
             }}
             onClick={() => void reload()}
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              size={13}
+              strokeWidth={2}
+              style={{ width: "13px", height: "13px" }}
+              className={loading ? "animate-spin" : ""}
+            />
             Refresh
           </button>
         </div>
@@ -1251,21 +1256,25 @@ export function CommunicationsWorkspace({
                   {/* Search */}
                   <div className="cg19-input-group">
                     <label htmlFor="notice-search">Search</label>
-                    <div style={{ position: "relative" }}>
+                    <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                       <Search
-                        className="w-3.5 h-3.5 text-slate-400"
+                        size={14}
+                        strokeWidth={1.8}
                         style={{
+                          width: "14px",
+                          height: "14px",
+                          minWidth: "14px",
+                          minHeight: "14px",
                           position: "absolute",
                           left: "0.85rem",
-                          top: "50%",
-                          transform: "translateY(-50%)",
+                          color: "#94a3b8",
                           pointerEvents: "none",
                         }}
                       />
                       <input
                         id="notice-search"
                         className="cg19-input"
-                        style={{ paddingLeft: "2.4rem" }}
+                        style={{ paddingLeft: "2.35rem" }}
                         placeholder="Search title, message, status..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -1978,7 +1987,7 @@ export function CommunicationsWorkspace({
                 disabled={busy || emailLoading}
                 onClick={() => void importClientDrafts()}
               >
-                <PlusCircle className="w-4 h-4" />
+                <PlusCircle size={13} strokeWidth={2} style={{ width: "13px", height: "13px" }} />
                 <span>Import Missing References as Disabled Drafts</span>
               </button>
               <button
@@ -1987,22 +1996,37 @@ export function CommunicationsWorkspace({
                 disabled={busy || emailLoading}
                 onClick={() => void loadEmailReferences()}
               >
-                <RefreshCw className={`w-4 h-4 ${emailLoading ? "animate-spin" : ""}`} />
+                <RefreshCw
+                  size={13}
+                  strokeWidth={2}
+                  style={{ width: "13px", height: "13px" }}
+                  className={emailLoading ? "animate-spin" : ""}
+                />
                 <span>Refresh References</span>
               </button>
             </div>
 
             <div className="cg19-input-group" style={{ maxWidth: "480px" }}>
               <label htmlFor="email-search">Find a Template</label>
-              <div style={{ position: "relative" }}>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                 <Search
-                  className="w-4 h-4 text-slate-400"
-                  style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)" }}
+                  size={13}
+                  strokeWidth={2}
+                  style={{
+                    position: "absolute",
+                    left: "0.85rem",
+                    color: "#94a3b8",
+                    width: "13px",
+                    height: "13px",
+                    minWidth: "13px",
+                    minHeight: "13px",
+                    pointerEvents: "none",
+                  }}
                 />
                 <input
                   id="email-search"
                   className="cg19-input"
-                  style={{ paddingLeft: "2.25rem" }}
+                  style={{ paddingLeft: "2.35rem" }}
                   value={emailSearch}
                   maxLength={80}
                   onChange={(e) => setEmailSearch(e.target.value)}
