@@ -15528,3 +15528,28 @@ button:disabled {
 /* Public join-page review: selected tabs and steps use the public palette. */
 .cg04-public-tabs>button{min-height:58px}.cg04-volunteer-steps button[aria-current="step"]{background:#e8f4eb;border-color:#297449;color:#194a3a}.cg04-public-plan{margin-block:1rem}.cg04-hero-cta:focus-visible{outline:3px solid white;outline-offset:4px}.cg04-public-title p{overflow-wrap:anywhere}
 @media(max-width:570px){.cg04-card-art{max-width:none;width:100%}.cg04-public-actions{justify-content:stretch}.cg04-public-actions>*{flex:1 1 120px}.cg04-hero{padding:clamp(24px,7vw,48px);min-height:300px}}
+
+/* Public joining: original card tabs, rounded filters and numbered application steps. */
+.cg04-public .cg04-public-tabs>button{min-height:88px;padding:18px 22px;align-content:center;box-shadow:0 2px 5px #162f4520;overflow-wrap:anywhere}
+.cg04-public .cg04-public-tabs>button strong{font-size:1.05rem;font-weight:800}
+.cg04-public .cg04-public-tabs>button small{color:#536a82;line-height:1.5}
+.cg04-public .cg04-public-tabs>button[aria-selected=true] small{color:#cde5db}
+.cg04-public .cg04-search-card{padding:clamp(18px,3vw,26px);box-shadow:0 2px 5px #162f4515}
+.cg04-public .cg04-search-card h2{margin:0;font-weight:800}
+.cg04-public .cg04-search-card>p{margin:0 0 .25rem;color:#536a82}
+.cg04-public .cg04-search-row input{min-height:46px;border-radius:12px}
+.cg04-public .cg04-search-card button,.cg04-public .cg04-public-actions button{min-height:44px}
+.cg04-public .cg04-search-card .cg04-buttons{align-items:center;gap:.55rem}
+.cg04-public .cg04-search-card .cg04-buttons button{border-radius:999px;padding-inline:1rem}
+.cg04-public .cg04-public-title{padding-block:clamp(22px,4vw,38px)}
+.cg04-public .cg04-public-title h2{font-size:clamp(1.4rem,2.5vw,1.85rem);font-weight:850}
+.cg04-public .cg04-public-plan{box-shadow:0 2px 5px #162f4515}
+.cg04-public.cg04-volunteer{background:#f9f6ed}
+.cg04-volunteer .cg04-volunteer-steps{grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem}
+.cg04-volunteer .cg04-volunteer-steps button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;min-height:82px;border:1px solid transparent;background:transparent;color:#536a82;text-align:center;font-weight:650}
+.cg04-volunteer .cg04-volunteer-steps button[aria-current="step"]{color:#21685b;background:#eef8f5;border-color:#c5e1d9}
+.cg04-volunteer-step-number{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;border:2px solid #c7d4e0;color:#536a82;background:#fff;font-weight:800;flex:none}
+.cg04-volunteer-steps button[aria-current="step"] .cg04-volunteer-step-number{background:#27685e;border-color:#27685e;color:white}
+.cg04-volunteer .cg04-document-grid input,.cg04-volunteer .cg04-document-grid select{border-color:#c7d4e0;min-height:46px}
+@media(max-width:700px){.cg04-volunteer .cg04-volunteer-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:570px){.cg04-public .cg04-public-tabs>button{min-height:72px;padding:14px 16px}.cg04-public .cg04-search-row input{flex:1 1 100%}.cg04-public .cg04-search-row button{flex:1 1 100px}}
