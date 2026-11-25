@@ -15,7 +15,7 @@ type ComplianceDoc=DocItem&{file?:PublicCmsPage["assets"][number]};
 const items=(raw:unknown,limit=6):DocItem[]=>Array.isArray(raw)?
  raw.filter((x):x is DocItem=>x!==null&&typeof x==="object"&&!Array.isArray(x)).slice(0,limit):[];
 const safeMediaPath=(v:unknown)=>typeof v==="string"&&
- /^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(v);
+ /^\/api\/public\/content\/media\/[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(v);
 const chapter:Record<Child,string>={
  "pan-details":"PAN Details",
  "registration-certificate":"Registration Certificate",
@@ -23,9 +23,12 @@ const chapter:Record<Child,string>={
 };
 const scope=(page:PublicCmsPage)=>{
  const fact=page.sections.find(s=>s.kind==="COMPLIANCE_FACTS")?.fields??{};
- const docs:ComplianceDoc[]=items(fact.documents).map((item,i)=>({
-  ...item,file:page.assets.find(a=>a.role==="DOCUMENT"&&a.order===i&&safeMediaPath(a.src))
- }));
+ const docs:ComplianceDoc[]=Array.isArray(fact.documents)?fact.documents.slice(0,6).flatMap((raw,i)=>{
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))return [];
+  const item=raw as DocItem;
+  if(!words(item.title).trim()||!/^\d{4}-\d{2}-\d{2}$/.test(words(item.asOfDate)))return [];
+  return [{...item,file:page.assets.find(a=>a.role==="DOCUMENT"&&a.order===i&&safeMediaPath(a.src))}];
+ }):[];
  return {fact,docs};
 };
 const reports=(page:PublicCmsPage,type:"REGISTRATION"|"ANNUAL_REPORT")=>
@@ -102,34 +105,38 @@ export async function CmsNgoChildRoute({section}:{section:string}){
  }));
  // Actual financial report files must be independently published CG19 media in
  // the Financial Reports publication category. Never read private CG09/CG20 reports.
- const financial:ApprovedAnnualReport[]=publications?.state==="PUBLISHED"?publications.page.sections.filter(s=>s.kind==="GALLERY_GRID").flatMap(s=>items(s.fields.items,12).flatMap(item=>{
+ const financial:ApprovedAnnualReport[]=publications?.state==="PUBLISHED"&&publications.page.kind==="GALLERY"?publications.page.sections.filter(s=>s.kind==="GALLERY_GRID").flatMap(s=>items(s.fields.items,12).flatMap(item=>{
   if(item.mediaType!=="PUBLICATION"||words(item.category).toLocaleLowerCase()!=="financial reports"||item.visible===false||!Number.isSafeInteger(item.originalIndex))return [];
   const file=publications.page.assets.find(a=>a.role==="GALLERY"&&a.order===item.originalIndex&&safeMediaPath(a.src));
   return file&&words(item.title)&&words(item.asOfDate)?[{title:words(item.title),date:words(item.asOfDate),href:file.src}]:[];
  })):[];
- const info=<section className="cg-site-content cg-site-legal cg-site-ngo-child">
+ const hasTaxDetails=[fact.registrationNumber,fact.issuer,fact.verifiedAsOf].some(v=>words(v).trim());
+ const info=<section className="cg-site-content cg-site-legal cg-site-ngo-child" data-ngo-section={key}>
+  <nav className="cg-site-ngo-child-breadcrumb" aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true"> / </span><Link href="/ngo-information">NGO Information</Link><span aria-hidden="true"> / </span><span aria-current="page">{chapter[key]}</span></nav>
   <p className="cg-site-eyebrow">Foundation official information</p>
   <h1>{intro?.heading??chapter[key]}</h1>
   {intro?.body&&<p>{intro.body}</p>}
   <p className="cg-site-provenance">Current Foundation-published records only.
    Check the relevant issuing authority for legal or tax applicability.</p>
-  {key==="pan-details"&&<dl className="cg-site-legal-data">
-   <div><dt>Published PAN</dt><dd>{words(fact.pan)}</dd></div>
+  {key==="pan-details"&&<div className="cg-site-pan-grid">
+   <article className="cg-site-pan-card"><p>CareGanga Foundation</p><dl><dt>Published Permanent Account Number</dt><dd>{words(fact.pan)}</dd></dl>{words(fact.source)&&<p className="cg-site-pan-source">Source: {words(fact.source)}</p>}</article>
+   {hasTaxDetails&&<section className="cg-site-pan-profile"><h2>Published tax profile information</h2><dl className="cg-site-legal-data">
    {words(fact.registrationNumber)&&<div><dt>Foundation registration</dt>
     <dd>{words(fact.registrationNumber)}</dd></div>}
    {words(fact.issuer)&&<div><dt>Issuing authority</dt>
     <dd>{words(fact.issuer)}</dd></div>}
    {words(fact.verifiedAsOf)&&<div><dt>Source reviewed on</dt>
     <dd>{words(fact.verifiedAsOf)}</dd></div>}
-  </dl>}
-  {key==="registration-certificate"&&<div className="cg-site-impact-grid">
+  </dl></section>}
+  </div>}
+  {key==="registration-certificate"&&<div className="cg-site-impact-grid cg-site-certificate-grid">
    {matches.map((d,i)=><article className="cg-site-impact-card" key={i}>
-    <h2>{words(d.title)}</h2><p>Document date: {words(d.asOfDate)}</p>
+    <h2>{words(d.title)}</h2><p className="cg-site-certificate-date">Document date: <strong>{words(d.asOfDate)}</strong></p>
     <a href={d.file!.src} download>View current approved certificate</a>
    </article>)}
   </div>}
   {key==="annual-reports"&&<><CmsNgoAnnualReports reports={annual}/>{intro?.eyebrow&&<h2>{intro.eyebrow}</h2>}</>}
-  {key==="financial-reports"&&<>{publications?.state==="UNAVAILABLE"?<p role="alert">Published financial reports cannot currently be verified.</p>:<CmsNgoAnnualReports reports={financial} kind="financial"/>}{intro?.eyebrow&&<h2>{intro.eyebrow}</h2>}</>}
+  {key==="financial-reports"&&<>{(publications?.state==="UNAVAILABLE"||(publications?.state==="PUBLISHED"&&publications.page.kind!=="GALLERY"))?<p role="alert">Published financial reports cannot currently be verified.</p>:<CmsNgoAnnualReports reports={financial} kind="financial"/>}{intro?.eyebrow&&<h2>{intro.eyebrow}</h2>}</>}
   <p className="cg-site-legal-notice">{words(fact.disclaimer)||
    "Confirm current official information with the Foundation."}</p>
  </section>;
