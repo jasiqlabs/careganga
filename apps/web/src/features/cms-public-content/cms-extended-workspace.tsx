@@ -15,6 +15,7 @@ type Item={pageRef:string;kind:string;slug:string;title:string;version:string;
 type Detail={pageRef:string;kind:Kind;slug:string;version:number;revisionRef:string;
  status:string;approvalCaseRef:string|null;title:string;seoTitle:string;
  seoDescription:string;sections:Section[];assets:Asset[];
+ bundledAssets?:{key:string;role:string;order:number;altText:string}[];
  publicationStatus:string;scheduledAt:string|null};
 type Command={path:string;method:"POST"|"PUT";body:Record<string,unknown>};
 const kinds:Kind[]=["IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY","PARTNERS"];
@@ -370,10 +371,10 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    {...section,fields:{...section.fields,items:items(section.fields.items)
      .flatMap((entry,index)=>entry.visible===false?[]:[{...entry,originalIndex:index}])}}:
    section),
-  assets:draft.assets.filter(a=>a.role!=="GALLERY"||
+  assets:[...draft.assets.filter(a=>a.role!=="GALLERY"||
     galleryItems[a.order]?.visible!==false).map(a=>({...a,
    src:(a.role==="GALLERY"||a.role==="DOCUMENT"?
-    "/api/cms-file-preview/":"/api/cms-image-preview/")+a.fileRef}))};
+    "/api/cms-file-preview/":"/api/cms-image-preview/")+a.fileRef})),...(selected?.bundledAssets??[]).filter(a=>!draft.assets.some(v=>v.role===a.role&&v.order===a.order)&&draft.sections.some(sec=>a.role==="HERO"?sec.kind==="HERO"&&sec.order===a.order&&sec.fields.textOnly!==true&&sec.fields.visible!==false:a.role==="FEATURE"&&sec.kind==="HEALTHCARE_CATEGORIES"&&items(sec.fields.categories).length>a.order)).map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/cms-image-preview/release-"+a.key}))]};
  const unsaved=selected&&JSON.stringify(content(draft))!==JSON.stringify({
   kind:selected.kind,slug:selected.slug,title:selected.title,seoTitle:selected.seoTitle,
   seoDescription:selected.seoDescription,canonicalPath:pathFor(selected.kind,selected.slug),
@@ -971,6 +972,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
        <button type="button" disabled={!canManage} onClick={()=>setDraft(d=>({
         ...d,assets:d.assets.filter(v=>v!==a)}))}>Detach</button></div>)}
      </fieldset>}
+    {!!selected?.bundledAssets?.length&&<p className="cg-cms-muted">Bundled editorial illustrations: {selected.bundledAssets.length}. Preview them above; upload replacements in a new draft.</p>}
     <p className="cg-cms-muted">Contact submissions use the existing CG-19 private support form.
      Publication cannot create a separate inbox, event, provider or patient record.</p>
    </div>}
