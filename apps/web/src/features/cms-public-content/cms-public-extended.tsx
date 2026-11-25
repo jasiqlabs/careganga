@@ -1,5 +1,5 @@
 import Link from "next/link";
-import {Suspense} from "react";
+import {Suspense,type ReactNode} from "react";
 import type {PublicCmsPage,PublicCmsSection} from "./cms-public-page";
 import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsGalleryGridClient,type CmsMediaType} from "./cms-gallery-grid-client";
@@ -195,7 +195,7 @@ export function CmsHealthcare({section,assets}:{
  * external destinations are strictly authorized CMS fields; actual support
  * submission remains CG19, CSR remains CG08 and membership remains CG04.
  */
-export function CmsContactInfo({section,assets}:{section:PublicCmsSection;assets:Asset[]}){
+export function CmsContactInfo({section,assets,form}:{section:PublicCmsSection;assets:Asset[];form?:ReactNode}){
  const f=section.fields,faq=records(f.faqs),inquiries=records(f.inquiries);
  const social=records(f.socialLinks);
  const secure=(value:unknown,hosts:string[])=>{
@@ -233,6 +233,7 @@ export function CmsContactInfo({section,assets}:{section:PublicCmsSection;assets
     <h2>{text(item.title)}</h2><p>{text(item.description)}</p>
    </article>)}
   </div>}
+  {form}
   {assets.some(a=>a.role==="CONTACT"&&a.order>=0&&a.order<3&&
    /^\/api\/public\/content\/media\/[0-9a-f-]{36}$/i.test(a.src))&&
    <div className="cg-site-contact-photo-strip" aria-label="Approved Foundation photographs">
