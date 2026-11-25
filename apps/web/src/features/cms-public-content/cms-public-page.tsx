@@ -208,6 +208,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
    <div className={"cg-site-sections cg-site-page-"+page.kind.toLowerCase()}>
    {!heroes.length&&!["POLICY","IMPACT","COMPLIANCE","GALLERY","CONTACT","ARTICLE"].includes(page.kind)&&<header className="cg-site-content cg-site-page-heading"><p className="cg-site-eyebrow">CareGanga Foundation</p><h1>{page.title}</h1></header>}
    {page.kind==="POLICY"&&<header className="cg-site-content cg-site-policy-title">
+    <Link href="/" className="cg-site-editorial-back">Return to homepage</Link>
     <p className="cg-site-eyebrow">Policies &amp; Legal</p><h1>{page.title}</h1>
    </header>}
    {heroes.length>0&&<CmsHeroCarousel slides={heroes} navigation={navigation}/>}
