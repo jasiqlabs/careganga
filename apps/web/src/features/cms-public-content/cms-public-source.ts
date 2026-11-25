@@ -116,6 +116,12 @@ export async function publishedCmsNotices():Promise<{available:boolean;notices:C
   if(!data||typeof data!=="object"||Array.isArray(data))throw Error();
   const source=data as Record<string,unknown>;
   if(source.schemaVersion!==1||!Array.isArray(source.notices))throw Error();
+  const today=new Date().toISOString().slice(0,10);
+  const validDay=(v:unknown):v is string=>{
+   if(typeof v!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(v))return false;
+   const date=new Date(v+"T00:00:00Z");
+   return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===v;
+  };
   const isNotice=(v:unknown):v is CmsPublicNotice=>{
    if(!v||typeof v!=="object"||Array.isArray(v))return false;
    const n=v as Record<string,unknown>;
@@ -123,11 +129,12 @@ export async function publishedCmsNotices():Promise<{available:boolean;notices:C
     typeof n.body==="string"&&n.body.length<=480&&
     typeof n.category==="string"&&n.category.length<=80&&
     (n.priority==="NORMAL"||n.priority==="IMPORTANT")&&
-    typeof n.publishedOn==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(n.publishedOn)&&
-    typeof n.expiresOn==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(n.expiresOn)&&
+    validDay(n.publishedOn)&&validDay(n.expiresOn)&&
+    n.publishedOn<=today&&n.expiresOn>=today&&n.publishedOn<=n.expiresOn&&
     typeof n.path==="string"&&/^\/blog\/[a-z0-9-]{1,70}$/.test(n.path);
   };
-  if(source.notices.length>60||!source.notices.every(isNotice))throw Error();
+  if(source.notices.length>60||!source.notices.every(isNotice)||
+   new Set(source.notices.map(n=>n.path)).size!==source.notices.length)throw Error();
   return {available:true,notices:source.notices};
  }catch{return {available:false,notices:[]};}
 }
