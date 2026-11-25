@@ -50,7 +50,7 @@ export function CmsSiteHeader({navigation,contact}:{
  }}>
   <div className="cg-site-contact-strip">
    <div className="cg-site-strip-inner">
-    <span className="cg-site-connect">CONNECT: <span aria-label="Social channels">f · ▶ · ◉</span></span>
+    <Link className="cg-site-connect" href="/contact">Connect with CareGanga</Link>
     <div className="cg-site-contact-details">
      {contact?.address&&<span>{contact.address}</span>}
      {contact?.email&&<a href={"mailto:"+contact.email}>{contact.email}</a>}
