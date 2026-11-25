@@ -4,7 +4,7 @@ import { hashPassword } from "../domain/secret-crypto";
 
 // No default credentials or public bootstrap endpoint. Startup may provision
 // the first account only when the existing protected root configuration is supplied.
-export async function provisionInitialRoot(pool:Pool,mode:"startup"|"operator"):Promise<"created"|"existing"|"not-configured">{
+export async function provisionInitialRoot(pool:Pool,mode:"startup"|"operator"):Promise<"created"|"existing">{
   const existing=await pool.query("SELECT 1 FROM account LIMIT 1");
   if(existing.rowCount){
     if(mode==="operator")throw new Error("Root setup already closed; do not provision twice");
@@ -14,7 +14,8 @@ export async function provisionInitialRoot(pool:Pool,mode:"startup"|"operator"):
   const email = process.env.CAREGANGA_ROOT_EMAIL?.trim().toLowerCase() || null;
   const name = process.env.CAREGANGA_ROOT_NAME?.trim() ?? "";
   const password = process.env.CAREGANGA_ROOT_PASSWORD ?? "";
-  if(mode==="startup"&&!mobile&&!email&&!name&&!password)return "not-configured";
+  // Do not open public registration before the first protected account exists.
+  if(mode==="startup"&&!mobile&&!email&&!name&&!password)throw Error("Initial administrator configuration is required for an empty account store");
   if (!password || !/^[6-9][0-9]{9}$/.test(mobile) ||
       (email !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ||
       name.length < 2 || name.length > 160)
