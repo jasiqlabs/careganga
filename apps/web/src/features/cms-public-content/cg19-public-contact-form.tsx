@@ -113,7 +113,7 @@ export function Cg19PublicContactForm({contact:publishedContact={}}:{contact?:Re
               rows={5} value={message} onChange={e=>setMessage(e.target.value)}/></div>
           <p>Your details are visible only to authorized Foundation support staff.</p>
           <button className="cg-site-contact-button" disabled={busy} type="submit">
-            {busy?"Checking original request…":"Send private request"}
+            {busy&&errorArea==="message"?"Sending private request…":"Send private request"}
           </button>
         </form>}
         {error&&errorArea==="message"&&<p className="cg-cms-error" role="alert">{error}</p>}
@@ -124,14 +124,14 @@ export function Cg19PublicContactForm({contact:publishedContact={}}:{contact?:Re
         <h2>Check a private receipt</h2>
         <p>Enter the receipt supplied when you submitted. Only the current status is shown; private messages are never exposed here.</p>
         <div className="cg-site-contact-field"><label htmlFor="c-receipt">Private receipt code</label>
-          <input id="c-receipt" disabled={busy} value={proof} onChange={e=>{setProof(e.target.value);setProofState("");}}
+          <input id="c-receipt" disabled={busy} value={proof} onChange={e=>{setProof(e.target.value);setProofState("");if(errorArea==="receipt")setError("");}}
             maxLength={43} autoComplete="off" spellCheck={false}/></div>
         <button type="button" className="cg-site-contact-button" disabled={busy||!proof}
-          onClick={()=>void check()}>Check request status</button>
+          onClick={()=>void check()}>{busy&&errorArea==="receipt"?"Checking request status…":"Check request status"}</button>
         {proofState&&<p role="status">Current status: {proofState}</p>}
         {error&&errorArea==="receipt"&&<p className="cg-cms-error" role="alert">{error}</p>}
       </div></aside>
-      {faqs.length>0&&<section className="cg-site-contact-panel" style={{padding:"1.4rem"}}>
+      {faqs.length>0&&<section className="cg-site-contact-panel cg-site-contact-support-faq" style={{padding:"1.4rem"}}>
         <h2>Frequently asked questions</h2>
         {faqs.map(f=><details key={f.faqRef}>
           <summary>{f.question}</summary><p>{f.answer}</p>
