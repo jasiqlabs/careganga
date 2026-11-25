@@ -4,9 +4,13 @@ import {publishedCmsNavigation,publishedCmsPage} from "../../features/cms-public
 import {Cg19PublicContactForm} from "../../features/cms-public-content/cg19-public-contact-form";
 
 export const dynamic="force-dynamic";
+function validContactPage(page:PublicCmsPage){
+ return page.kind==="CONTACT"&&page.canonicalPath==="/contact"&&page.sections.some(s=>s.kind==="RICH_TEXT")&&
+  page.sections.every(s=>["RICH_TEXT","CTA","CONTACT_INFO"].includes(s.kind))&&page.sections.filter(s=>s.kind==="CONTACT_INFO").length<=1;
+}
 export async function generateMetadata():Promise<Metadata>{
  const page=await publishedCmsPage("contact");
- if(page.state!=="PUBLISHED")return {title:"CareGanga Foundation — Contact",
+ if(page.state!=="PUBLISHED"||!validContactPage(page.page))return {title:"CareGanga Foundation — Contact",
   robots:{index:false,follow:false}};
  return {title:page.page.seoTitle,description:page.page.seoDescription,
   alternates:{canonical:"/contact"},robots:{index:true,follow:true}};
@@ -22,13 +26,15 @@ export default async function FoundationContactPage(){
   kind:"CONTACT",slug:"contact",title:"Contact the Foundation",
   seoTitle:"CareGanga Foundation — Contact",seoDescription:"",
   canonicalPath:"/contact",lastPublishedAt:"",sections:[],assets:[]};
- const page=contact.state==="PUBLISHED"?contact.page:neutral;
+ const verified=contact.state==="PUBLISHED"&&validContactPage(contact.page);
+ const page=verified?contact.page:neutral;
  const footer=home.state==="PUBLISHED"?
   home.page.sections.find(s=>s.kind==="SITE_FOOTER")?.fields:null;
  const form=<Cg19PublicContactForm contact={footer??{}}/>;
  const embedded=page.sections.some(s=>s.kind==="CONTACT_INFO");
  return <CmsPublicPage page={page} navigation={navigation} siteFooter={footer} contactForm={embedded?form:undefined}>
-  {contact.state==="UNAVAILABLE"&&<p className="cg-site-content cg-site-provenance"
+  {!embedded&&<header className="cg-site-content cg-site-page-heading cg-site-contact-fallback"><p className="cg-site-eyebrow">CareGanga Foundation</p><h1>{page.title||"Contact the Foundation"}</h1></header>}
+  {!verified&&contact.state!=="NOT_PUBLISHED"&&<p className="cg-site-content cg-site-provenance"
    role="status">Approved Contact page information cannot be verified.
    The Foundation's private support form remains available independently.</p>}
   {!embedded&&form}
