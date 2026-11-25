@@ -96,7 +96,17 @@ CREATE TABLE cms_release_asset(
  CHECK((asset_key,role,sort_order) IN (
  ('community-illustration-hero','HERO',0),('riverbank-community','ABOUT',20),
  ('community-planning','PROMO',30),('flood-relief','FEATURE',0),
- ('community-education','FEATURE',1),('community-healthcare','FEATURE',2)))
+ ('community-education','FEATURE',1),('community-healthcare','FEATURE',2),
+ ('healthcare-hero','HERO',0),
+ ('healthcare-poly-clinic','FEATURE',0),
+ ('healthcare-diagnostic-centre','FEATURE',1),
+ ('healthcare-dental-clinic','FEATURE',2),
+ ('healthcare-medical-laboratory','FEATURE',3),
+ ('healthcare-hospital-nursing','FEATURE',4),
+ ('healthcare-retail-pharmacy','FEATURE',5),
+ ('healthcare-orthopedic-centre','FEATURE',6),
+ ('healthcare-homoeopathy-centre','FEATURE',7),
+ ('healthcare-ayurvedic-centre','FEATURE',8)))
 );
 CREATE TRIGGER cg18_release_asset_freeze BEFORE INSERT OR UPDATE OR DELETE ON cms_release_asset
  FOR EACH ROW EXECUTE FUNCTION cg18_release_frozen_guard();
@@ -105,8 +115,8 @@ CREATE TRIGGER cg18_release_asset_draft_guard BEFORE INSERT OR UPDATE OR DELETE 
 CREATE FUNCTION cg18_release_asset_scope() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF NOT EXISTS(SELECT 1 FROM cms_page_revision v JOIN cms_page p ON p.id=v.page_id AND p.foundation_root_id=v.foundation_root_id
-  WHERE v.id=NEW.page_revision_id AND v.foundation_root_id=NEW.foundation_root_id AND p.slug='home' AND p.release_baseline)
- THEN RAISE EXCEPTION 'Bundled asset must belong to original Home'; END IF;
+  WHERE v.id=NEW.page_revision_id AND v.foundation_root_id=NEW.foundation_root_id AND p.release_baseline AND ((p.slug='home' AND NEW.asset_key NOT LIKE 'healthcare-%') OR (p.slug='healthcare' AND NEW.asset_key LIKE 'healthcare-%')))
+ THEN RAISE EXCEPTION 'Bundled asset must belong to its original editorial page'; END IF;
  RETURN NEW;
 END; $$;
 CREATE TRIGGER cg18_release_asset_scope_guard BEFORE INSERT OR UPDATE ON cms_release_asset
