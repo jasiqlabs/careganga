@@ -906,3 +906,33 @@
 .cg-site-page-home .cg-site-gallery .cg-site-resource-hero .cg-site-eyebrow{color:#e5c65b}
 .cg-site-page-home .cg-site-gallery .cg-site-resource-hero>p:not(.cg-site-eyebrow){color:#eaf5ee}
 @media(max-width:760px){.cg-site-contact-strip{background:#194b39}.cg-site .cg-site-connect{color:#fff}}
+
+/* Original NGO child pages: navy PAN presentation and separate certificate cards. */
+.cg-site-ngo-child{min-width:0;overflow-wrap:anywhere}
+.cg-site-ngo-child .cg-site-ngo-child-breadcrumb{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;font-size:.85rem;color:#52657a;margin:0 0 1rem}
+.cg-site-ngo-child-breadcrumb a{display:inline-flex;align-items:center;min-height:44px;color:#194a3a}
+.cg-site-ngo-child-breadcrumb [aria-current=page]{font-weight:750;color:#194a3a}
+.cg-site-ngo-child h1{color:#112039;margin:.6rem 0;font-size:clamp(1.85rem,3vw,2.8rem)}
+.cg-site-pan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.25rem;align-items:stretch;margin:1.5rem 0}
+.cg-site-pan-grid:has(>.cg-site-pan-card:only-child){grid-template-columns:minmax(0,1fr)}
+.cg-site-pan-card,.cg-site-pan-profile{min-width:0;border-radius:1rem;padding:clamp(1.15rem,2.5vw,2rem);display:flex;flex-direction:column;gap:1rem;border:1px solid #dce4ed}
+.cg-site-pan-card{background:linear-gradient(135deg,#15364b,#0a2031);color:#fff;box-shadow:0 5px 14px #11203918;justify-content:space-between;min-height:15rem}
+.cg-site-pan-card>p{margin:0;font-weight:700}
+.cg-site-pan-card dl{margin:1rem 0}.cg-site-pan-card dt{font-size:.8rem;text-transform:uppercase;color:#c3d6e2;letter-spacing:.04em}
+.cg-site-pan-card dd{margin:.4rem 0 0;color:#ffe074;font-size:clamp(1.4rem,3vw,2.2rem);font-weight:800;letter-spacing:.035em;overflow-wrap:anywhere}
+.cg-site-pan-card .cg-site-pan-source{color:#c3d6e2;font-weight:400;font-size:.8rem;border-top:1px solid #ffffff30;padding-top:.7rem}
+.cg-site-pan-profile{background:#fff}.cg-site-pan-profile h2{font-size:1.2rem;color:#112039;margin:0}
+.cg-site-pan-profile .cg-site-legal-data{display:grid;grid-template-columns:minmax(0,1fr);gap:0;margin:0}
+.cg-site-pan-profile .cg-site-legal-data>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.5rem;align-items:baseline;padding:.7rem 0}
+.cg-site-pan-profile dd{margin:0;text-align:right}
+.cg-site-certificate-grid .cg-site-impact-card{display:flex;flex-direction:column;gap:.8rem;box-shadow:0 2px 8px #11203910;border-color:#dce4ed}
+.cg-site-certificate-grid h2{color:#112039;font:700 1.15rem/1.35 Arial,Helvetica,sans-serif;margin:0;overflow-wrap:anywhere}
+.cg-site-certificate-grid .cg-site-certificate-date{background:#f4f7fa;border:1px solid #e7edf3;border-radius:.7rem;padding:.8rem;margin:0;min-height:4rem}
+.cg-site-certificate-grid .cg-site-impact-card a[download]{display:flex;justify-content:center;align-items:center;align-self:flex-end;background:#194a3a;color:white;min-height:44px;border-radius:.6rem;padding:.5rem .8rem;text-align:center;text-decoration:none;margin-top:auto}
+@media(max-width:1050px){.cg-site-pan-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:540px){.cg-site-ngo-child .cg-site-certificate-grid{grid-template-columns:minmax(0,1fr)}.cg-site-ngo-child .cg-site-certificate-grid a[download]{align-self:stretch}.cg-site-pan-profile .cg-site-legal-data>div{grid-template-columns:minmax(0,1fr)}.cg-site-pan-profile dd{text-align:left}}
+.cg-site-ngo-layout:has(.cg-site-ngo-child) .cg-site-ngo-breadcrumb{display:none}
+.cg-site-ngo-layout:has(.cg-site-ngo-child) .cg-site-ngo-sidebar .cg-site-unavailable small{display:block;color:#52657a}
+.cg-site-certificate-grid .cg-site-certificate-date strong{font:inherit;font-weight:750;color:#194a3a;display:inline;margin:0}
+.cg-site-certificate-grid .cg-site-certificate-date{min-height:0}
+@media(max-width:810px){.cg-site-ngo-layout:has(.cg-site-ngo-child) .cg-site-ngo-sidebar nav{grid-template-columns:repeat(2,minmax(0,1fr));gap:.25rem}.cg-site-ngo-layout:has(.cg-site-ngo-child) .cg-site-ngo-sidebar nav>a,.cg-site-ngo-layout:has(.cg-site-ngo-child) .cg-site-ngo-sidebar nav>span{padding:.45rem .55rem;font-size:.82rem;overflow-wrap:anywhere}.cg-site-ngo-layout:has(.cg-site-ngo-child) .cg-site-ngo-secondary{grid-template-columns:repeat(2,minmax(0,1fr));gap:.25rem;margin-top:.35rem;padding-top:.35rem}.cg-site-ngo-layout:has(.cg-site-ngo-child) .cg-site-ngo-sidebar{padding:.65rem}}
