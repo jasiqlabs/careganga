@@ -866,3 +866,16 @@
 .cg-site-report-panel .cg-site-report-empty{text-align:center;padding:2.5rem 1rem!important;color:#52657a}
 .cg-site-report-panel .cg-site-table-wrap:focus-visible{outline:2px solid #194a3a;outline-offset:2px}
 @media(max-width:540px){.cg-site-notice-discovery .cg-site-gallery-filters label,.cg-site-report-panel .cg-site-gallery-filters label{flex:0 1 auto;width:100%}.cg-site-report-panel .cg-site-gallery-filters h2{flex:0 1 auto}.cg-site-report-panel .cg-site-evidence-table{font-size:.82rem}.cg-site-report-panel .cg-site-evidence-table :is(td,th){padding:.45rem .25rem}}
+
+/* Published campaign cards share the public reference palette, without inventing a campaign layout from missing screenshots. */
+.cg-site-campaigns{max-width:1280px;min-width:0;padding-block:clamp(1rem,3vw,2rem)}
+.cg-site-campaign-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:1.2rem;align-items:stretch}
+.cg-site-campaign-card{background:#fff;border:1px solid #dce4ed;border-radius:1rem;padding:clamp(1rem,2vw,1.4rem);display:flex;flex-direction:column;gap:.7rem;min-width:0;box-shadow:0 3px 12px #11203912;overflow-wrap:anywhere}
+.cg-site-campaign-card .cg-site-eyebrow{align-self:flex-start;border-radius:999px;padding:.2rem .65rem;background:#e8f5eb;color:#194a3a;margin:0}
+.cg-site-campaign-card h3{font-family:Georgia,"Times New Roman",serif;color:#112039;font-size:clamp(1.25rem,2vw,1.75rem);margin:0}
+.cg-site-campaign-image{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:.65rem}
+.cg-site-campaign-card small{color:#52657a;line-height:1.5}
+.cg-site-campaign-actions{margin-top:auto;display:flex;flex-wrap:wrap;gap:.6rem;padding-top:.75rem;border-top:1px solid #e5ebee}
+.cg-site-campaign-actions a{display:inline-flex;align-items:center;justify-content:center;text-align:center;min-height:44px;flex:1 1 10rem;max-width:100%;padding:.55rem .85rem;border:1px solid #194a3a;border-radius:.65rem;text-decoration:none;color:#194a3a;font-weight:750}
+.cg-site-campaign-actions a[href^="/donate?"]{background:#194a3a;color:white}
+.cg-site-campaign-actions a:focus-visible{outline:3px solid #194a3a;outline-offset:3px}
