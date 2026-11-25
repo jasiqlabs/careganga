@@ -19,7 +19,10 @@ import {
   IconClose,
   IconSearch,
   IconSend,
-  IconShieldCheck
+  IconShieldCheck,
+  IconMegaphone,
+  IconFileText,
+  IconRefresh
 } from "../dashboard/dashboard-icons";
 
 type Channel = "IN_APP" | "EMAIL" | "SMS";
@@ -288,12 +291,13 @@ export function FoundationNoticeAdminScreen({
           <Pressable
             accessibilityRole="tab"
             onPress={() => setActiveTab("HISTORY")}
-            style={[styles.tabButton, activeTab === "HISTORY" && styles.tabButtonActive]}
+            style={[styles.tabButton, activeTab === "HISTORY" && styles.tabButtonActive, { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }]}
           >
+            <IconMegaphone size={15} color={activeTab === "HISTORY" ? "#4F46E5" : "#64748B"} />
             <Text
               style={[styles.tabButtonText, activeTab === "HISTORY" && styles.tabButtonTextActive]}
             >
-              📢 Notice Library ({notices.length})
+              Notice Library ({notices.length})
             </Text>
           </Pressable>
 
@@ -301,12 +305,13 @@ export function FoundationNoticeAdminScreen({
             <Pressable
               accessibilityRole="tab"
               onPress={() => setActiveTab("COMPOSE")}
-              style={[styles.tabButton, activeTab === "COMPOSE" && styles.tabButtonActive]}
+              style={[styles.tabButton, activeTab === "COMPOSE" && styles.tabButtonActive, { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }]}
             >
+              <IconFileText size={15} color={activeTab === "COMPOSE" ? "#4F46E5" : "#64748B"} />
               <Text
                 style={[styles.tabButtonText, activeTab === "COMPOSE" && styles.tabButtonTextActive]}
               >
-                ✍️ Compose Broadcast
+                Compose Broadcast
               </Text>
             </Pressable>
           )}
@@ -335,11 +340,12 @@ export function FoundationNoticeAdminScreen({
                   <Text style={styles.pillActionText}>52 Templates</Text>
                 </Pressable>
                 <Pressable
-                  style={styles.pillActionBtn}
+                  style={[styles.pillActionBtn, { flexDirection: "row", alignItems: "center", gap: 4 }]}
                   disabled={loading}
                   onPress={() => void load()}
                 >
-                  <Text style={styles.pillActionText}>↻ Refresh</Text>
+                  <IconRefresh size={12} color="#475569" />
+                  <Text style={styles.pillActionText}>Refresh</Text>
                 </Pressable>
               </View>
             </View>
@@ -496,7 +502,7 @@ export function FoundationNoticeAdminScreen({
             <Text style={styles.fieldLabel}>Dispatch Channels</Text>
             <View style={styles.channelsSelectRow}>
               <View style={[styles.channelSelectPill, styles.channelSelectPillActive]}>
-                <Text style={styles.channelSelectTextActive}>✓ In-App Inbox (Required)</Text>
+                <Text style={styles.channelSelectTextActive}>In-App Inbox (Required)</Text>
               </View>
 
               <Pressable
@@ -504,7 +510,7 @@ export function FoundationNoticeAdminScreen({
                 style={[styles.channelSelectPill, email && styles.channelSelectPillActive]}
               >
                 <Text style={email ? styles.channelSelectTextActive : styles.channelSelectText}>
-                  {email ? "✓" : "+"} Email Dispatch
+                  {email ? "Email Dispatch (Active)" : "Email Dispatch"}
                 </Text>
               </Pressable>
 
@@ -513,7 +519,7 @@ export function FoundationNoticeAdminScreen({
                 style={[styles.channelSelectPill, sms && styles.channelSelectPillActive]}
               >
                 <Text style={sms ? styles.channelSelectTextActive : styles.channelSelectText}>
-                  {sms ? "✓" : "+"} SMS Dispatch
+                  {sms ? "SMS Dispatch (Active)" : "SMS Dispatch"}
                 </Text>
               </Pressable>
             </View>

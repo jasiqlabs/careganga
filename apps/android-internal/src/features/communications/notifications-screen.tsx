@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,35 +10,74 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Crypto from "expo-crypto";
 import { identityRequest } from "../identity-access/http-client";
+import { NativeCustomDropdown } from "../../shared/native-custom-dropdown";
 import {
   IconBell,
   IconClose,
+  IconFileText,
   IconMail,
+  IconSearch,
+  IconSend,
   IconShieldCheck,
-  IconSend
+  IconSliders,
+  IconMegaphone,
+  IconCalendar,
+  IconRefresh,
+  IconInbox,
+  IconPlusCircle,
+  IconCheckCircle,
+  IconXCircle,
+  IconBarChart2,
+  IconCheck,
+  IconUsers
 } from "../dashboard/dashboard-icons";
 
-type Notification = {
+type Channel = "IN_APP" | "EMAIL" | "SMS";
+type Option = { value: string; label: string };
+
+type Notice = {
+  noticeRef: string;
+  title: string;
+  body: string;
+  state: string;
+  revision: number;
+  audienceCount: number;
+  priority: string;
+  purpose: string;
+  channels: Channel[];
+  audienceKind: string;
+  targetHref: string | null;
+  expiresAt: string;
+  scheduledAt: string | null;
+  createdAt: string;
+};
+
+type InboxItem = {
   notificationRef: string;
   title: string;
   body: string;
-  channel: string;
+  channel: Channel;
   status: string;
   receivedAt: string;
   read: boolean;
 };
 
-type Preference = {
-  channel: "SMS" | "EMAIL";
-  purpose: "TRANSACTIONAL" | "PROMOTIONAL";
-  opted_in: boolean;
-  revision: number;
-};
+type Provider = { channel: string; state: string; configured: boolean };
 
-type Preferences = {
-  available: { sms: boolean; email: boolean };
-  preferences: Preference[];
+type ClientEmailReference = {
+  code: string;
+  title: string;
+  owner: string;
+  trigger: string;
+  recipient: string;
+  subject: string;
+  body: string;
+  attachmentRule: string;
+  placeholders: string[];
+  state: string;
+  deliveryEnabled: false;
 };
 
 type MobileProof = {
@@ -54,12 +94,33 @@ type Props = {
   onExpired: () => void;
 };
 
-async function mobile<T>(
-  token: string,
-  path: string,
-  method: "GET" | "POST" = "GET",
-  body?: object
-): Promise<T> {
+async function api<T>(token: string, path: string, method: "GET" | "POST" = "GET", body?: object) {
+  let response: Response;
+  try {
+    response = await identityRequest("/api/communications/" + path, {
+      method,
+      headers: {
+        Authorization: "Bearer " + token,
+        ...(body ? { "Content-Type": "application/json" } : {})
+      },
+      ...(body ? { body: JSON.stringify(body) } : {})
+    });
+  } catch {
+    throw Error(method === "POST" ? "UNKNOWN" : "OFFLINE");
+  }
+  if (response.status === 401) throw Error("EXPIRED");
+  if (response.status === 403) throw Error("DENIED");
+  if (response.status === 409) throw Error("CONFLICT");
+  if (response.status === 400) throw Error("INVALID");
+  if (!response.ok) throw Error(method === "POST" ? "UNKNOWN" : "OFFLINE");
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw Error("UNKNOWN");
+  }
+}
+
+async function mobile<T>(token: string, path: string, method: "GET" | "POST" = "GET", body?: object): Promise<T> {
   let r: Response;
   try {
     r = await identityRequest("/api/identity/mobile/" + path, {
@@ -83,377 +144,939 @@ async function mobile<T>(
   }
 }
 
-async function api<T>(token: string, path: string, method: "GET" | "POST" = "GET", body?: object) {
-  let response: Response;
-  try {
-    response = await identityRequest("/api/communications/" + path, {
-      method,
-      headers: {
-        Authorization: "Bearer " + token,
-        ...(body ? { "Content-Type": "application/json" } : {})
-      },
-      ...(body ? { body: JSON.stringify(body) } : {})
-    });
-  } catch {
-    throw Error(method === "POST" ? "UNKNOWN" : "OFFLINE");
-  }
-  if (response.status === 401) throw Error("EXPIRED");
-  if (response.status === 403) throw Error("DENIED");
-  if (response.status === 409) throw Error("STALE");
-  if (!response.ok) throw Error(method === "POST" ? "UNKNOWN" : "OFFLINE");
-  try {
-    return (await response.json()) as T;
-  } catch {
-    throw Error("UNKNOWN");
-  }
-}
-
 function explain(e: unknown) {
   const code = e instanceof Error ? e.message : "UNKNOWN";
   return code === "EXPIRED"
-    ? "Session expired. Please sign in again."
+    ? "The Foundation session expired."
     : code === "DENIED"
-    ? "Your current role does not allow this notice."
-    : code === "STALE"
-    ? "The preference changed. Refresh before saving."
-    : "The notification result could not be confirmed. Refresh its original state.";
+    ? "Your current role does not permit this operation."
+    : code === "CONFLICT"
+    ? "This record changed. Refresh first."
+    : code === "INVALID"
+    ? "Check entered information."
+    : "Action not confirmed. Check the original request before retry.";
 }
 
 export function NotificationsScreen({ token, onExit, onExpired }: Props) {
-  const [activeTab, setActiveTab] = useState<"INBOX" | "PREFERENCES">("INBOX");
-  const [rows, setRows] = useState<Notification[]>([]);
-  const [prefs, setPrefs] = useState<Preferences | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState("");
+  // Navigation Tabs: NOTICES vs INBOX vs EMAIL_TEMPLATES
+  const [activeTab, setActiveTab] = useState<"NOTICES" | "INBOX" | "EMAIL_TEMPLATES">("NOTICES");
+
+  // Core Data State
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [inbox, setInbox] = useState<InboxItem[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [emailReferences, setEmailReferences] = useState<ClientEmailReference[]>([]);
   const [mobileProof, setMobileProof] = useState<MobileProof | null>(null);
+
+  // Loading & Alerts
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [alertMsg, setAlertMsg] = useState("");
+
+  // Search & Filter State for Notices
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [appliedKeyword, setAppliedKeyword] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [priorityFilter, setPriorityFilter] = useState("ALL");
+  const [purposeFilter, setPurposeFilter] = useState("ALL");
+  const [audienceFilter, setAudienceFilter] = useState("ALL");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Sub-status Filter Pill
+  const [subStatusPill, setSubStatusPill] = useState("ALL");
+
+  // Compose Modal State
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newBody, setNewBody] = useState("");
+  const [newPriority, setNewPriority] = useState("NORMAL");
+  const [newPurpose, setNewPurpose] = useState("TRANSACTIONAL");
+  const [newAudienceKind, setNewAudienceKind] = useState<"ALL_ACTIVE" | "ROLE" | "INDIVIDUAL">("ALL_ACTIVE");
+  const [newEmail, setNewEmail] = useState(false);
+  const [newSms, setNewSms] = useState(false);
+  const [newExpiry, setNewExpiry] = useState("");
+
+  // Password Authorization Modal (for Approve, Cancel, Dispatch)
+  const [reviewAction, setReviewAction] = useState<{
+    type: "APPROVE" | "CANCEL";
+    ref: string;
+    revision: number;
+    title: string;
+  } | null>(null);
+  const [adminPassword, setAdminPassword] = useState("");
+
+  // Delivery Telemetry Modal
+  const [telemetryRef, setTelemetryRef] = useState<string | null>(null);
+  const [telemetryCounts, setTelemetryCounts] = useState<Array<{ channel: string; status: string; count: number }>>([]);
+
+  // Email Templates Search
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<ClientEmailReference | null>(null);
+
+  // Mobile Proof Code
   const [mobileCode, setMobileCode] = useState("");
   const [mobileBusy, setMobileBusy] = useState(false);
 
-  const refresh = useCallback(async () => {
+  // Reload all data
+  const loadData = useCallback(async () => {
     setLoading(true);
-    setNotice("");
+    setAlertMsg("");
     try {
-      const [messages, settings] = await Promise.all([
-        api<{ items: Notification[] }>(token, "inbox?limit=30"),
-        api<Preferences>(token, "preferences")
+      const [noticesRes, inboxRes, providersRes] = await Promise.all([
+        api<{ notices: Notice[] }>(token, "notices?limit=30").catch(() => ({ notices: [] })),
+        api<{ items: InboxItem[] }>(token, "inbox?limit=30").catch(() => ({ items: [] })),
+        api<{ providers: Provider[] }>(token, "providers").catch(() => ({ providers: [] }))
       ]);
-      if (
-        !Array.isArray(messages.items) ||
-        messages.items.length > 30 ||
-        !settings ||
-        !Array.isArray(settings.preferences)
-      )
-        throw Error("OFFLINE");
-      setRows(messages.items);
-      setPrefs(settings);
+
+      setNotices(noticesRes.notices ?? []);
+      setInbox(inboxRes.items ?? []);
+      setProviders(providersRes.providers ?? []);
 
       try {
         const proof = await mobile<MobileProof>(token, "status");
-        if (
-          typeof proof.verified !== "boolean" ||
-          typeof proof.hasNumber !== "boolean" ||
-          typeof proof.providerConfigured !== "boolean"
-        )
-          throw Error("OFFLINE");
         setMobileProof(proof);
-      } catch (e) {
+      } catch {
         setMobileProof(null);
-        if (e instanceof Error && e.message === "EXPIRED") onExpired();
       }
     } catch (e) {
-      setRows([]);
-      setPrefs(null);
-      setNotice(explain(e));
       if (e instanceof Error && e.message === "EXPIRED") onExpired();
+      else setAlertMsg(explain(e));
     } finally {
       setLoading(false);
     }
   }, [token, onExpired]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    void loadData();
+  }, [loadData]);
 
-  async function markAsRead(id: string) {
+  const loadTemplates = async () => {
+    try {
+      const d = await api<{ templates: ClientEmailReference[] }>(token, "templates/client-references");
+      setEmailReferences(d.templates ?? []);
+    } catch {
+      setEmailReferences([]);
+    }
+  };
+
+  const loadTelemetry = async (ref: string) => {
+    setTelemetryRef(ref);
+    try {
+      const d = await api<{ counts: Array<{ channel: string; status: string; count: number }> }>(
+        token,
+        `notices/${encodeURIComponent(ref)}/deliveries`
+      );
+      setTelemetryCounts(d.counts ?? []);
+    } catch {
+      setTelemetryCounts([]);
+    }
+  };
+
+  const markInboxRead = async (id: string) => {
     if (busy) return;
     setBusy(true);
-    setNotice("");
     try {
       await api(token, "inbox/" + encodeURIComponent(id) + "/read", "POST");
-      await refresh();
+      await loadData();
     } catch (e) {
-      setNotice(explain(e));
-      if (e instanceof Error && e.message === "EXPIRED") onExpired();
+      setAlertMsg(explain(e));
     } finally {
       setBusy(false);
     }
-  }
+  };
 
-  async function togglePreference(
-    channel: "EMAIL" | "SMS",
-    purpose: "TRANSACTIONAL" | "PROMOTIONAL"
-  ) {
-    if (!prefs || busy) return;
-    const eligible = channel === "EMAIL" ? prefs.available.email : prefs.available.sms;
-    const current = prefs.preferences.find(
-      (x) => x.channel === channel && x.purpose === purpose
-    );
-    if (!eligible || !current) return;
+  const submitNoticeDraft = async () => {
+    if (!newTitle.trim() || !newBody.trim() || busy) return;
     setBusy(true);
-    setNotice("");
+    setAlertMsg("");
     try {
-      await api(token, "preferences", "POST", {
-        channel,
-        purpose,
-        optedIn: !current.opted_in,
-        expectedRevision: current.revision
+      const channels: Channel[] = ["IN_APP"];
+      if (newEmail) channels.push("EMAIL");
+      if (newSms) channels.push("SMS");
+
+      const expiry =
+        newExpiry.trim() ||
+        new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().split("T")[0];
+
+      await api(token, "notices", "POST", {
+        title: newTitle.trim(),
+        body: newBody.trim(),
+        priority: newPriority,
+        purpose: newPurpose,
+        channels,
+        audienceKind: newAudienceKind,
+        expiresAt: expiry,
+        requestKey: Crypto.randomUUID()
       });
-      await refresh();
+
+      setComposeOpen(false);
+      setNewTitle("");
+      setNewBody("");
+      setNewExpiry("");
+      await loadData();
     } catch (e) {
-      setNotice(explain(e));
-      if (e instanceof Error && e.message === "EXPIRED") onExpired();
+      setAlertMsg(explain(e));
     } finally {
       setBusy(false);
     }
-  }
+  };
 
-  async function startMobileProof() {
-    if (mobileBusy || !mobileProof?.providerConfigured) return;
-    setMobileBusy(true);
-    setNotice("");
+  const executeReviewDecision = async () => {
+    if (!reviewAction || !adminPassword.trim() || busy) return;
+    setBusy(true);
+    setAlertMsg("");
     try {
-      await mobile(token, "start", "POST");
-      setNotice("SMS verification code requested to recorded phone.");
+      await api(
+        token,
+        `notices/${encodeURIComponent(reviewAction.ref)}/decision`,
+        "POST",
+        {
+          action: reviewAction.type,
+          expectedRevision: reviewAction.revision,
+          currentPassword: adminPassword.trim(),
+          requestKey: Crypto.randomUUID()
+        }
+      );
+
+      setReviewAction(null);
+      setAdminPassword("");
+      await loadData();
     } catch (e) {
-      setNotice(explain(e));
+      setAlertMsg(explain(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startPhoneProof = async () => {
+    if (busy || mobileBusy) return;
+    setMobileBusy(true);
+    setAlertMsg("");
+    try {
+      await mobile(token, "verify/start", "POST");
+      setAlertMsg("Verification code requested for recorded contact.");
+    } catch (e) {
+      setAlertMsg(explain(e));
     } finally {
       setMobileBusy(false);
     }
-  }
+  };
 
-  async function confirmMobileProof() {
-    if (mobileBusy || !/^\d{4,10}$/.test(mobileCode)) return;
+  const confirmPhoneProof = async () => {
+    if (busy || mobileBusy || !/^\d{4,10}$/.test(mobileCode)) return;
     setMobileBusy(true);
-    setNotice("");
+    setAlertMsg("");
     try {
-      await mobile(token, "confirm", "POST", { code: mobileCode });
+      await mobile(token, "verify/confirm", "POST", { code: mobileCode });
       setMobileCode("");
-      await refresh();
+      await loadData();
+      setAlertMsg("Mobile contact successfully verified.");
     } catch (e) {
-      setNotice(explain(e));
+      setAlertMsg(explain(e));
     } finally {
       setMobileBusy(false);
     }
-  }
+  };
 
-  const unreadCount = rows.filter((r) => !r.read).length;
+  // Real KPI calculations matching Web
+  const totalNotifications = notices.length;
+  const activeNotices = notices.filter((n) => n.state === "APPROVED" || n.state === "ACTIVE").length;
+  const scheduledNotices = notices.filter((n) => n.state === "SCHEDULED").length;
+  const draftNotices = notices.filter((n) => n.state === "DRAFT").length;
+  const expiredNotices = notices.filter((n) => n.state === "EXPIRED").length;
+  const cancelledNotices = notices.filter((n) => n.state === "CANCELLED").length;
+  const inAppDelivered = inbox.length;
+  const unreadInboxCount = inbox.filter((i) => !i.read).length;
+  const recipientsReached = useMemo(() => {
+    return notices.reduce((acc, n) => acc + (n.audienceCount || 0), 0);
+  }, [notices]);
+
+  // Notice Filtering Logic
+  const filteredNotices = notices.filter((n) => {
+    if (subStatusPill === "ACTIVE" && n.state !== "APPROVED" && n.state !== "ACTIVE") return false;
+    if (subStatusPill === "DRAFT" && n.state !== "DRAFT") return false;
+    if (subStatusPill === "SCHEDULED" && n.state !== "SCHEDULED") return false;
+    if (subStatusPill === "EXPIRED" && n.state !== "EXPIRED") return false;
+    if (subStatusPill === "CANCELLED" && n.state !== "CANCELLED") return false;
+
+    if (statusFilter !== "ALL" && n.state !== statusFilter) return false;
+    if (priorityFilter !== "ALL" && n.priority !== priorityFilter) return false;
+    if (purposeFilter !== "ALL" && n.purpose !== purposeFilter) return false;
+    if (audienceFilter !== "ALL" && n.audienceKind !== audienceFilter) return false;
+
+    if (appliedKeyword.trim()) {
+      const q = appliedKeyword.toLowerCase();
+      const match =
+        n.title.toLowerCase().includes(q) ||
+        n.body.toLowerCase().includes(q) ||
+        n.state.toLowerCase().includes(q);
+      if (!match) return false;
+    }
+
+    return true;
+  });
 
   return (
-    <SafeAreaView style={styles.page} edges={["left", "right"]}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-        {/* Top Header */}
+    <SafeAreaView style={styles.page} edges={["top", "left", "right"]}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {/* Top Header Row with Actions */}
         <View style={styles.headerRow}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onExit}
-            disabled={busy}
-            style={styles.backBtn}
-          >
-            <Text style={styles.backBtnText}>← Back</Text>
+          <Pressable accessibilityRole="button" onPress={onExit} style={styles.backBtn}>
+            <Text style={styles.backBtnText}>Back</Text>
           </Pressable>
 
           <View style={styles.headerInfo}>
             <View style={styles.titleIconRow}>
-              <View style={styles.titleIconBox}>
-                <IconBell size={18} color="#D97706" />
+              <Text style={styles.headerTitle}>Notifications</Text>
+              <View style={styles.verifiedCheckBadge}>
+                <IconCheck size={12} color="#2563EB" />
               </View>
-              <Text style={styles.headerTitle}>Notices & Notifications</Text>
             </View>
             <Text style={styles.headerSubtitle}>
-              Foundation alerts, system notices & recipient inbox
+              Complete Command Center & Control Panel
             </Text>
           </View>
-        </View>
 
-        {/* Live KPI Counters */}
-        <View style={styles.kpiRow}>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiValue}>{rows.length}</Text>
-            <Text style={styles.kpiLabel}>Total Received</Text>
-          </View>
-
-          <View style={styles.kpiCard}>
-            <Text style={[styles.kpiValue, { color: unreadCount > 0 ? "#DC2626" : "#16A34A" }]}>
-              {unreadCount}
-            </Text>
-            <Text style={styles.kpiLabel}>Unread Updates</Text>
-          </View>
-
-          <View style={styles.kpiCard}>
-            <Text
-              style={[
-                styles.kpiValue,
-                { color: mobileProof?.verified ? "#16A34A" : "#64748B", fontSize: 14 }
-              ]}
+          <View style={styles.headerActionsRow}>
+            <Pressable
+              accessibilityRole="button"
+              style={styles.headerBtnPrimary}
+              onPress={() => setComposeOpen(true)}
             >
-              {mobileProof?.verified ? "Verified" : "Pending"}
-            </Text>
-            <Text style={styles.kpiLabel}>Mobile Proof</Text>
+              <IconPlusCircle size={14} color="#FFFFFF" />
+              <Text style={styles.headerBtnPrimaryText}>Draft Notice</Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              style={styles.headerBtnSecondary}
+              disabled={loading}
+              onPress={() => void loadData()}
+            >
+              <IconRefresh size={14} color="#334155" />
+              <Text style={styles.headerBtnSecondaryText}>Refresh</Text>
+            </Pressable>
           </View>
         </View>
 
-        {/* Segmented Tab Switcher */}
+        {/* 6 KPI Metric Cards matching Web Screenshot 1 & 2 */}
+        <View style={styles.kpiGrid}>
+          {/* 1. Total Notifications */}
+          <View style={styles.kpiCard}>
+            <View style={[styles.kpiIconWrap, { backgroundColor: "#DBEAFE" }]}>
+              <IconSend size={15} color="#2563EB" />
+            </View>
+            <View style={styles.kpiInfo}>
+              <Text style={styles.kpiLabel}>Total Notifications</Text>
+              <Text style={styles.kpiValue}>{totalNotifications}</Text>
+              <Text style={styles.kpiSub}>All time</Text>
+            </View>
+          </View>
+
+          {/* 2. Active Notices */}
+          <View style={styles.kpiCard}>
+            <View style={[styles.kpiIconWrap, { backgroundColor: "#DCFCE7" }]}>
+              <IconMegaphone size={15} color="#16A34A" />
+            </View>
+            <View style={styles.kpiInfo}>
+              <Text style={styles.kpiLabel}>Active Notices</Text>
+              <Text style={[styles.kpiValue, { color: "#16A34A" }]}>{activeNotices}</Text>
+              <Text style={styles.kpiSub}>Currently live</Text>
+            </View>
+          </View>
+
+          {/* 3. Recipients Reached */}
+          <View style={styles.kpiCard}>
+            <View style={[styles.kpiIconWrap, { backgroundColor: "#FEF3C7" }]}>
+              <IconUsers size={15} color="#D97706" />
+            </View>
+            <View style={styles.kpiInfo}>
+              <Text style={styles.kpiLabel}>Recipients Reached</Text>
+              <Text style={[styles.kpiValue, { color: "#D97706" }]}>{recipientsReached}</Text>
+              <Text style={styles.kpiSub}>Across channels</Text>
+            </View>
+          </View>
+
+          {/* 4. In-App Delivered */}
+          <View style={styles.kpiCard}>
+            <View style={[styles.kpiIconWrap, { backgroundColor: "#F3E8FF" }]}>
+              <IconMail size={15} color="#9333EA" />
+            </View>
+            <View style={styles.kpiInfo}>
+              <Text style={styles.kpiLabel}>In-App Delivered</Text>
+              <Text style={[styles.kpiValue, { color: "#9333EA" }]}>{inAppDelivered}</Text>
+              <Text style={styles.kpiSub}>Personal inbox</Text>
+            </View>
+          </View>
+
+          {/* 5. Draft Notices */}
+          <View style={styles.kpiCard}>
+            <View style={[styles.kpiIconWrap, { backgroundColor: "#FEE2E2" }]}>
+              <IconFileText size={15} color="#DC2626" />
+            </View>
+            <View style={styles.kpiInfo}>
+              <Text style={styles.kpiLabel}>Draft Notices</Text>
+              <Text style={[styles.kpiValue, { color: "#DC2626" }]}>{draftNotices}</Text>
+              <Text style={styles.kpiSub}>Pending review</Text>
+            </View>
+          </View>
+
+          {/* 6. Scheduled */}
+          <View style={styles.kpiCard}>
+            <View style={[styles.kpiIconWrap, { backgroundColor: "#CCFBF1" }]}>
+              <IconCalendar size={15} color="#0D9488" />
+            </View>
+            <View style={styles.kpiInfo}>
+              <Text style={styles.kpiLabel}>Scheduled</Text>
+              <Text style={[styles.kpiValue, { color: "#0D9488" }]}>{scheduledNotices}</Text>
+              <Text style={styles.kpiSub}>Queued to go out</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Main Workspace Navigation Tabs with Lucide Icons (NO EMOJIS!) */}
         <View style={styles.tabBar}>
+          <Pressable
+            accessibilityRole="tab"
+            onPress={() => setActiveTab("NOTICES")}
+            style={[styles.tabButton, activeTab === "NOTICES" && styles.tabButtonActive]}
+          >
+            <IconMegaphone size={16} color={activeTab === "NOTICES" ? "#4F46E5" : "#64748B"} />
+            <Text style={[styles.tabButtonText, activeTab === "NOTICES" && styles.tabButtonTextActive]}>
+              Notices & Broadcasts
+            </Text>
+          </Pressable>
+
           <Pressable
             accessibilityRole="tab"
             onPress={() => setActiveTab("INBOX")}
             style={[styles.tabButton, activeTab === "INBOX" && styles.tabButtonActive]}
           >
-            <Text
-              style={[styles.tabButtonText, activeTab === "INBOX" && styles.tabButtonTextActive]}
-            >
-              📥 My Inbox ({rows.length})
+            <IconInbox size={16} color={activeTab === "INBOX" ? "#4F46E5" : "#64748B"} />
+            <Text style={[styles.tabButtonText, activeTab === "INBOX" && styles.tabButtonTextActive]}>
+              My Notifications ({unreadInboxCount > 0 ? unreadInboxCount : inbox.length})
             </Text>
           </Pressable>
 
           <Pressable
             accessibilityRole="tab"
-            onPress={() => setActiveTab("PREFERENCES")}
-            style={[styles.tabButton, activeTab === "PREFERENCES" && styles.tabButtonActive]}
+            onPress={() => {
+              setActiveTab("EMAIL_TEMPLATES");
+              void loadTemplates();
+            }}
+            style={[styles.tabButton, activeTab === "EMAIL_TEMPLATES" && styles.tabButtonActive]}
           >
+            <IconMail size={16} color={activeTab === "EMAIL_TEMPLATES" ? "#4F46E5" : "#64748B"} />
             <Text
               style={[
                 styles.tabButtonText,
-                activeTab === "PREFERENCES" && styles.tabButtonTextActive
+                activeTab === "EMAIL_TEMPLATES" && styles.tabButtonTextActive
               ]}
             >
-              📱 Mobile & Preferences
+              Email Templates (52)
             </Text>
           </Pressable>
         </View>
 
-        {/* Alert Notification Message */}
-        {!!notice && (
+        {/* External Channel Readiness Banner */}
+        <View style={styles.readinessBanner}>
+          <View style={styles.readinessTitleRow}>
+            <Text style={styles.readinessLabel}>External Channel Readiness:</Text>
+            <View style={styles.readinessPillRow}>
+              <View style={styles.readinessPill}>
+                <Text style={styles.readinessPillText}>EMAIL: SIMULATED / OFF</Text>
+              </View>
+              <View style={styles.readinessPill}>
+                <Text style={styles.readinessPillText}>SMS: SIMULATED / OFF</Text>
+              </View>
+            </View>
+          </View>
+          <Text style={styles.readinessNote}>
+            In-app notifications deliver independently of external SMS or Email provider availability.
+          </Text>
+        </View>
+
+        {/* Alert Banner */}
+        {!!alertMsg && (
           <View style={styles.alertBanner}>
-            <Text style={styles.alertText}>{notice}</Text>
+            <Text style={styles.alertText}>{alertMsg}</Text>
           </View>
         )}
 
-        {/* TAB 1: INBOX NOTIFICATIONS */}
-        {activeTab === "INBOX" && (
-          <View style={styles.card}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardHeading}>My Notifications ({rows.length})</Text>
+        {/* ============================================================== */}
+        {/* TAB 1: NOTICES & BROADCASTS                                    */}
+        {/* ============================================================== */}
+        {activeTab === "NOTICES" && (
+          <>
+            {/* Advanced Filters Card matching Web */}
+            <View style={styles.filterCard}>
+              <View style={styles.filterCardHeader}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <IconSliders size={16} color="#4F46E5" />
+                  <Text style={styles.filterCardTitle}>Advanced Filters</Text>
+                </View>
+
+                <Pressable
+                  style={[styles.filterToggleBtn, showAdvancedFilters && styles.filterToggleActive]}
+                  onPress={() => setShowAdvancedFilters((v) => !v)}
+                >
+                  <Text style={styles.filterToggleText}>
+                    {showAdvancedFilters ? "Hide Dropdowns" : "Show Dropdowns"}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* Search Row */}
+              <View style={styles.searchRow}>
+                <View style={styles.searchInputContainer}>
+                  <IconSearch size={15} color="#94A3B8" />
+                  <TextInput
+                    placeholder="Search title, message, status..."
+                    placeholderTextColor="#94A3B8"
+                    value={searchKeyword}
+                    onChangeText={setSearchKeyword}
+                    onSubmitEditing={() => setAppliedKeyword(searchKeyword)}
+                    style={styles.searchInput}
+                  />
+                  {!!searchKeyword && (
+                    <Pressable
+                      onPress={() => {
+                        setSearchKeyword("");
+                        setAppliedKeyword("");
+                      }}
+                      style={styles.clearSearchBtn}
+                    >
+                      <IconClose size={14} color="#94A3B8" />
+                    </Pressable>
+                  )}
+                </View>
+
+                <Pressable
+                  style={styles.searchSubmitBtn}
+                  onPress={() => setAppliedKeyword(searchKeyword)}
+                >
+                  <Text style={styles.searchSubmitText}>Apply Filters</Text>
+                </Pressable>
+              </View>
+
+              {/* Collapsible Dropdown Filters */}
+              {showAdvancedFilters && (
+                <View style={styles.advancedFiltersArea}>
+                  <NativeCustomDropdown
+                    label="Status"
+                    options={[
+                      { value: "ALL", label: "All Statuses" },
+                      { value: "APPROVED", label: "Active Notices", badge: "Live", badgeColor: "#16A34A" },
+                      { value: "SCHEDULED", label: "Scheduled", badge: "Queued", badgeColor: "#0D9488" },
+                      { value: "DRAFT", label: "Drafts Only", badge: "Review", badgeColor: "#D97706" },
+                      { value: "EXPIRED", label: "Expired", badge: "Done", badgeColor: "#64748B" },
+                      { value: "CANCELLED", label: "Cancelled", badge: "Archived", badgeColor: "#DC2626" }
+                    ]}
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                  />
+
+                  <NativeCustomDropdown
+                    label="Priority"
+                    options={[
+                      { value: "ALL", label: "All Priorities" },
+                      { value: "NORMAL", label: "General (Normal)" },
+                      { value: "IMPORTANT", label: "Important", badge: "High", badgeColor: "#DC2626" }
+                    ]}
+                    value={priorityFilter}
+                    onChange={setPriorityFilter}
+                  />
+
+                  <NativeCustomDropdown
+                    label="Purpose"
+                    options={[
+                      { value: "ALL", label: "All Purposes" },
+                      { value: "TRANSACTIONAL", label: "Service (Transactional)" },
+                      { value: "PROMOTIONAL", label: "Campaign (Promotional)" }
+                    ]}
+                    value={purposeFilter}
+                    onChange={setPurposeFilter}
+                  />
+
+                  <NativeCustomDropdown
+                    label="Target Audience"
+                    options={[
+                      { value: "ALL", label: "All User Types / Audiences" },
+                      { value: "ALL_ACTIVE", label: "All Active Accounts" },
+                      { value: "ROLE", label: "Specific Role" },
+                      { value: "INDIVIDUAL", label: "Individual Account" }
+                    ]}
+                    value={audienceFilter}
+                    onChange={setAudienceFilter}
+                  />
+
+                  <Pressable
+                    style={styles.resetFiltersBtn}
+                    onPress={() => {
+                      setSearchKeyword("");
+                      setAppliedKeyword("");
+                      setStatusFilter("ALL");
+                      setPriorityFilter("ALL");
+                      setPurposeFilter("ALL");
+                      setAudienceFilter("ALL");
+                      setSubStatusPill("ALL");
+                    }}
+                  >
+                    <Text style={styles.resetFiltersText}>Reset</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+
+            {/* Quick Actions 6-Grid Card matching Web Screenshot 1 */}
+            <View style={styles.quickActionsCard}>
+              <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+              <View style={styles.quickActionsGrid}>
+                {/* 1. Create Notice */}
+                <Pressable
+                  style={styles.qaBtn}
+                  onPress={() => setComposeOpen(true)}
+                >
+                  <View style={[styles.qaIconWrap, { backgroundColor: "#EEF2FF", borderColor: "#C7D2FE" }]}>
+                    <IconPlusCircle size={16} color="#4F46E5" />
+                  </View>
+                  <Text style={styles.qaLabel}>Create Notice</Text>
+                </Pressable>
+
+                {/* 2. Send Notice */}
+                <Pressable
+                  style={styles.qaBtn}
+                  onPress={() => setComposeOpen(true)}
+                >
+                  <View style={[styles.qaIconWrap, { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }]}>
+                    <IconSend size={16} color="#2563EB" />
+                  </View>
+                  <Text style={styles.qaLabel}>Send Notice</Text>
+                </Pressable>
+
+                {/* 3. Schedule */}
+                <Pressable
+                  style={styles.qaBtn}
+                  onPress={() => setComposeOpen(true)}
+                >
+                  <View style={[styles.qaIconWrap, { backgroundColor: "#F0FDFA", borderColor: "#99F6E4" }]}>
+                    <IconCalendar size={16} color="#0D9488" />
+                  </View>
+                  <Text style={styles.qaLabel}>Schedule</Text>
+                </Pressable>
+
+                {/* 4. Templates */}
+                <Pressable
+                  style={styles.qaBtn}
+                  onPress={() => {
+                    setActiveTab("EMAIL_TEMPLATES");
+                    void loadTemplates();
+                  }}
+                >
+                  <View style={[styles.qaIconWrap, { backgroundColor: "#FAF5FF", borderColor: "#E9D5FF" }]}>
+                    <IconFileText size={16} color="#9333EA" />
+                  </View>
+                  <Text style={styles.qaLabel}>Templates</Text>
+                </Pressable>
+
+                {/* 5. Live Notices */}
+                <Pressable
+                  style={styles.qaBtn}
+                  onPress={() => setSubStatusPill("ACTIVE")}
+                >
+                  <View style={[styles.qaIconWrap, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
+                    <IconMegaphone size={16} color="#16A34A" />
+                  </View>
+                  <Text style={styles.qaLabel}>Live Notices</Text>
+                </Pressable>
+
+                {/* 6. Sync Data */}
+                <Pressable
+                  style={styles.qaBtn}
+                  onPress={() => void loadData()}
+                >
+                  <View style={[styles.qaIconWrap, { backgroundColor: "#FEFCE8", borderColor: "#FEF08A" }]}>
+                    <IconRefresh size={16} color="#CA8A04" />
+                  </View>
+                  <Text style={styles.qaLabel}>Sync Data</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Sub-status Filter Pills Header matching Web Screenshot 1 & 2 */}
+            <View style={styles.subFilterBar}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subPillScroll}>
+                {[
+                  { key: "ALL", label: "All Notifications", count: totalNotifications },
+                  { key: "ACTIVE", label: "Active Notices", count: activeNotices },
+                  { key: "SCHEDULED", label: "Scheduled", count: scheduledNotices },
+                  { key: "DRAFT", label: "Drafts", count: draftNotices },
+                  { key: "EXPIRED", label: "Expired", count: expiredNotices },
+                  { key: "CANCELLED", label: "Cancelled", count: cancelledNotices }
+                ].map((item) => (
+                  <Pressable
+                    key={item.key}
+                    onPress={() => setSubStatusPill(item.key)}
+                    style={[styles.subPill, subStatusPill === item.key && styles.subPillActive]}
+                  >
+                    <Text
+                      style={[
+                        styles.subPillText,
+                        subStatusPill === item.key && styles.subPillTextActive
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                    <View
+                      style={[
+                        styles.subPillBadge,
+                        subStatusPill === item.key && styles.subPillBadgeActive
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.subPillBadgeText,
+                          subStatusPill === item.key && styles.subPillBadgeTextActive
+                        ]}
+                      >
+                        {item.count}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </ScrollView>
+
               <Pressable
                 accessibilityRole="button"
-                style={styles.refreshBtn}
-                disabled={loading}
-                onPress={() => void refresh()}
+                style={styles.btnCreateNotice}
+                onPress={() => setComposeOpen(true)}
               >
-                <Text style={styles.refreshBtnText}>↻ Refresh</Text>
+                <IconPlusCircle size={14} color="#FFFFFF" />
+                <Text style={styles.btnCreateNoticeText}>Send Notification</Text>
               </Pressable>
             </View>
 
-            {loading ? (
-              <ActivityIndicator color="#1D4ED8" style={{ paddingVertical: 24 }} />
-            ) : !rows.length ? (
-              <View style={styles.emptyContainer}>
-                <View style={styles.emptyIconBox}>
-                  <IconBell size={32} color="#CBD5E1" />
-                </View>
-                <Text style={styles.emptyTitle}>No notifications</Text>
-                <Text style={styles.emptyText}>Your personal Foundation inbox is completely up to date.</Text>
-              </View>
-            ) : (
-              rows.map((item) => (
-                <View
-                  key={item.notificationRef}
-                  style={[
-                    styles.notificationCard,
-                    !item.read ? styles.notificationUnread : styles.notificationRead
-                  ]}
-                >
-                  <View style={styles.notificationTopRow}>
-                    <View
-                      style={[
-                        styles.channelIconBox,
-                        !item.read ? styles.channelIconUnread : styles.channelIconRead
-                      ]}
-                    >
-                      <IconBell size={16} color={!item.read ? "#15803D" : "#64748B"} />
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.notificationTitle}>{item.title}</Text>
-                      <Text style={styles.notificationMeta}>
-                        {new Date(item.receivedAt).toLocaleDateString()} at{" "}
-                        {new Date(item.receivedAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        })}
-                      </Text>
-                    </View>
-
-                    <View style={styles.channelBadgePill}>
-                      <Text style={styles.channelBadgeText}>{item.channel}</Text>
-                    </View>
-
-                    {!item.read && <View style={styles.unreadDot} />}
-                  </View>
-
-                  <Text style={styles.notificationBody}>{item.body}</Text>
-
-                  {!item.read && (
-                    <View style={styles.notificationActions}>
-                      <Pressable
-                        accessibilityRole="button"
-                        style={styles.markReadBtn}
-                        disabled={busy}
-                        onPress={() => void markAsRead(item.notificationRef)}
-                      >
-                        <Text style={styles.markReadBtnText}>✓ Mark as read</Text>
-                      </Pressable>
-                    </View>
-                  )}
-                </View>
-              ))
-            )}
-          </View>
-        )}
-
-        {/* TAB 2: MOBILE PROOF & DELIVERY PREFERENCES */}
-        {activeTab === "PREFERENCES" && (
-          <>
-            {/* Mobile Contact Verification Card */}
+            {/* Broadcast Notices List / Cards matching Screenshot 2 */}
             <View style={styles.card}>
               <View style={styles.cardHeaderRow}>
-                <Text style={styles.cardHeading}>Verified Mobile Contact</Text>
+                <Text style={styles.cardHeading}>Notice Broadcasts ({filteredNotices.length})</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  style={styles.refreshBtn}
+                  disabled={loading}
+                  onPress={() => void loadData()}
+                >
+                  <IconRefresh size={12} color="#475569" />
+                  <Text style={styles.refreshBtnText}>Refresh</Text>
+                </Pressable>
+              </View>
+
+              {loading ? (
+                <ActivityIndicator color="#4F46E5" style={{ paddingVertical: 24 }} />
+              ) : !filteredNotices.length ? (
+                <View style={styles.emptyContainer}>
+                  <IconBell size={32} color="#CBD5E1" />
+                  <Text style={styles.emptyText}>No broadcast notices match the current filters.</Text>
+                </View>
+              ) : (
+                filteredNotices.map((n) => (
+                  <View key={n.noticeRef} style={styles.noticeTableCard}>
+                    {/* Top Row: Title & Badges */}
+                    <View style={styles.noticeTableTop}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.noticeTableTitle}>{n.title}</Text>
+                        <Text style={styles.noticeTableExpiry}>
+                          Expires: {n.expiresAt ? new Date(n.expiresAt).toLocaleDateString() : "No Expiry"}
+                        </Text>
+                      </View>
+
+                      <View style={styles.badgeRow}>
+                        <View
+                          style={[
+                            styles.priorityBadge,
+                            n.priority === "URGENT" || n.priority === "IMPORTANT"
+                              ? styles.priorityUrgent
+                              : styles.priorityNormal
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.priorityBadgeText,
+                              n.priority === "URGENT" || n.priority === "IMPORTANT"
+                                ? styles.priorityTextUrgent
+                                : styles.priorityTextNormal
+                            ]}
+                          >
+                            {n.priority}
+                          </Text>
+                        </View>
+
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            n.state === "APPROVED" || n.state === "ACTIVE"
+                              ? styles.statusBadgeGreen
+                              : n.state === "DRAFT"
+                              ? styles.statusBadgeAmber
+                              : n.state === "SCHEDULED"
+                              ? styles.statusBadgeBlue
+                              : styles.statusBadgeGray
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.statusBadgeText,
+                              n.state === "APPROVED" || n.state === "ACTIVE"
+                                ? styles.statusTextGreen
+                                : n.state === "DRAFT"
+                                ? styles.statusTextAmber
+                                : n.state === "SCHEDULED"
+                                ? styles.statusTextBlue
+                                : styles.statusTextGray
+                            ]}
+                          >
+                            {n.state === "APPROVED" ? "ACTIVE" : n.state}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Notice Body */}
+                    <Text style={styles.noticeTableBody} numberOfLines={2}>
+                      {n.body}
+                    </Text>
+
+                    {/* Audience & Channels Details Bar */}
+                    <View style={styles.audienceChannelsBar}>
+                      <View style={styles.audienceInfo}>
+                        <Text style={styles.audienceCountText}>{n.audienceCount} recipients</Text>
+                        <Text style={styles.audienceKindText}>{n.audienceKind.replace(/_/g, " ")}</Text>
+                      </View>
+
+                      <View style={styles.channelsList}>
+                        {n.channels.map((ch) => (
+                          <View
+                            key={ch}
+                            style={[
+                              styles.chPill,
+                              ch === "EMAIL" && { backgroundColor: "#CCFBF1" },
+                              ch === "SMS" && { backgroundColor: "#F3E8FF" }
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.chPillText,
+                                ch === "EMAIL" && { color: "#0F766E" },
+                                ch === "SMS" && { color: "#7E22CE" }
+                              ]}
+                            >
+                              {ch}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+
+                    {/* Action Buttons Row matching Web Screenshot 2 */}
+                    <View style={styles.noticeActionRow}>
+                      {n.state === "DRAFT" && (
+                        <Pressable
+                          style={styles.actionBtnApprove}
+                          onPress={() =>
+                            setReviewAction({
+                              type: "APPROVE",
+                              ref: n.noticeRef,
+                              revision: n.revision,
+                              title: n.title
+                            })
+                          }
+                        >
+                          <IconCheckCircle size={14} color="#FFFFFF" />
+                          <Text style={styles.actionBtnApproveText}>Approve</Text>
+                        </Pressable>
+                      )}
+
+                      {n.state !== "CANCELLED" && (
+                        <Pressable
+                          style={styles.actionBtnCancel}
+                          onPress={() =>
+                            setReviewAction({
+                              type: "CANCEL",
+                              ref: n.noticeRef,
+                              revision: n.revision,
+                              title: n.title
+                            })
+                          }
+                        >
+                          <IconXCircle size={14} color="#DC2626" />
+                          <Text style={styles.actionBtnCancelText}>Cancel</Text>
+                        </Pressable>
+                      )}
+
+                      <Pressable
+                        style={styles.actionBtnOutline}
+                        onPress={() => void loadTelemetry(n.noticeRef)}
+                      >
+                        <IconBarChart2 size={14} color="#64748B" />
+                        <Text style={styles.actionBtnOutlineText}>Delivery</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* Delivery Summary Card matching Web Screenshot 2 */}
+            <View style={styles.deliverySummaryCard}>
+              <Text style={styles.deliverySummaryTitle}>Delivery Summary</Text>
+              <View style={styles.deliverySummaryRows}>
+                <View style={styles.deliverySummaryRow}>
+                  <Text style={styles.deliverySummaryLabel}>In-App Delivery:</Text>
+                  <Text style={styles.deliverySummaryValGreen}>Operational</Text>
+                </View>
+                <View style={styles.deliverySummaryRow}>
+                  <Text style={styles.deliverySummaryLabel}>Email Channel:</Text>
+                  <Text style={styles.deliverySummaryValOrange}>Simulated / Off</Text>
+                </View>
+                <View style={styles.deliverySummaryRow}>
+                  <Text style={styles.deliverySummaryLabel}>SMS Channel:</Text>
+                  <Text style={styles.deliverySummaryValOrange}>Simulated / Off</Text>
+                </View>
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 2: MY NOTIFICATIONS / INBOX                                */}
+        {/* ============================================================== */}
+        {activeTab === "INBOX" && (
+          <>
+            {/* Mobile Contact Verification Box */}
+            <View style={styles.card}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardHeading}>My Verified Mobile Contact</Text>
                 <View
                   style={[
-                    styles.statusPill,
-                    mobileProof?.verified ? styles.statusPillGreen : styles.statusPillAmber
+                    styles.statusBadge,
+                    mobileProof?.verified ? styles.statusBadgeGreen : styles.statusBadgeAmber
                   ]}
                 >
                   <Text
                     style={[
-                      styles.statusPillText,
+                      styles.statusBadgeText,
                       mobileProof?.verified ? styles.statusTextGreen : styles.statusTextAmber
                     ]}
                   >
-                    {mobileProof?.verified ? "✓ Verified" : "Unverified"}
+                    {mobileProof?.verified ? "Verified" : "Pending Proof"}
                   </Text>
                 </View>
               </View>
 
-              <Text style={styles.cardDesc}>
-                Emergency alerts and operational notices are delivered to your verified CareGanga phone number.
-              </Text>
-
               {!mobileProof ? (
-                <Text style={styles.noteText}>Contact verification service is currently unavailable.</Text>
+                <Text style={styles.noteText}>Contact verification unavailable.</Text>
               ) : mobileProof.verified ? (
-                <View style={styles.verifiedPhoneBox}>
+                <View style={styles.verifiedPhoneRow}>
                   <IconShieldCheck size={20} color="#16A34A" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.verifiedPhoneTitle}>
@@ -464,33 +1087,26 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
                     </Text>
                   </View>
                 </View>
-              ) : !mobileProof.hasNumber ? (
-                <View style={styles.warningBox}>
-                  <Text style={styles.warningText}>
-                    No mobile number is recorded for your staff account. Contact an administrator to add your phone.
-                  </Text>
-                </View>
               ) : (
-                <View style={styles.verifyActionBox}>
+                <View style={styles.verifyPhoneBox}>
                   <Text style={styles.phoneLabel}>
-                    Recorded contact: <Text style={{ fontWeight: "800" }}>{mobileProof.maskedContact}</Text>
+                    Recorded Contact: <Text style={{ fontWeight: "800" }}>{mobileProof.maskedContact}</Text>
                   </Text>
 
                   <Pressable
-                    accessibilityRole="button"
                     style={styles.requestSmsBtn}
                     disabled={busy || mobileBusy || !mobileProof.providerConfigured}
-                    onPress={() => void startMobileProof()}
+                    onPress={() => void startPhoneProof()}
                   >
                     <Text style={styles.requestSmsBtnText}>
                       {mobileProof.providerConfigured
                         ? "Request SMS Verification Code"
-                        : "SMS Verification Simulated"}
+                        : "Verification Provider Simulated"}
                     </Text>
                   </Pressable>
 
                   <TextInput
-                    style={styles.codeInput}
+                    style={styles.inputBox}
                     value={mobileCode}
                     onChangeText={(x) => setMobileCode(x.replace(/[^0-9]/g, ""))}
                     keyboardType="number-pad"
@@ -500,13 +1116,12 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
                   />
 
                   <Pressable
-                    accessibilityRole="button"
                     style={[
                       styles.confirmCodeBtn,
                       (!/^\d{4,10}$/.test(mobileCode) || mobileBusy) && styles.btnDisabled
                     ]}
                     disabled={busy || mobileBusy || !/^\d{4,10}$/.test(mobileCode)}
-                    onPress={() => void confirmMobileProof()}
+                    onPress={() => void confirmPhoneProof()}
                   >
                     <Text style={styles.confirmCodeBtnText}>Verify Mobile Contact</Text>
                   </Pressable>
@@ -514,65 +1129,370 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
               )}
             </View>
 
-            {/* Delivery Channel Preferences Card */}
+            {/* My Notifications List */}
             <View style={styles.card}>
-              <Text style={styles.cardHeading}>Delivery Channel Preferences</Text>
-              <Text style={styles.cardDesc}>
-                In-app notices are always delivered. Configure whether you wish to receive off-channel SMS and Email alerts.
-              </Text>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardHeading}>My Notifications ({inbox.length})</Text>
+                <Pressable style={styles.refreshBtn} disabled={loading} onPress={() => void loadData()}>
+                  <IconRefresh size={12} color="#475569" />
+                  <Text style={styles.refreshBtnText}>Refresh</Text>
+                </Pressable>
+              </View>
 
-              {prefs &&
-                (["EMAIL", "SMS"] as const).map((channel) =>
-                  (["TRANSACTIONAL", "PROMOTIONAL"] as const).map((purpose) => {
-                    const available =
-                      channel === "EMAIL" ? prefs.available.email : prefs.available.sms;
-                    const current = prefs.preferences.find(
-                      (x) => x.channel === channel && x.purpose === purpose
-                    );
-                    const isOptedIn = !!current?.opted_in;
-
-                    return (
-                      <Pressable
-                        key={channel + purpose}
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked: isOptedIn, disabled: !available || busy }}
-                        disabled={!available || busy}
-                        onPress={() => void togglePreference(channel, purpose)}
+              {loading ? (
+                <ActivityIndicator color="#4F46E5" style={{ paddingVertical: 24 }} />
+              ) : !inbox.length ? (
+                <View style={styles.emptyContainer}>
+                  <IconInbox size={32} color="#CBD5E1" />
+                  <Text style={styles.emptyText}>No notifications for your current account.</Text>
+                </View>
+              ) : (
+                inbox.map((item) => (
+                  <View
+                    key={item.notificationRef}
+                    style={[
+                      styles.inboxCard,
+                      !item.read ? styles.inboxCardUnread : styles.inboxCardRead
+                    ]}
+                  >
+                    <View style={styles.inboxTopRow}>
+                      <View
                         style={[
-                          styles.prefOptionRow,
-                          !available && styles.prefOptionDisabled,
-                          isOptedIn && styles.prefOptionActive
+                          styles.inboxIconBox,
+                          !item.read ? styles.inboxIconUnread : styles.inboxIconRead
                         ]}
                       >
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.prefOptionTitle}>
-                            {channel} • {purpose.charAt(0) + purpose.slice(1).toLowerCase()} Alerts
-                          </Text>
-                          <Text style={styles.prefOptionSub}>
-                            {!available
-                              ? "Contact channel not verified on account"
-                              : isOptedIn
-                              ? "Currently opted in to receive broadcasts"
-                              : "Tap to enable alerts on this channel"}
-                          </Text>
-                        </View>
+                        <IconBell size={16} color={!item.read ? "#15803D" : "#64748B"} />
+                      </View>
 
-                        <View
-                          style={[
-                            styles.checkboxBox,
-                            isOptedIn && styles.checkboxBoxActive,
-                            !available && styles.checkboxBoxDisabled
-                          ]}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inboxTitle}>{item.title}</Text>
+                        <Text style={styles.inboxDate}>
+                          {new Date(item.receivedAt).toLocaleDateString()} at{" "}
+                          {new Date(item.receivedAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          })}
+                        </Text>
+                      </View>
+
+                      <View style={styles.chPill}>
+                        <Text style={styles.chPillText}>{item.channel}</Text>
+                      </View>
+
+                      {!item.read && <View style={styles.unreadDot} />}
+                    </View>
+
+                    <Text style={styles.inboxBody}>{item.body}</Text>
+
+                    {!item.read && (
+                      <View style={styles.inboxActionRow}>
+                        <Pressable
+                          style={styles.btnMarkRead}
+                          disabled={busy}
+                          onPress={() => void markInboxRead(item.notificationRef)}
                         >
-                          {isOptedIn && <Text style={styles.checkboxCheckmark}>✓</Text>}
-                        </View>
-                      </Pressable>
-                    );
-                  })
-                )}
+                          <IconCheck size={14} color="#16A34A" />
+                          <Text style={styles.btnMarkReadText}>Mark as read</Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                ))
+              )}
             </View>
           </>
         )}
+
+        {/* ============================================================== */}
+        {/* TAB 3: 52 MASTER EMAIL TEMPLATES REFERENCE                     */}
+        {/* ============================================================== */}
+        {activeTab === "EMAIL_TEMPLATES" && (
+          <View style={styles.card}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardHeading}>52 Client Master Email Templates</Text>
+              <Pressable style={styles.refreshBtn} disabled={loading} onPress={() => void loadTemplates()}>
+                <IconRefresh size={12} color="#475569" />
+                <Text style={styles.refreshBtnText}>Refresh</Text>
+              </Pressable>
+            </View>
+
+            <Text style={styles.cardDesc}>
+              Authoritative transactional email designs from CareGanga Master Specifications.
+            </Text>
+
+            {/* Template Search */}
+            <View style={styles.searchInputContainer}>
+              <IconSearch size={15} color="#94A3B8" />
+              <TextInput
+                placeholder="Search templates by code, subject, title..."
+                placeholderTextColor="#94A3B8"
+                value={templateSearch}
+                onChangeText={setTemplateSearch}
+                style={styles.searchInput}
+              />
+            </View>
+
+            {/* Templates List */}
+            <ScrollView style={{ maxHeight: 380 }} keyboardShouldPersistTaps="handled">
+              {emailReferences
+                .filter(
+                  (t) =>
+                    !templateSearch.trim() ||
+                    t.code.toLowerCase().includes(templateSearch.toLowerCase()) ||
+                    t.title.toLowerCase().includes(templateSearch.toLowerCase()) ||
+                    t.subject.toLowerCase().includes(templateSearch.toLowerCase())
+                )
+                .map((t) => (
+                  <Pressable
+                    key={t.code}
+                    onPress={() => setSelectedTemplate(t)}
+                    style={[
+                      styles.templateRowCard,
+                      selectedTemplate?.code === t.code && styles.templateRowCardActive
+                    ]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.templateRowCode}>{t.code} — {t.title}</Text>
+                      <Text style={styles.templateRowSubject}>{t.subject}</Text>
+                      <Text style={styles.templateRowOwner}>Owner: {t.owner}</Text>
+                    </View>
+                    <View style={styles.pillBadge}>
+                      <Text style={styles.pillBadgeText}>VIEW</Text>
+                    </View>
+                  </Pressable>
+                ))}
+            </ScrollView>
+
+            {/* Selected Template Viewer */}
+            {selectedTemplate && (
+              <View style={styles.templatePreviewBox}>
+                <Text style={styles.previewTitle}>Template Details: {selectedTemplate.code}</Text>
+                <Text style={styles.previewSubject}>Subject: {selectedTemplate.subject}</Text>
+                <Text style={styles.previewBody}>{selectedTemplate.body}</Text>
+                <Text style={styles.previewAttachment}>Rule: {selectedTemplate.attachmentRule}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ============================================================== */}
+        {/* MODAL 1: COMPOSE / SEND NOTIFICATION                            */}
+        {/* ============================================================== */}
+        <Modal
+          visible={composeOpen}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setComposeOpen(false)}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setComposeOpen(false)}>
+            <Pressable style={[styles.modalCard, { maxHeight: "90%" }]} onPress={(e) => e.stopPropagation()}>
+              <ScrollView keyboardShouldPersistTaps="handled">
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Compose Foundation Broadcast</Text>
+                  <Pressable onPress={() => setComposeOpen(false)} style={styles.closeBtn}>
+                    <IconClose size={18} color="#64748B" />
+                  </Pressable>
+                </View>
+
+                {/* Target Audience Dropdown */}
+                <NativeCustomDropdown
+                  label="Select Target Audience"
+                  options={[
+                    { value: "ALL_ACTIVE", label: "All Active Accounts", subtitle: "All registered staff & users" },
+                    { value: "ROLE", label: "Specific Staff Role", subtitle: "Branch Managers, Reviewers, etc." },
+                    { value: "INDIVIDUAL", label: "Single Individual User", subtitle: "Direct targeted broadcast" }
+                  ]}
+                  value={newAudienceKind}
+                  onChange={(val) => setNewAudienceKind(val as "ALL_ACTIVE" | "ROLE" | "INDIVIDUAL")}
+                />
+
+                {/* Title */}
+                <Text style={styles.inputLabel}>Notice Title</Text>
+                <TextInput
+                  value={newTitle}
+                  onChangeText={setNewTitle}
+                  placeholder="e.g. Healthcare Camp Multi-Channel Notice"
+                  placeholderTextColor="#94A3B8"
+                  style={styles.inputBox}
+                />
+
+                {/* Content Body */}
+                <Text style={styles.inputLabel}>Notice Message Body</Text>
+                <TextInput
+                  value={newBody}
+                  onChangeText={setNewBody}
+                  placeholder="Write announcement details..."
+                  placeholderTextColor="#94A3B8"
+                  multiline
+                  numberOfLines={4}
+                  style={[styles.inputBox, { height: 90, textAlignVertical: "top" }]}
+                />
+
+                {/* Priority Selection Pills */}
+                <Text style={styles.inputLabel}>Priority Level</Text>
+                <View style={styles.pillsRow}>
+                  {["NORMAL", "IMPORTANT"].map((p) => (
+                    <Pressable
+                      key={p}
+                      onPress={() => setNewPriority(p)}
+                      style={[styles.selectPill, newPriority === p && styles.selectPillActive]}
+                    >
+                      <Text
+                        style={[
+                          styles.selectPillText,
+                          newPriority === p && styles.selectPillTextActive
+                        ]}
+                      >
+                        {p}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {/* Multi-channel Checkboxes */}
+                <Text style={styles.inputLabel}>Dispatch Channels</Text>
+                <View style={styles.channelsChoiceRow}>
+                  <View style={[styles.channelChoicePill, styles.channelChoiceActive]}>
+                    <Text style={styles.channelChoiceTextActive}>In-App Inbox (Mandatory)</Text>
+                  </View>
+
+                  <Pressable
+                    onPress={() => setNewEmail((v) => !v)}
+                    style={[styles.channelChoicePill, newEmail && styles.channelChoiceActive]}
+                  >
+                    <Text style={newEmail ? styles.channelChoiceTextActive : styles.channelChoiceText}>
+                      {newEmail ? "Email Dispatch (Active)" : "Email Dispatch"}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => setNewSms((v) => !v)}
+                    style={[styles.channelChoicePill, newSms && styles.channelChoiceActive]}
+                  >
+                    <Text style={newSms ? styles.channelChoiceTextActive : styles.channelChoiceText}>
+                      {newSms ? "SMS Alert (Active)" : "SMS Alert"}
+                    </Text>
+                  </Pressable>
+                </View>
+
+                {/* Actions */}
+                <View style={styles.modalBtnRow}>
+                  <Pressable style={styles.modalCancelBtn} onPress={() => setComposeOpen(false)}>
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.modalSubmitBtn, (!newTitle.trim() || !newBody.trim() || busy) && styles.btnDisabled]}
+                    disabled={!newTitle.trim() || !newBody.trim() || busy}
+                    onPress={() => void submitNoticeDraft()}
+                  >
+                    {busy ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <Text style={styles.modalSubmitText}>Broadcast Notice</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </ScrollView>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* ============================================================== */}
+        {/* MODAL 2: PASSWORD AUTHORIZATION MODAL (APPROVE / CANCEL)       */}
+        {/* ============================================================== */}
+        <Modal
+          visible={!!reviewAction}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setReviewAction(null)}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setReviewAction(null)}>
+            <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {reviewAction?.type === "APPROVE" ? "Authorize Notice Dispatch" : "Cancel Notice"}
+                </Text>
+                <Pressable onPress={() => setReviewAction(null)} style={styles.closeBtn}>
+                  <IconClose size={18} color="#64748B" />
+                </Pressable>
+              </View>
+
+              <Text style={styles.modalDesc}>
+                Notice: <Text style={{ fontWeight: "800", color: "#0F172A" }}>{reviewAction?.title}</Text>
+              </Text>
+              <Text style={styles.modalDesc}>
+                Enter your administrator password (e.g. CareGanga@123) to confirm this operation.
+              </Text>
+
+              <Text style={styles.inputLabel}>Admin Password</Text>
+              <TextInput
+                value={adminPassword}
+                onChangeText={setAdminPassword}
+                placeholder="Enter password..."
+                placeholderTextColor="#94A3B8"
+                secureTextEntry
+                style={styles.inputBox}
+              />
+
+              <View style={styles.modalBtnRow}>
+                <Pressable style={styles.modalCancelBtn} onPress={() => setReviewAction(null)}>
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.modalSubmitBtn, (!adminPassword.trim() || busy) && styles.btnDisabled]}
+                  disabled={!adminPassword.trim() || busy}
+                  onPress={() => void executeReviewDecision()}
+                >
+                  <Text style={styles.modalSubmitText}>
+                    {reviewAction?.type === "APPROVE" ? "Confirm & Broadcast" : "Confirm Cancel"}
+                  </Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* ============================================================== */}
+        {/* MODAL 3: DELIVERY TELEMETRY                                    */}
+        {/* ============================================================== */}
+        <Modal
+          visible={!!telemetryRef}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setTelemetryRef(null)}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setTelemetryRef(null)}>
+            <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Notice Delivery Telemetry</Text>
+                <Pressable onPress={() => setTelemetryRef(null)} style={styles.closeBtn}>
+                  <IconClose size={18} color="#64748B" />
+                </Pressable>
+              </View>
+
+              {!telemetryCounts.length ? (
+                <Text style={styles.emptyText}>No delivery receipts recorded yet.</Text>
+              ) : (
+                telemetryCounts.map((c, i) => (
+                  <View key={i} style={styles.telemetryRow}>
+                    <Text style={styles.telemetryChannel}>{c.channel}</Text>
+                    <View style={styles.telemetryRight}>
+                      <Text style={styles.telemetryCount}>{c.count} recipients</Text>
+                      <Text style={styles.telemetryStatus}>({c.status})</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+
+              <Pressable style={styles.modalCloseBtn} onPress={() => setTelemetryRef(null)}>
+                <Text style={styles.modalCloseBtnText}>Close</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -595,10 +1515,11 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12
+    gap: 10,
+    flexWrap: "wrap"
   },
   backBtn: {
-    paddingVertical: 8,
+    paddingVertical: 7,
     paddingHorizontal: 12,
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
@@ -611,58 +1532,112 @@ const styles = StyleSheet.create({
     color: "#334155"
   },
   headerInfo: {
-    flex: 1
+    flex: 1,
+    minWidth: 160
   },
   titleIconRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8
-  },
-  titleIconBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 7,
-    backgroundColor: "#FEF3C7",
-    alignItems: "center",
-    justifyContent: "center"
+    gap: 6
   },
   headerTitle: {
-    fontSize: 19,
+    fontSize: 20,
     fontWeight: "800",
     color: "#0F172A",
     letterSpacing: -0.3
+  },
+  verifiedCheckBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#DBEAFE",
+    alignItems: "center",
+    justifyContent: "center"
   },
   headerSubtitle: {
     fontSize: 12,
     color: "#64748B",
     marginTop: 2
   },
-  kpiRow: {
+  headerActionsRow: {
     flexDirection: "row",
+    gap: 6
+  },
+  headerBtnPrimary: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#4F46E5",
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8
+  },
+  headerBtnPrimaryText: {
+    color: "#FFFFFF",
+    fontSize: 12.5,
+    fontWeight: "700"
+  },
+  headerBtnSecondary: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 8
+  },
+  headerBtnSecondaryText: {
+    color: "#334155",
+    fontSize: 12.5,
+    fontWeight: "600"
+  },
+  kpiGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8
   },
   kpiCard: {
     flex: 1,
+    minWidth: "30%",
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1
+  },
+  kpiIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center"
   },
+  kpiInfo: {
+    flex: 1
+  },
   kpiValue: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "900",
     color: "#0F172A"
   },
   kpiLabel: {
     fontSize: 10.5,
-    fontWeight: "600",
-    color: "#64748B",
-    marginTop: 2,
-    textAlign: "center"
+    fontWeight: "700",
+    color: "#475569"
+  },
+  kpiSub: {
+    fontSize: 9.5,
+    color: "#94A3B8"
   },
   tabBar: {
     flexDirection: "row",
@@ -673,10 +1648,12 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 9,
-    borderRadius: 7,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 7
   },
   tabButtonActive: {
     backgroundColor: "#FFFFFF",
@@ -687,13 +1664,52 @@ const styles = StyleSheet.create({
     elevation: 1
   },
   tabButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     color: "#64748B"
   },
   tabButtonTextActive: {
-    color: "#D97706",
+    color: "#4F46E5",
     fontWeight: "800"
+  },
+  readinessBanner: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    padding: 10,
+    gap: 6
+  },
+  readinessTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 6
+  },
+  readinessLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1E293B"
+  },
+  readinessPillRow: {
+    flexDirection: "row",
+    gap: 6
+  },
+  readinessPill: {
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4
+  },
+  readinessPillText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#B45309"
+  },
+  readinessNote: {
+    fontSize: 11,
+    color: "#94A3B8"
   },
   alertBanner: {
     backgroundColor: "#FEF2F2",
@@ -706,6 +1722,198 @@ const styles = StyleSheet.create({
     color: "#DC2626",
     fontSize: 13,
     fontWeight: "600"
+  },
+  filterCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 12,
+    gap: 10
+  },
+  filterCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  filterCardTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1E293B"
+  },
+  filterToggleBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: "#F1F5F9"
+  },
+  filterToggleActive: {
+    backgroundColor: "#EEF2FF"
+  },
+  filterToggleText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#4F46E5"
+  },
+  searchRow: {
+    flexDirection: "row",
+    gap: 8
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: "#0F172A",
+    padding: 0
+  },
+  clearSearchBtn: {
+    padding: 2
+  },
+  searchSubmitBtn: {
+    backgroundColor: "#4F46E5",
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  searchSubmitText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  advancedFiltersArea: {
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    gap: 8
+  },
+  resetFiltersBtn: {
+    paddingVertical: 6,
+    alignItems: "center"
+  },
+  resetFiltersText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#4F46E5"
+  },
+  quickActionsCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 12,
+    gap: 10
+  },
+  quickActionsTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1E293B"
+  },
+  quickActionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
+  },
+  qaBtn: {
+    flex: 1,
+    minWidth: "30%",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6
+  },
+  qaIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  qaLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#334155"
+  },
+  subFilterBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8
+  },
+  subPillScroll: {
+    flexDirection: "row",
+    gap: 6
+  },
+  subPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1"
+  },
+  subPillActive: {
+    backgroundColor: "#EEF2FF",
+    borderColor: "#C7D2FE"
+  },
+  subPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B"
+  },
+  subPillTextActive: {
+    color: "#4F46E5",
+    fontWeight: "700"
+  },
+  subPillBadge: {
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 10
+  },
+  subPillBadgeActive: {
+    backgroundColor: "#C7D2FE"
+  },
+  subPillBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#64748B"
+  },
+  subPillBadgeTextActive: {
+    color: "#3730A3"
+  },
+  btnCreateNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#4F46E5",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8
+  },
+  btnCreateNoticeText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#FFFFFF"
   },
   card: {
     backgroundColor: "#FFFFFF",
@@ -737,6 +1945,9 @@ const styles = StyleSheet.create({
     lineHeight: 17
   },
   refreshBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -748,81 +1959,232 @@ const styles = StyleSheet.create({
     color: "#475569"
   },
   emptyContainer: {
-    paddingVertical: 32,
+    paddingVertical: 24,
     alignItems: "center",
     gap: 8
   },
-  emptyIconBox: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: "#F8FAFC",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#1E293B"
-  },
   emptyText: {
-    fontSize: 12.5,
-    color: "#94A3B8",
-    textAlign: "center"
+    fontSize: 13,
+    color: "#94A3B8"
   },
-  notificationCard: {
+  noticeTableCard: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     borderRadius: 12,
     padding: 14,
     gap: 8
   },
-  notificationUnread: {
+  noticeTableTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8
+  },
+  noticeTableTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0F172A"
+  },
+  noticeTableExpiry: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 2
+  },
+  badgeRow: {
+    flexDirection: "row",
+    gap: 6
+  },
+  priorityBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+  priorityNormal: { backgroundColor: "#EFF6FF" },
+  priorityUrgent: { backgroundColor: "#FEE2E2" },
+  priorityBadgeText: { fontSize: 10, fontWeight: "800" },
+  priorityTextNormal: { color: "#1D4ED8" },
+  priorityTextUrgent: { color: "#DC2626" },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10
+  },
+  statusBadgeGreen: { backgroundColor: "#DCFCE7" },
+  statusBadgeAmber: { backgroundColor: "#FEF3C7" },
+  statusBadgeBlue: { backgroundColor: "#DBEAFE" },
+  statusBadgeGray: { backgroundColor: "#F1F5F9" },
+  statusBadgeText: { fontSize: 10, fontWeight: "800" },
+  statusTextGreen: { color: "#166534" },
+  statusTextAmber: { color: "#B45309" },
+  statusTextBlue: { color: "#1D4ED8" },
+  statusTextGray: { color: "#475569" },
+  noticeTableBody: {
+    fontSize: 12.5,
+    color: "#334155",
+    lineHeight: 17
+  },
+  audienceChannelsBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: "#F1F5F9"
+  },
+  audienceInfo: {
+    gap: 1
+  },
+  audienceCountText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#0F172A"
+  },
+  audienceKindText: {
+    fontSize: 10,
+    color: "#64748B"
+  },
+  channelsList: {
+    flexDirection: "row",
+    gap: 4
+  },
+  chPill: {
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+  chPillText: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    color: "#475569"
+  },
+  noticeActionRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 2
+  },
+  actionBtnOutline: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 6
+  },
+  actionBtnOutlineText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#334155"
+  },
+  actionBtnApprove: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: "#16A34A",
+    borderRadius: 6
+  },
+  actionBtnApproveText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#FFFFFF"
+  },
+  actionBtnCancel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: 6
+  },
+  actionBtnCancelText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#DC2626"
+  },
+  deliverySummaryCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 14,
+    gap: 8
+  },
+  deliverySummaryTitle: {
+    fontSize: 13.5,
+    fontWeight: "800",
+    color: "#1E293B"
+  },
+  deliverySummaryRows: {
+    gap: 5
+  },
+  deliverySummaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center"
+  },
+  deliverySummaryLabel: {
+    fontSize: 12,
+    color: "#64748B"
+  },
+  deliverySummaryValGreen: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#16A34A"
+  },
+  deliverySummaryValOrange: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#EA580C"
+  },
+  inboxCard: {
+    borderRadius: 12,
+    padding: 14,
+    gap: 8
+  },
+  inboxCardUnread: {
     backgroundColor: "#F0FDF4",
     borderWidth: 1,
     borderColor: "#BBF7D0"
   },
-  notificationRead: {
+  inboxCardRead: {
     backgroundColor: "#F8FAFC",
     borderWidth: 1,
     borderColor: "#E2E8F0"
   },
-  notificationTopRow: {
+  inboxTopRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10
   },
-  channelIconBox: {
+  inboxIconBox: {
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center"
   },
-  channelIconUnread: {
-    backgroundColor: "#DCFCE7"
-  },
-  channelIconRead: {
-    backgroundColor: "#F1F5F9"
-  },
-  notificationTitle: {
+  inboxIconUnread: { backgroundColor: "#DCFCE7" },
+  inboxIconRead: { backgroundColor: "#F1F5F9" },
+  inboxTitle: {
     fontSize: 14,
     fontWeight: "800",
     color: "#0F172A"
   },
-  notificationMeta: {
+  inboxDate: {
     fontSize: 11,
     color: "#64748B",
     marginTop: 2
-  },
-  channelBadgePill: {
-    backgroundColor: "#EEF2FF",
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 5
-  },
-  channelBadgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#4338CA"
   },
   unreadDot: {
     width: 8,
@@ -830,17 +2192,19 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#16A34A"
   },
-  notificationBody: {
+  inboxBody: {
     fontSize: 13,
     color: "#334155",
     lineHeight: 18
   },
-  notificationActions: {
+  inboxActionRow: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 2
+    justifyContent: "flex-end"
   },
-  markReadBtn: {
+  btnMarkRead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingVertical: 6,
     paddingHorizontal: 12,
     backgroundColor: "#FFFFFF",
@@ -848,22 +2212,12 @@ const styles = StyleSheet.create({
     borderColor: "#86EFAC",
     borderRadius: 8
   },
-  markReadBtnText: {
+  btnMarkReadText: {
     fontSize: 12,
     fontWeight: "700",
     color: "#16A34A"
   },
-  statusPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10
-  },
-  statusPillGreen: { backgroundColor: "#DCFCE7" },
-  statusPillAmber: { backgroundColor: "#FEF3C7" },
-  statusPillText: { fontSize: 10.5, fontWeight: "800" },
-  statusTextGreen: { color: "#166534" },
-  statusTextAmber: { color: "#B45309" },
-  verifiedPhoneBox: {
+  verifiedPhoneRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
@@ -883,18 +2237,7 @@ const styles = StyleSheet.create({
     color: "#15803D",
     marginTop: 1
   },
-  warningBox: {
-    backgroundColor: "#FFFBEB",
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-    borderRadius: 10,
-    padding: 12
-  },
-  warningText: {
-    fontSize: 12,
-    color: "#92400E"
-  },
-  verifyActionBox: {
+  verifyPhoneBox: {
     gap: 8,
     backgroundColor: "#F8FAFC",
     padding: 12,
@@ -917,16 +2260,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#334155"
   },
-  codeInput: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: "#0F172A"
-  },
   confirmCodeBtn: {
     backgroundColor: "#1D4ED8",
     paddingVertical: 10,
@@ -938,62 +2271,253 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700"
   },
+  templateRowCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 6,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0"
+  },
+  templateRowCardActive: {
+    backgroundColor: "#EEF2FF",
+    borderColor: "#C7D2FE"
+  },
+  templateRowCode: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#0F172A"
+  },
+  templateRowSubject: {
+    fontSize: 11.5,
+    color: "#475569",
+    marginTop: 2
+  },
+  templateRowOwner: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#4F46E5",
+    marginTop: 1
+  },
+  pillBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#CBD5E1"
+  },
+  pillBadgeText: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    color: "#4F46E5"
+  },
+  templatePreviewBox: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    padding: 12,
+    gap: 6,
+    marginTop: 6
+  },
+  previewTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0F172A"
+  },
+  previewSubject: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1E293B"
+  },
+  previewBody: {
+    fontSize: 11.5,
+    color: "#334155",
+    lineHeight: 16
+  },
+  previewAttachment: {
+    fontSize: 10.5,
+    color: "#64748B",
+    marginTop: 2
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 440,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 18,
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0F172A"
+  },
+  closeBtn: {
+    padding: 4,
+    borderRadius: 6,
+    backgroundColor: "#F8FAFC"
+  },
+  modalDesc: {
+    fontSize: 12.5,
+    color: "#64748B",
+    lineHeight: 17
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#475569",
+    marginTop: 4
+  },
+  inputBox: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 13,
+    color: "#0F172A"
+  },
+  pillsRow: {
+    flexDirection: "row",
+    gap: 8
+  },
+  selectPill: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center"
+  },
+  selectPillActive: {
+    backgroundColor: "#4F46E5"
+  },
+  selectPillText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#475569"
+  },
+  selectPillTextActive: {
+    color: "#FFFFFF"
+  },
+  channelsChoiceRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap"
+  },
+  channelChoicePill: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "#F1F5F9"
+  },
+  channelChoiceActive: {
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: "#C7D2FE"
+  },
+  channelChoiceText: {
+    fontSize: 11.5,
+    fontWeight: "600",
+    color: "#64748B"
+  },
+  channelChoiceTextActive: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#4338CA"
+  },
+  modalBtnRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 6
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 8,
+    alignItems: "center"
+  },
+  modalCancelText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#475569"
+  },
+  modalSubmitBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    backgroundColor: "#4F46E5",
+    borderRadius: 8,
+    alignItems: "center"
+  },
+  modalSubmitText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#FFFFFF"
+  },
+  telemetryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9"
+  },
+  telemetryChannel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1E293B"
+  },
+  telemetryRight: {
+    flexDirection: "row",
+    gap: 6
+  },
+  telemetryCount: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#4F46E5"
+  },
+  telemetryStatus: {
+    fontSize: 12,
+    color: "#64748B"
+  },
+  modalCloseBtn: {
+    paddingVertical: 10,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 6
+  },
+  modalCloseBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#334155"
+  },
   btnDisabled: {
     opacity: 0.5
   },
   noteText: {
     fontSize: 12,
     color: "#64748B"
-  },
-  prefOptionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 10,
-    padding: 12,
-    gap: 10
-  },
-  prefOptionActive: {
-    backgroundColor: "#EEF2FF",
-    borderColor: "#C7D2FE"
-  },
-  prefOptionDisabled: {
-    opacity: 0.5
-  },
-  prefOptionTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#0F172A"
-  },
-  prefOptionSub: {
-    fontSize: 11,
-    color: "#64748B",
-    marginTop: 2
-  },
-  checkboxBox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: "#CBD5E1",
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  checkboxBoxActive: {
-    backgroundColor: "#4338CA",
-    borderColor: "#4338CA"
-  },
-  checkboxBoxDisabled: {
-    backgroundColor: "#E2E8F0"
-  },
-  checkboxCheckmark: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "900",
-    marginTop: -2
   }
 });

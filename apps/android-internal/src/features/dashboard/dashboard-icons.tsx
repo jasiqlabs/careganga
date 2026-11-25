@@ -633,6 +633,250 @@ export function IconSliders({ size = 20, color = "#64748B" }: IconProps) {
   );
 }
 
+export function IconMegaphone({ size = 20, color = "#64748B" }: IconProps) {
+  const coneW = Math.round(size * 0.55);
+  const coneH = Math.round(size * 0.45);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        {/* Back horn piece */}
+        <View style={{ width: 3, height: coneH * 0.5, backgroundColor: color, borderRadius: 1 }} />
+        {/* Cone body */}
+        <View
+          style={{
+            width: 0,
+            height: 0,
+            borderTopWidth: coneH * 0.4,
+            borderTopColor: "transparent",
+            borderBottomWidth: coneH * 0.4,
+            borderBottomColor: "transparent",
+            borderRightWidth: coneW,
+            borderRightColor: color,
+            marginLeft: 1
+          }}
+        />
+        {/* Front bell rim */}
+        <View style={{ width: 2.5, height: coneH + 4, backgroundColor: color, borderRadius: 1.25, marginLeft: 1 }} />
+      </View>
+      {/* Handle */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: 2,
+          left: Math.round(size * 0.35),
+          width: 2.5,
+          height: Math.round(size * 0.3),
+          backgroundColor: color,
+          borderRadius: 1,
+          transform: [{ rotate: "-20deg" }]
+        }}
+      />
+    </View>
+  );
+}
+
+export function IconCalendar({ size = 20, color = "#64748B" }: IconProps) {
+  const w = Math.round(size * 0.75);
+  const h = Math.round(size * 0.7);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      {/* Top pins */}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", width: w * 0.6, marginBottom: -2, zIndex: 1 }}>
+        <View style={{ width: 2, height: 3.5, backgroundColor: color, borderRadius: 1 }} />
+        <View style={{ width: 2, height: 3.5, backgroundColor: color, borderRadius: 1 }} />
+      </View>
+      {/* Calendar body */}
+      <View style={{ width: w, height: h, borderWidth: 1.8, borderColor: color, borderRadius: 3.5, overflow: "hidden" }}>
+        <View style={{ width: "100%", height: 3.5, backgroundColor: color }} />
+      </View>
+    </View>
+  );
+}
+
+export function IconRefresh({ size = 20, color = "#64748B" }: IconProps) {
+  const r = Math.round(size * 0.65);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View
+        style={{
+          width: r,
+          height: r,
+          borderRadius: r / 2,
+          borderWidth: 2,
+          borderColor: color,
+          borderTopColor: "transparent",
+          transform: [{ rotate: "45deg" }]
+        }}
+      />
+      <View
+        style={{
+          position: "absolute",
+          top: 2,
+          right: Math.round(size * 0.2),
+          width: 0,
+          height: 0,
+          borderLeftWidth: 3,
+          borderLeftColor: "transparent",
+          borderRightWidth: 3,
+          borderRightColor: "transparent",
+          borderBottomWidth: 4,
+          borderBottomColor: color,
+          transform: [{ rotate: "35deg" }]
+        }}
+      />
+    </View>
+  );
+}
+
+export function IconInbox({ size = 20, color = "#64748B" }: IconProps) {
+  const w = Math.round(size * 0.8);
+  const h = Math.round(size * 0.65);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View style={{ width: w, height: h, borderWidth: 1.8, borderColor: color, borderRadius: 3.5, justifyContent: "flex-end" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", width: "100%", height: Math.round(h * 0.4) }}>
+          <View style={{ flex: 1, height: 1.8, backgroundColor: color }} />
+          <View style={{ width: Math.round(w * 0.35), height: 3.5, borderWidth: 1.8, borderColor: color, borderTopWidth: 0, borderBottomLeftRadius: 3, borderBottomRightRadius: 3 }} />
+          <View style={{ flex: 1, height: 1.8, backgroundColor: color }} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export function IconPlusCircle({ size = 20, color = "#64748B" }: IconProps) {
+  const r = Math.round(size * 0.85);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View style={{ width: r, height: r, borderRadius: r / 2, borderWidth: 1.8, borderColor: color, alignItems: "center", justifyContent: "center" }}>
+        <View style={{ position: "absolute", width: Math.round(r * 0.5), height: 1.8, backgroundColor: color, borderRadius: 1 }} />
+        <View style={{ position: "absolute", height: Math.round(r * 0.5), width: 1.8, backgroundColor: color, borderRadius: 1 }} />
+      </View>
+    </View>
+  );
+}
+
+export function IconCheckCircle({ size = 20, color = "#16A34A" }: IconProps) {
+  const r = Math.round(size * 0.85);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View style={{ width: r, height: r, borderRadius: r / 2, borderWidth: 1.8, borderColor: color, alignItems: "center", justifyContent: "center" }}>
+        <View
+          style={{
+            width: Math.round(r * 0.28),
+            height: Math.round(r * 0.45),
+            borderBottomWidth: 1.8,
+            borderRightWidth: 1.8,
+            borderColor: color,
+            transform: [{ rotate: "45deg" }],
+            marginTop: -2,
+            marginLeft: 1
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+export function IconXCircle({ size = 20, color = "#EF4444" }: IconProps) {
+  const r = Math.round(size * 0.85);
+  const l = Math.round(r * 0.45);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View style={{ width: r, height: r, borderRadius: r / 2, borderWidth: 1.8, borderColor: color, alignItems: "center", justifyContent: "center" }}>
+        <View style={{ position: "absolute", width: l, height: 1.8, backgroundColor: color, borderRadius: 1, transform: [{ rotate: "45deg" }] }} />
+        <View style={{ position: "absolute", width: l, height: 1.8, backgroundColor: color, borderRadius: 1, transform: [{ rotate: "-45deg" }] }} />
+      </View>
+    </View>
+  );
+}
+
+export function IconBarChart2({ size = 20, color = "#64748B" }: IconProps) {
+  const h = Math.round(size * 0.7);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size, flexDirection: "row", alignItems: "flex-end", gap: 2.5, paddingBottom: 2 }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View style={{ width: 2.5, height: h * 0.4, backgroundColor: color, borderRadius: 1 }} />
+      <View style={{ width: 2.5, height: h * 0.95, backgroundColor: color, borderRadius: 1 }} />
+      <View style={{ width: 2.5, height: h * 0.65, backgroundColor: color, borderRadius: 1 }} />
+    </View>
+  );
+}
+
+export function IconSmartphone({ size = 20, color = "#64748B" }: IconProps) {
+  const w = Math.round(size * 0.55);
+  const h = Math.round(size * 0.8);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View style={{ width: w, height: h, borderWidth: 1.8, borderColor: color, borderRadius: 3.5, alignItems: "center", justifyContent: "space-between", paddingVertical: 2 }}>
+        <View style={{ width: 4, height: 1.5, backgroundColor: color, borderRadius: 1 }} />
+        <View style={{ width: 3, height: 3, borderRadius: 1.5, borderWidth: 1, borderColor: color }} />
+      </View>
+    </View>
+  );
+}
+
+export function IconClock({ size = 20, color = "#64748B" }: IconProps) {
+  const r = Math.round(size * 0.8);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View style={{ width: r, height: r, borderRadius: r / 2, borderWidth: 1.8, borderColor: color, alignItems: "center", justifyContent: "center" }}>
+        <View style={{ position: "absolute", width: 1.8, height: r * 0.35, backgroundColor: color, top: r * 0.15, borderRadius: 1 }} />
+        <View style={{ position: "absolute", height: 1.8, width: r * 0.28, backgroundColor: color, right: r * 0.2, top: r * 0.45, borderRadius: 1 }} />
+      </View>
+    </View>
+  );
+}
+
+export function IconCheck({ size = 20, color = "#16A34A" }: IconProps) {
+  const w = Math.round(size * 0.35);
+  const h = Math.round(size * 0.6);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View
+        style={{
+          width: w,
+          height: h,
+          borderBottomWidth: 2,
+          borderRightWidth: 2,
+          borderColor: color,
+          transform: [{ rotate: "45deg" }],
+          marginTop: -3,
+          marginLeft: 1
+        }}
+      />
+    </View>
+  );
+}
+
+export function IconFilter({ size = 20, color = "#64748B" }: IconProps) {
+  return (
+    <View style={[styles.iconBox, { width: size, height: size, alignItems: "center" }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View style={{ width: size * 0.75, height: 2, backgroundColor: color, borderRadius: 1, marginBottom: 2.5 }} />
+      <View style={{ width: size * 0.5, height: 2, backgroundColor: color, borderRadius: 1, marginBottom: 2.5 }} />
+      <View style={{ width: size * 0.25, height: 2, backgroundColor: color, borderRadius: 1 }} />
+    </View>
+  );
+}
+
+export function IconChevronDown({ size = 18, color = "#64748B" }: IconProps) {
+  const s = Math.round(size * 0.35);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View
+        style={{
+          width: s,
+          height: s,
+          borderBottomWidth: 2,
+          borderRightWidth: 2,
+          borderColor: color,
+          transform: [{ rotate: "45deg" }],
+          marginTop: -2
+        }}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   iconBox: {
     alignItems: "center",
