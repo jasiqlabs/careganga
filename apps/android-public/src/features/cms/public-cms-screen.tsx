@@ -333,12 +333,10 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    ] as const).map(([scope,label])=><CmsButton key={scope} title={label}
     secondary={slug!=="gallery"||mediaScope!==scope}
     onPress={()=>{setMediaScope(scope);setSlug("gallery");}}/>)}
-   {publishedPaths.includes("/campaigns")&&<CmsButton title="Campaigns" secondary={slug!=="campaigns"} onPress={()=>setSlug("campaigns")}/>}
+   <CmsButton title="Campaigns" secondary={slug!=="campaigns"} onPress={()=>setSlug("campaigns")}/>
    <CmsButton title="Events" secondary={slug!=="@events"} onPress={()=>setSlug("@events")}/>
    <CmsButton title="Notices" secondary={slug!=="notices"} onPress={()=>setSlug("notices")}/>
-   {publishedPaths.some(p=>p.startsWith("/blog/"))&&
-    <CmsButton title="News" secondary={slug!=="articles"}
-     onPress={()=>setSlug("articles")}/>}
+   <CmsButton title="News & Articles" secondary={slug!=="articles"} onPress={()=>setSlug("articles")}/>
    <CmsButton title="Membership Plans" secondary={slug!=="membership"} onPress={()=>setSlug("membership")}/>
    <CmsButton title="Partnerships" secondary={slug!=="collaboration"} onPress={()=>setSlug("collaboration")}/>
    <CmsButton title="Healthcare Partner Application" secondary onPress={onPartnerApplication}/>
