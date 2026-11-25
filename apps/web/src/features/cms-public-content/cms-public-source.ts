@@ -17,6 +17,9 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
   if(source.schemaVersion!==1||typeof source.effectiveGeneration!=="string"||
     typeof source.title!=="string"||typeof source.seoTitle!=="string"||
     typeof source.seoDescription!=="string"||!Array.isArray(source.sections)||
+    !source.sections.every(section=>!!section&&typeof section==="object"&&!Array.isArray(section)&&
+      typeof section.kind==="string"&&Number.isSafeInteger(section.order)&&section.order>=0&&
+      !!section.fields&&typeof section.fields==="object"&&!Array.isArray(section.fields))||
     !Array.isArray(source.assets)||source.slug!==slug||
     !["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY","PARTNERS","PROJECTS"].includes(
        String(source.kind))||
@@ -54,7 +57,10 @@ export async function publishedCmsNavigation():Promise<PublicCmsNavigation|null>
   if(!data||typeof data!=="object"||Array.isArray(data))return null;
   const nav=data as Record<string,unknown>,login=nav.login;
   if(nav.schemaVersion!==1||!login||typeof login!=="object"||
-   !("visible" in login)||typeof login.visible!=="boolean")return null;
+   !("visible" in login)||typeof login.visible!=="boolean"||
+   (nav.publishedRoutes!==undefined&&(!Array.isArray(nav.publishedRoutes)||
+    !nav.publishedRoutes.every(v=>!!v&&typeof v==="object"&&!Array.isArray(v)&&
+     typeof v.path==="string"&&typeof v.slug==="string"&&typeof v.kind==="string"))))return null;
   return data as PublicCmsNavigation;
  }catch{return null;}
 }
