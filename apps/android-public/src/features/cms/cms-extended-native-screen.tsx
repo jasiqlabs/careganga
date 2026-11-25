@@ -105,36 +105,37 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
     {!!text(f.issuer)&&<Text style={styles.body}>Issuer: {text(f.issuer)}</Text>}
     {!!text(f.source)&&!!text(f.verifiedAsOf)&&<Text style={styles.source}>
      Source reviewed: {text(f.verifiedAsOf)}</Text>}
-    <Text style={styles.source}>{text(f.disclaimer)}</Text>
+    {!!text(f.disclaimer)&&<Text style={styles.source}>{text(f.disclaimer)}</Text>}
    </View>;
   }
   const requested=ngoScope==="annual-reports"?"ANNUAL_REPORT":"REGISTRATION";
   const matching=verified.filter(({record})=>record.type===requested);
   const years=Array.from(new Set(matching.map(({record})=>text(record.asOfDate).slice(0,4))
    .filter(v=>/^\d{4}$/.test(v)))).sort((a,b)=>b.localeCompare(a));
+  const selectedYear=years.includes(annualYear)?annualYear:"ALL";
   const active=matching.filter(({record})=>ngoScope!=="annual-reports"||
-   annualYear==="ALL"||text(record.asOfDate).startsWith(annualYear+"-"));
+   selectedYear==="ALL"||text(record.asOfDate).startsWith(selectedYear+"-"));
   return <View style={styles.section}>
    <Text accessibilityRole="header" style={styles.title}>
     {ngoScope==="annual-reports"?"Annual Reports":"Registration Certificate"}</Text>
-   {ngoScope==="annual-reports"&&<View style={styles.filterRow}
+   {ngoScope==="annual-reports"&&<><Text style={styles.body}>Document year</Text><View style={styles.filterRow}
      accessibilityLabel="Annual reports year filter">
-    <Pressable accessibilityRole="button" accessibilityState={{selected:annualYear==="ALL"}}
-     onPress={()=>setAnnualYear("ALL")} style={styles.filter}>
-     <Text style={styles.filterText}>All years</Text></Pressable>
+    <Pressable accessibilityRole="button" accessibilityState={{selected:selectedYear==="ALL"}}
+     onPress={()=>setAnnualYear("ALL")} style={[styles.filter,selectedYear==="ALL"&&styles.filterActive]}>
+     <Text style={[styles.filterText,selectedYear==="ALL"&&styles.filterActiveText]}>All years</Text></Pressable>
     {years.map(y=><Pressable key={y} accessibilityRole="button"
-     accessibilityState={{selected:annualYear===y}} onPress={()=>setAnnualYear(y)}
-     style={styles.filter}><Text style={styles.filterText}>{y}</Text></Pressable>)}
-   </View>}
+     accessibilityState={{selected:selectedYear===y}} onPress={()=>setAnnualYear(y)}
+     style={[styles.filter,selectedYear===y&&styles.filterActive]}><Text style={[styles.filterText,selectedYear===y&&styles.filterActiveText]}>{y}</Text></Pressable>)}
+   </View></>}
    {active.length===0&&<Text style={styles.source}>
-    No current approved documents are available for this selection.</Text>}
+    {matching.length?"No current approved documents are available for this selection.":ngoScope==="annual-reports"?"No reports published yet.":"No approved registration certificate is published."}</Text>}
    {active.map(({record,index,url})=><View style={styles.item} key={index}>
     <Text style={styles.itemTitle}>{text(record.title)}</Text>
     <Text style={styles.source}>Document date: {text(record.asOfDate)}</Text>
     {url&&<Action title="View verified original document"
      onPress={()=>open(url)}/>}
    </View>)}
-   <Text style={styles.source}>{text(f.disclaimer)}</Text>
+   {!!text(f.disclaimer)&&<Text style={styles.source}>{text(f.disclaimer)}</Text>}
   </View>;
  }
  if(section.kind==="COMPLIANCE_FACTS"){
