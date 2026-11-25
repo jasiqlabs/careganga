@@ -51,6 +51,7 @@ export function FoundationContactScreen({onExit}:{onExit:()=>void}){
   const [faq,setFaq]=useState<Faq[]>([]);
   const [busy,setBusy]=useState(false),[loadingFaq,setLoadingFaq]=useState(true);
   const [feedback,setFeedback]=useState("");
+  const [feedbackArea,setFeedbackArea]=useState<"message"|"receipt">("message");
   useEffect(()=>{
     let live=true;
     void contactApi<{faqs:Faq[]}>("public/faqs").then(x=>{
@@ -60,6 +61,7 @@ export function FoundationContactScreen({onExit}:{onExit:()=>void}){
   },[]);
   async function send(){
     if(busy||receipt)return;
+    setFeedbackArea("message");
     if(name.trim().length<2||contact.trim().length<5||subject.trim().length<5||
       message.trim().length<10){
       setFeedback("Enter your name, contact, subject and a message of at least ten characters.");
@@ -78,8 +80,8 @@ export function FoundationContactScreen({onExit}:{onExit:()=>void}){
     finally{setBusy(false)}
   }
   async function check(){
-    if(busy||!proof)return;
-    setBusy(true);setFeedback("");
+    if(busy||!proof.trim())return;
+    setFeedbackArea("receipt");setBusy(true);setFeedback("");setProofStatus("");
     try{
       const result=await contactApi<{status:string;ticketNumber:string}>(
         "receipt/status","POST",{receipt:proof.trim()});
@@ -94,7 +96,6 @@ export function FoundationContactScreen({onExit}:{onExit:()=>void}){
       <Text accessibilityRole="header" style={s.heading}>Contact the Foundation</Text></View>
     <Text style={s.muted}>You do not need a staff account. Your request is private
       and is sent to the same CareGanga Foundation support source as the website.</Text>
-    {feedback?<Text accessibilityRole="alert" style={s.warning}>{feedback}</Text>:null}
     <View style={s.card}>
       {receipt?<View style={s.card}>
         <Text style={s.heading}>Your request was recorded</Text>
@@ -108,32 +109,34 @@ export function FoundationContactScreen({onExit}:{onExit:()=>void}){
       </View>:<>
         <Text style={s.heading}>Send a private contact request</Text>
         <Text>Name</Text>
-        <TextInput style={s.input} accessibilityLabel="Your name" value={name}
+        <TextInput style={s.input} accessibilityLabel="Your name" value={name} editable={!busy}
           onChangeText={setName} maxLength={90} autoComplete="name"/>
         <Text>Email or phone number</Text>
-        <TextInput style={s.input} accessibilityLabel="Email or phone" value={contact}
+        <TextInput style={s.input} accessibilityLabel="Email or phone" value={contact} editable={!busy}
           onChangeText={setContact} maxLength={120} autoCapitalize="none"/>
         <Text>Subject</Text>
-        <TextInput style={s.input} accessibilityLabel="Subject" value={subject}
+        <TextInput style={s.input} accessibilityLabel="Subject" value={subject} editable={!busy}
           onChangeText={setSubject} maxLength={140}/>
         <Text>How can we help?</Text>
         <TextInput style={[s.input,s.long]} accessibilityLabel="Contact message"
-          multiline value={message} onChangeText={setMessage} maxLength={2000}/>
+          multiline editable={!busy} value={message} onChangeText={setMessage} maxLength={2000}/>
         <Pressable style={s.primary} accessibilityRole="button" disabled={busy}
           onPress={()=>void send()}><Text style={s.primaryText}>
             {busy?"Checking original request…":"Send private request"}</Text>
         </Pressable>
       </>}
+      {feedback&&feedbackArea==="message"?<Text accessibilityRole={receipt?"text":"alert"} style={receipt?s.muted:s.warning}>{feedback}</Text>:null}
     </View>
     <View style={s.card}>
       <Text style={s.heading}>Check a private receipt</Text>
-      <TextInput value={proof} onChangeText={setProof} style={s.input}
+      <TextInput value={proof} editable={!busy} onChangeText={v=>{setProof(v);setProofStatus("");if(feedbackArea==="receipt")setFeedback("");}} style={s.input}
         accessibilityLabel="Private receipt code" maxLength={43}
         autoCapitalize="none" autoCorrect={false}/>
       <Pressable style={s.button} accessibilityRole="button"
         disabled={busy||!proof.trim()} onPress={()=>void check()}>
         <Text>Check request status</Text></Pressable>
       {proofStatus?<Text>Current status: {proofStatus}</Text>:null}
+      {feedback&&feedbackArea==="receipt"?<Text accessibilityRole="alert" style={s.warning}>{feedback}</Text>:null}
     </View>
     <View style={s.card}>
       <Text style={s.heading}>Foundation help questions</Text>
