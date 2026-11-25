@@ -16,7 +16,7 @@ const nice=(value:string)=>value.toLowerCase().replaceAll("_"," ")
 const rupee=(amount:number)=>new Intl.NumberFormat("en-IN",{
  style:"currency",currency:"INR",maximumFractionDigits:2}).format(amount/100);
 export default async function HealthcareDirectory({searchParams}:Props){
- const raw=await searchParams,tab=raw.tab==="doctors"?"doctors":"centers";
+ const raw=await searchParams;
  const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
  const rescheduleRef=typeof raw.reschedule==="string"&&ID.test(raw.reschedule)?
   raw.reschedule:"";
@@ -24,6 +24,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
   Number(raw.version):NaN;
  const canReschedule=!!rescheduleRef&&Number.isSafeInteger(rescheduleVersion)&&
   rescheduleVersion>0;
+ const tab=canReschedule||raw.tab==="doctors"?"doctors":"centers";
  const areas=await publicAreas();
  const states=areas.filter(x=>x.level==="STATE"),districts=areas.filter(x=>x.level==="DISTRICT"),
   blocks=areas.filter(x=>x.level==="BLOCK");
