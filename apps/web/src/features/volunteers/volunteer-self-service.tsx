@@ -155,7 +155,7 @@ export function VolunteerSelfService({intro}:{intro?:PublicIntro|null}={}){
  <PublicReferralCode/>
    {canEdit&&<section className="cg04-panel">
     <h2>Volunteer application</h2><nav className="cg04-volunteer-steps" aria-label="Four application steps">
-     {steps.map((title,i)=><button type="button" aria-current={step===i?"step":undefined} key={title} disabled={busy} onClick={()=>setStep(i)}>{i+1}. {title}</button>)}
+     {steps.map((title,i)=><button type="button" aria-label={`Step ${i+1}: ${title}`} aria-current={step===i?"step":undefined} key={title} disabled={busy} onClick={()=>setStep(i)}><span className="cg04-volunteer-step-number" aria-hidden="true">{i+1}</span><span>{title}</span></button>)}
     </nav>
     {step===0&&<div className="cg04-document-grid">{field("First name","firstName")}{field("Last name","lastName")}{field("Date of birth","dateOfBirth","date",10)}
      {field("Gender","gender")}<label>Blood group (optional)<select value={form.bloodGroup} onChange={e=>fill("bloodGroup",e.target.value)}>
