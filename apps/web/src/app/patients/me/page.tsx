@@ -2,7 +2,6 @@ import {HealthcarePublicChrome} from "../../../shared/healthcare-public-chrome";
 import type {Metadata} from "next";
 import Link from "next/link";
 import {PatientProfilePanel} from "../../../features/patients/patient-profile-panel";
-import {MyLabReports} from "../../../features/diagnostics/my-lab-reports";
 export const dynamic="force-dynamic";
 export const metadata:Metadata={
  title:"My Patient Profile | CareGanga",
@@ -26,6 +25,5 @@ export default async function MyPatient({searchParams}:Props){
   </header>
   {returnTo&&<section className="cg-public-section"><h2>Continue your appointment</h2><p>Register or sign in, complete any required patient verification and consent, then return to your selected time. Availability and fee are rechecked.</p><Link className="cg-health-link-action primary" href={returnTo}>Return to selected appointment</Link></section>}
   <PatientProfilePanel/>
-  <MyLabReports/>
  </main></HealthcarePublicChrome>;
 }
