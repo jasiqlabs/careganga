@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json && node db/baseline.mjs contract && npm run verify:cms-release-assets",
     "verify:cms-release-assets": "node -e \"require('./dist/src/modules/cg-18-cms-public-content/application/cms-release-illustrations.js').verifyReleaseIllustrations().catch(e=>{console.error(e.message);process.exitCode=1})\"",
     "test:cg18-release-baseline": "tsx --test test/cg18-release-baseline.test.ts",
+    "test:deployment-bootstrap": "node --test db/baseline.test.mjs && tsx --test test/initial-root-startup.test.ts test/cg18-release-baseline.test.ts",
     "db:migrate": "node --env-file-if-exists=.env ../../node_modules/tsx/dist/cli.mjs db/migrate.ts",
     "bootstrap:root": "node --env-file-if-exists=.env ../../node_modules/tsx/dist/cli.mjs src/modules/cg-01-identity-access/infrastructure/bootstrap-root.ts",
     "test:cg11-provider-readback": "tsx --test test/cg11-provider-readback.test.ts",
