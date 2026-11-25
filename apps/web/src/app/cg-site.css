@@ -292,6 +292,7 @@
  outline:3px solid #a78020;outline-offset:3px}
 .cg-site-gallery-empty{border:1px dashed #aebdac;border-radius:1rem;padding:1.75rem}
 @media(max-width:540px){.cg-site-gallery-filters{flex-direction:column;align-items:stretch}
+ .cg-site-gallery-filters label{flex:0 1 auto;min-width:0}
  .cg-site-gallery-tabs{display:grid;grid-template-columns:1fr 1fr}}
 
 
@@ -643,3 +644,7 @@
 
 .cg-site-connect{text-decoration:none}.cg-site-connect:hover{text-decoration:underline}
 .cg-site-healthcare-heading{font-size:clamp(2rem,3vw,3.6rem);color:#183e34;line-height:1.12;margin:.5rem 0 1.2rem}
+
+.cg-site-gallery-empty button{min-height:44px;padding:.65rem 1rem;border:1px solid #245d45;border-radius:.6rem;background:#245d45;color:white;font-weight:700;cursor:pointer}
+.cg-site-filter-reset{min-height:44px;border:1px solid #93ab95;background:#fff;border-radius:.5rem;color:#194a3a;padding:.5rem 1rem;font-weight:700}
+.cg-site-filter-reset:disabled{opacity:.55;cursor:not-allowed}
