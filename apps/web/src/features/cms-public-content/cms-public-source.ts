@@ -20,7 +20,11 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
     !source.sections.every(section=>!!section&&typeof section==="object"&&!Array.isArray(section)&&
       typeof section.kind==="string"&&Number.isSafeInteger(section.order)&&section.order>=0&&
       !!section.fields&&typeof section.fields==="object"&&!Array.isArray(section.fields))||
-    !Array.isArray(source.assets)||source.slug!==slug||
+    !Array.isArray(source.assets)||!source.assets.every(asset=>!!asset&&typeof asset==="object"&&!Array.isArray(asset)&&
+      ["HERO","MOBILE_HERO","TEAM","ABOUT","PROMO","FEATURE","GALLERY","ARTICLE","DOCUMENT","IMPACT","CONTACT"].includes(asset.role)&&
+      Number.isSafeInteger(asset.order)&&asset.order>=0&&asset.order<=100&&typeof asset.altText==="string"&&asset.altText.trim().length>0&&
+      typeof asset.src==="string"&&(/^\/api\/public\/content\/media\/[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(asset.src)||
+       /^\/api\/public\/content\/release-media\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(asset.src)))||source.slug!==slug||
     !["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY","PARTNERS","PROJECTS"].includes(
        String(source.kind))||
     (source.kind==="PROJECTS"&&!["our-work","upcoming-projects"].includes(slug))||
