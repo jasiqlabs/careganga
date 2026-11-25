@@ -65,11 +65,11 @@ export function CmsNgoSidebar({page,selected="80g"}:{
     aria-current={item.key===selected?"page":undefined}
     href={item.href} key={item.key}>{item.label}</Link>:
     <span className="cg-site-unavailable" aria-disabled="true" key={item.key}
-     title="No current approved public original is available">{item.label}</span>;
+     title="No current approved public original is available">{item.label}<small>Not published yet</small></span>;
   })}
   <div className="cg-site-ngo-secondary">
-   <span className="cg-site-unavailable" aria-disabled="true">Join Us</span>
-   <span className="cg-site-unavailable" aria-disabled="true">Campaigns</span>
+   <Link href="/contact">Join Us — contact the Foundation</Link>
+   <Link href="/campaigns">Campaigns</Link>
   </div>
  </nav>;
 }
