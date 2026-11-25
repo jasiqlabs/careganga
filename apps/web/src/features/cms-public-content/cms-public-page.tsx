@@ -137,7 +137,7 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
       {email&&<a href={"mailto:"+email}>{email}</a>}</address>
     </div>
     <div><h3>QUICK LINKS</h3>
-     {isPublished("/about")?<Link href="/about">About Us</Link>:<span>About Us</span>}
+     {isPublished("/about")?<Link href="/about">About Us</Link>:<span aria-disabled="true" className="cg-site-unavailable">About Us <small>Not published yet</small></span>}
      <Link href="/campaigns">Campaigns</Link>
      {isPublished("/donate")?<Link href="/donate">Donate</Link>:
       <span aria-disabled="true" className="cg-site-unavailable">Donate <small>Online donations not available yet</small></span>}
@@ -167,7 +167,7 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
    {number.length>=10&&number.length<=15&&
     <a className="cg-site-float-whatsapp" href={"https://wa.me/"+number}
      target="_blank" rel="noopener noreferrer" aria-label="Contact CareGanga on WhatsApp">
-     <span aria-hidden="true">◉</span></a>}
+     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11.5a8 8 0 0 1-8 8 8 8 0 0 1-3.3-.7L4 20l1.2-4.5A8 8 0 1 1 20 11.5Z"/><path d="M8.8 8.1c.6 3 2.1 4.5 5.1 5.7l1.2-1.2 1.7 1.2c-.4 1.4-1.2 2-2.4 1.8-3.4-.7-6.5-3.7-7.2-7.1-.2-1.1.3-2 1.7-2.4l1.2 1.7-1.3 1.3"/></svg></a>}
   </div>
  </>;
 }
