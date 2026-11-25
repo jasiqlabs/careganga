@@ -15623,3 +15623,17 @@ button:disabled {
 .cg-health-appointment-detail .cg-health-document-panel iframe{max-width:100%}
 .cg-health-appointment-detail :is(a,button):focus-visible{outline:3px solid #194a3a;outline-offset:2px}
 @media(max-width:600px){.cg-health-appointment-detail .cg-health-document-panel button{width:100%}}
+
+.cg-health-patient-profile{overflow-wrap:anywhere}
+.cg-health-patient-profile form{width:100%;min-width:0}
+.cg-health-patient-profile form>label,.cg-health-patient-profile section>label{display:grid;gap:.35rem;font-weight:600;min-width:0}
+.cg-health-patient-profile label:has(input[type=checkbox]){display:flex;align-items:flex-start;gap:.65rem;font-weight:400}
+.cg-health-patient-profile label input:not([type=checkbox]){display:block;width:100%;min-width:0}
+.cg-health-public-chrome .cg-health-patient-profile button{min-height:48px;white-space:normal;max-width:100%;overflow-wrap:anywhere}
+.cg-health-public-chrome .cg-health-patient-profile button[type=submit]{background:#194a3a;color:#fff;border-color:#194a3a}
+.cg-health-public-chrome .cg-health-patient-profile button:disabled{opacity:.65;cursor:not-allowed}
+.cg-health-patient-profile :is(input,button):focus-visible{outline:3px solid #194a3a;outline-offset:2px}
+.cg-health-patient-profile aside{background:#f3faf5}
+.cg-health-patient-profile [role=alert]{padding:.75rem 1rem;border-left:4px solid #194a3a;background:#f4f8f4;border-radius:.4rem}
+.cg-health-patient-profile section>button{margin:.25rem .5rem .25rem 0}
+@media(max-width:480px){.cg-health-patient-profile section>button{width:100%;margin:.25rem 0}}
