@@ -640,3 +640,6 @@
 .cg-site-healthcare-grid .cg-health-category-photo{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:.8rem}
 .cg-site-healthcare-grid h3{font-family:Georgia,serif;font-size:1.35rem;color:#1a4032}
 @media(max-width:760px){.cg-site-project-card:has(.cg-site-project-cover){grid-template-columns:1fr}.cg-site-floating{inset:auto .75rem max(.75rem,env(safe-area-inset-bottom))}.cg-site-float-donate{max-width:65vw;white-space:normal}}
+
+.cg-site-connect{text-decoration:none}.cg-site-connect:hover{text-decoration:underline}
+.cg-site-healthcare-heading{font-size:clamp(2rem,3vw,3.6rem);color:#183e34;line-height:1.12;margin:.5rem 0 1.2rem}
