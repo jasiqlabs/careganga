@@ -7,6 +7,7 @@ type Fields={partnerType:Kind;applicantName:string;contactName:string;
  consentAccepted:boolean};
 type Sent=Fields&{requestKey:string};
 type Receipt={reference:string;receipt:string;status:string;statusLabel?:string;message?:string};
+const publicStatuses=["PENDING","IN_REVIEW","RETURNED","DECLINED","FOUNDATION_REVIEW","ORIGINAL_REVIEW_REQUIRED","ORIGINAL_VERIFIED"];
 const kinds:{code:Kind;label:string}[]=[
  {code:"HOSPITAL",label:"Hospital"},{code:"CLINIC",label:"Clinic"},
  {code:"DIAGNOSTIC_LAB",label:"Diagnostic laboratory"},
@@ -29,8 +30,10 @@ async function call(action:"apply"|"status",body:unknown){
   throw new Error(message);
  }
  if(!data||typeof data!=="object"||!("reference" in data)||
-  typeof data.reference!=="string"||!("status" in data)||
-  typeof data.status!=="string")throw new Error("The result could not be verified.");
+  typeof data.reference!=="string"||!/^CGPA-[A-F0-9]{12}$/.test(data.reference)||!("status" in data)||
+  typeof data.status!=="string"||!publicStatuses.includes(data.status)||
+  ("statusLabel" in data&&typeof data.statusLabel!=="string")||
+  ("message" in data&&typeof data.message!=="string"))throw new Error("The result could not be verified.");
  return data as Receipt;
 }
 const label=(type:Kind)=>type==="DOCTOR"?"Doctor's full name":"Organization / facility name";
@@ -150,8 +153,8 @@ export function HealthcarePartnerApplication(){
    <p>Enter the private tracking code given when you submitted the application.
     The reference number alone cannot reveal your information.</p>
    <label style={{display:"grid",gap:5}}>Private tracking code
-    <input value={tracking} required maxLength={43} autoComplete="off"
-     disabled={busy} onChange={e=>{setTracking(e.target.value);setChecked(null);setError("");}}/></label>
+    <input value={tracking} required maxLength={64} autoComplete="off" spellCheck={false}
+     disabled={busy} onChange={e=>{setTracking(e.target.value.trim());setChecked(null);setError("");}}/></label>
    <button type="submit" disabled={busy}>{busy?"Checking…":"Check status"}</button>
    {checked&&<p role="status">Application <strong>{checked.reference}</strong>:
     <strong> {checked.statusLabel??"Under Foundation review"}</strong>.
