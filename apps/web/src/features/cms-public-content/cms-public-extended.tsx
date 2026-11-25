@@ -28,13 +28,13 @@ export function CmsImpactGroup({section,assets,navigation}:{
   <div className="cg-site-impact-heading">
    <p className="cg-site-eyebrow">{group==="HERO"&&text(f.eyebrow)?
     text(f.eyebrow):group.replaceAll("_"," ")}</p>
-   <h2>{heading}{group==="HERO"&&!!text(f.highlight)&&<>
-    {" "}<span className="cg-site-impact-highlight">{text(f.highlight)}</span></>}</h2>
+   {group==="HERO"?<h1>{heading}{!!text(f.highlight)&&<>
+    {" "}<span className="cg-site-impact-highlight">{text(f.highlight)}</span></>}</h1>:<h2>{heading}</h2>}
    {group==="HERO"&&!!text(f.quote)&&
     <blockquote className="cg-site-impact-quote">{text(f.quote)}</blockquote>}
    {text(f.intro)&&<p>{text(f.intro)}</p>}
    {rows.length>0&&label(f.source,f.asOfDate)}
-   {!rows.length&&!["HERO","CTA"].includes(group)&&!text(f.intro)&&<p role="status">No approved information has been published yet.</p>}
+   {!rows.length&&!["HERO","CTA","PILLARS"].includes(group)&&<div className="cg-site-empty" role="status">No approved information has been published yet.</div>}
   </div>
   {photo(pic,"cg-site-impact-photo")}
   {tabular&&rows.length>0?<div className="cg-site-table-wrap">
@@ -135,11 +135,13 @@ export function CmsGallery({section,assets,mediaScope="PHOTO"}:{
  const intro=mediaScope==="VIDEO"?fields.videosDescription:
   mediaScope==="PUBLICATION"?fields.publicationsDescription:fields.description;
  return <section className="cg-site-content cg-site-gallery">
-  <p className="cg-site-eyebrow">Media &amp; Resources</p>
-  <h1>{text(heading)||text(fields.heading)}</h1>
-  {text(intro)&&<p>{text(intro)}</p>}
+  <header className="cg-site-resource-hero">
+   <p className="cg-site-eyebrow">Media &amp; Resources</p>
+   <h1>{text(heading)||text(fields.heading)}</h1>
+   {text(intro)&&<p>{text(intro)}</p>}
+  </header>
   <Suspense fallback={<p role="status">Loading approved media filters…</p>}>
-   <CmsGalleryGridClient fields={{
+   <CmsGalleryGridClient key={mediaScope} fields={{
     heading:fields.heading,description:fields.description,items:fields.items,
     photosEmptyText:fields.photosEmptyText,videosEmptyText:fields.videosEmptyText,
     publicationsEmptyText:fields.publicationsEmptyText}}
