@@ -92,8 +92,11 @@ export async function publicDoctor(ref:string){
    qualifications?:unknown;experienceYears?:unknown;bio?:unknown;
    centers?:unknown;notice?:unknown};
   if(typeof p.doctorName!=="string"||!Array.isArray(p.centers)||
-    !p.centers.every(doctor)||!Array.isArray(p.qualifications)||
-    !Array.isArray(p.specialties))return null;
+    !p.centers.every(x=>doctor(x)&&x.doctorRef.toLowerCase()===ref.toLowerCase())||
+    !Array.isArray(p.qualifications)||!p.qualifications.every(x=>typeof x==="string")||
+    !Array.isArray(p.specialties)||!p.specialties.every(x=>typeof x==="string")||
+    typeof p.bio!=="string"||typeof p.notice!=="string"||
+    !Number.isSafeInteger(p.experienceYears))return null;
   return p as {doctorName:string;specialties:string[];qualifications:string[];
    experienceYears:number;bio:string;centers:PublicDoctor[];notice:string};
  }catch{return null;}
