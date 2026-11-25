@@ -29,7 +29,9 @@ async function call<T>(path:string,body:object){
   }
   return await response.json() as T;
 }
-export function Cg19PublicContactForm(){
+export function Cg19PublicContactForm({contact:publishedContact={}}:{contact?:Record<string,unknown>}={}){
+ const publicText=(v:unknown)=>typeof v==="string"?v:"";
+ const phone=publicText(publishedContact.phone),email=publicText(publishedContact.email),address=publicText(publishedContact.address);
   const [name,setName]=useState(""),[contact,setContact]=useState("");
   const [subject,setSubject]=useState(""),[message,setMessage]=useState("");
   const [requestKey,setRequestKey]=useState("");
@@ -66,7 +68,7 @@ export function Cg19PublicContactForm(){
   }
   async function check(){
     if(busy||!proof)return;
-    setBusy(true);setError("");
+    setBusy(true);setError("");setProofState("");
     try{
       const result=await call<{status:string;ticketNumber:string}>("receipt/status",{receipt:proof.trim()});
       setProofState(`${result.ticketNumber} · ${result.status.replaceAll("_"," ")}`);
@@ -112,16 +114,18 @@ export function Cg19PublicContactForm(){
           </button>
         </form>}
       </div>
+      <aside className="cg-site-contact-side">
+       {(phone||email||address)&&<section className="cg-site-contact-panel"><h2>Contact information</h2><address>{address&&<p>{address}</p>}{phone&&<p><a href={"tel:"+phone.replace(/[^+0-9]/g,"")}>{phone}</a></p>}{email&&<p><a href={"mailto:"+email}>{email}</a></p>}</address></section>}
       <div className="cg-site-contact-panel" style={{padding:"1.4rem"}}>
         <h2>Check a private receipt</h2>
         <p>Enter the receipt supplied when you submitted. Only the current status is shown; private messages are never exposed here.</p>
         <div className="cg-site-contact-field"><label htmlFor="c-receipt">Private receipt code</label>
-          <input id="c-receipt" value={proof} onChange={e=>setProof(e.target.value)}
+          <input id="c-receipt" value={proof} onChange={e=>{setProof(e.target.value);setProofState("");}}
             maxLength={43} autoComplete="off" spellCheck={false}/></div>
         <button type="button" className="cg-site-contact-button" disabled={busy||!proof}
           onClick={()=>void check()}>Check request status</button>
         {proofState&&<p role="status">Current status: {proofState}</p>}
-      </div>
+      </div></aside>
       {faqs.length>0&&<section className="cg-site-contact-panel" style={{padding:"1.4rem"}}>
         <h2>Frequently asked questions</h2>
         {faqs.map(f=><details key={f.faqRef}>
