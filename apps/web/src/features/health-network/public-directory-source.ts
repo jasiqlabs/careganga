@@ -44,10 +44,13 @@ function doctor(x:unknown):x is PublicDoctor{
  const v=x as Partial<PublicDoctor>;
  return typeof v.doctorRef==="string"&&/^[a-f0-9-]{36}$/i.test(v.doctorRef)&&
   typeof v.doctorName==="string"&&typeof v.centerName==="string"&&
-  typeof v.centerSlug==="string"&&
+  typeof v.centerSlug==="string"&&/^[a-z0-9][a-z0-9-]{2,79}$/.test(v.centerSlug)&&
   typeof v.address==="string"&&typeof v.pinCode==="string"&&Number.isInteger(v.experienceYears)&&
   Array.isArray(v.specialties)&&v.specialties.every(s=>typeof s==="string")&&Array.isArray(v.qualifications)&&v.qualifications.every(s=>typeof s==="string")&&
-  (v.fee===null||!!v.fee&&v.fee.currency==="INR"&&Number.isSafeInteger(v.fee.amountMinor)&&v.fee.amountMinor>=0);
+  (v.fee===null||!!v.fee&&v.fee.currency==="INR"&&Number.isSafeInteger(v.fee.amountMinor)&&v.fee.amountMinor>=0&&
+   v.fee.kind==="CONSULTATION"&&v.fee.mode==="IN_PERSON"&&
+   typeof v.fee.effectiveFrom==="string"&&Date.parse(v.fee.effectiveFrom)<=Date.now()&&
+   (v.fee.effectiveTo===null||typeof v.fee.effectiveTo==="string"&&Date.parse(v.fee.effectiveTo)>Date.now()));
 }
 export async function directory<T extends PublicDoctor|PublicCenter>(
  resource:"centers"|"doctors",search:URLSearchParams):Promise<DirectoryResult<T>>{
@@ -56,6 +59,8 @@ export async function directory<T extends PublicDoctor|PublicCenter>(
    items?:unknown;next?:unknown};
   const valid=resource==="centers"?center:doctor;
   if(!data||!Array.isArray(data.items)||!data.items.every(valid)||
+    (resource==="doctors"&&search.has("center")&&
+     !(data.items as PublicDoctor[]).every(item=>item.centerSlug===search.get("center")))||
     !(data.next===null||typeof data.next==="string"))
    throw Error("UNAVAILABLE");
   return {state:"READY",items:data.items.slice(0,20) as T[],
