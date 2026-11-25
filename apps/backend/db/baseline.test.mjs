@@ -6,7 +6,7 @@ import {tmpdir} from "node:os";
 import {join,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {spawnSync} from "node:child_process";
-import {cleanDump,requireLedger,requirePrefix,disposable,direct,order,assertAtomicUpgrade,validateUpgrades} from "./baseline.mjs";
+import {cleanDump,requireLedger,requirePrefix,disposable,direct,order,assertAtomicUpgrade,validateUpgrades,deploymentPlan,assertSameDatabase} from "./baseline.mjs";
 
 const one={filename:"0001_cg01_identity.sql",sha256:"a".repeat(64)};
 const two={filename:"9999_cg20_reports.sql",sha256:"b".repeat(64)};
@@ -91,4 +91,30 @@ test("prebuilt release checks work without historical SQL and reject stale or co
   rmSync(history,{recursive:true,force:true});ok("check"); // prebuilt image excludes archive
   writeFileSync(join(baseline,"schema.sql"),schema+" -- modified");fail("check");
  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test("deployment plans: blank, known older, current, incompatible; no implicit repair",()=>{
+ const release={manifest:{migrations:[one,two]},current:expected};
+ assert.equal(deploymentPlan(null,release),"initialize");
+ assert.equal(deploymentPlan([one,two],release),"upgrade");
+ assert.equal(deploymentPlan([one,two,three],release),"upgrade");
+ assert.equal(deploymentPlan(expected,release),"current");
+ for(const rows of [[],[one],[one,two,four],[one,{...two,sha256:one.sha256}], [...expected,{...four,filename:"10002_cg15_future.sql"}]])
+  assert.throws(()=>deploymentPlan(rows,release));
+});
+test("same-database proof uses random held lock; mismatch fails before mutation and unlocks",async()=>{
+ let held=null,released=false;
+ const owner={query:async(sql,args)=>{
+  if(sql.startsWith("SELECT current_database"))return {rows:[{name:"careganga",role:"owner"}]};
+  if(sql.includes("pg_advisory_lock(")){held=args;return {rows:[]};}
+  if(sql.includes("pg_advisory_unlock(")){assert.deepEqual(args,held);released=true;return {rows:[]};}
+  assert.fail(sql);
+ }};
+ const runtime=(name,acquired)=>({query:async(sql,args)=>{assert.match(sql,/pg_try_advisory_xact_lock/);assert.deepEqual(args,held);return {rows:[{name,role:"runtime",acquired}]};}});
+ assert.deepEqual(await assertSameDatabase(owner,runtime("careganga",false)),{ownerRole:"owner",runtimeRole:"runtime"});
+ assert.equal(released,true);
+ released=false;
+ await assert.rejects(assertSameDatabase(owner,runtime("careganga",true)),/same database/);
+ assert.equal(released,true);
+ await assert.rejects(assertSameDatabase(owner,runtime("other",false)),/same database/);
 });
