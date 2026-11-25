@@ -16344,5 +16344,118 @@ button:disabled {
   color: #b91c1c;
 }
 
+/* Enhanced Tab Pills */
+.cg19-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.825rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  outline: none;
+}
+.cg19-tab-pill:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+.cg19-tab-pill.active {
+  background: #eef2ff;
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
+}
+.cg19-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.725rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.cg19-tab-pill.active .cg19-tab-count {
+  background: #c7d2fe;
+  color: #3730a3;
+}
+
+/* Enhanced Quick Action Buttons */
+.cg19-qa-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.85rem 0.6rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.cg19-qa-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+  border-color: #cbd5e1;
+}
+.cg19-qa-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.45rem;
+  transition: transform 0.2s ease-in-out;
+}
+.cg19-qa-btn:hover .cg19-qa-icon {
+  transform: scale(1.1);
+}
+.cg19-qa-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #334155;
+  line-height: 1.2;
+}
+
+/* Email Template Modern Cards */
+.cg19-template-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  overflow: hidden;
+}
+.cg19-template-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+.cg19-template-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  background: #ffffff;
+  user-select: none;
+}
+.cg19-template-header:hover {
+  background: #f8fafc;
+}
+.cg19-template-content {
+  padding: 1rem;
+  border-top: 1px solid #f1f5f9;
+  background: #fbfcfd;
+}
+
+
 
 

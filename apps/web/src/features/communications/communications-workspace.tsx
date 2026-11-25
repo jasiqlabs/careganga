@@ -1231,9 +1231,17 @@ export function CommunicationsWorkspace({
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {/* Advanced Filters Panel */}
               <div className="cg19-filter-panel" aria-label="Advanced Notice Filters">
-                <div className="cg19-filter-header">
-                  <SlidersHorizontal className="w-4 h-4 text-slate-500" />
-                  <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1e293b" }}>
+                <div
+                  className="cg19-filter-header"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    marginBottom: "0.85rem",
+                  }}
+                >
+                  <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
+                  <span className="font-slab" style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1e293b" }}>
                     Advanced Filters
                   </span>
                 </div>
@@ -1245,13 +1253,19 @@ export function CommunicationsWorkspace({
                     <label htmlFor="notice-search">Search</label>
                     <div style={{ position: "relative" }}>
                       <Search
-                        className="w-4 h-4 text-slate-400"
-                        style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)" }}
+                        className="w-3.5 h-3.5 text-slate-400"
+                        style={{
+                          position: "absolute",
+                          left: "0.85rem",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          pointerEvents: "none",
+                        }}
                       />
                       <input
                         id="notice-search"
                         className="cg19-input"
-                        style={{ paddingLeft: "2.25rem" }}
+                        style={{ paddingLeft: "2.4rem" }}
                         placeholder="Search title, message, status..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -1317,8 +1331,20 @@ export function CommunicationsWorkspace({
               {/* Table Card */}
               <div className="cg19-table-card">
                 {/* Status Tabs Header matching Screenshot 2 */}
-                <div className="cg19-tab-header">
-                  <div className="cg19-tab-list">
+                <div
+                  className="cg19-tab-header"
+                  style={{
+                    padding: "0.6rem 1rem",
+                    background: "#ffffff",
+                    borderBottom: "1px solid #e2e8f0",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
                     {(
                       [
                         { key: "ALL", label: "All Notifications", count: notices.length },
@@ -1332,11 +1358,35 @@ export function CommunicationsWorkspace({
                       <button
                         key={tabItem.key}
                         type="button"
-                        className={`cg19-tab-pill ${statusFilter === tabItem.key ? "active" : ""}`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.4rem",
+                          padding: "0.45rem 0.85rem",
+                          borderRadius: "8px",
+                          border: statusFilter === tabItem.key ? "1px solid #c7d2fe" : "1px solid transparent",
+                          background: statusFilter === tabItem.key ? "#eef2ff" : "#ffffff",
+                          color: statusFilter === tabItem.key ? "#4f46e5" : "#64748b",
+                          fontSize: "0.825rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
                         onClick={() => setStatusFilter(tabItem.key)}
                       >
                         <span>{tabItem.label}</span>
-                        <span className="cg19-tab-count">{tabItem.count}</span>
+                        <span
+                          style={{
+                            background: statusFilter === tabItem.key ? "#c7d2fe" : "#f1f5f9",
+                            color: statusFilter === tabItem.key ? "#3730a3" : "#64748b",
+                            padding: "0.1rem 0.45rem",
+                            borderRadius: "999px",
+                            fontSize: "0.725rem",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {tabItem.count}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -1345,10 +1395,10 @@ export function CommunicationsWorkspace({
                     <button
                       type="button"
                       className="cg19-btn-apply"
-                      style={{ padding: "0.35rem 0.85rem", fontSize: "0.8rem" }}
+                      style={{ padding: "0.45rem 0.95rem", fontSize: "0.825rem" }}
                       onClick={() => setComposerOpen(true)}
                     >
-                      <PlusCircle className="w-3.5 h-3.5" />
+                      <PlusCircle className="w-4 h-4" />
                       <span>Send Notification</span>
                     </button>
                   )}
@@ -1660,10 +1710,10 @@ export function CommunicationsWorkspace({
             {/* Right Side Column: Quick Actions & Delivery Summary (Matching Screenshot 2) */}
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {/* Quick Actions Card */}
-              <div className="cg19-recent-card">
+              <div className="cg19-recent-card" style={{ padding: "1.1rem" }}>
                 <h4
                   className="font-slab"
-                  style={{ fontSize: "0.95rem", fontWeight: 700, margin: "0 0 0.75rem 0", color: "#1e293b" }}
+                  style={{ fontSize: "1rem", fontWeight: 700, margin: "0 0 0.85rem 0", color: "#1e293b" }}
                 >
                   Quick Actions
                 </h4>
@@ -1671,124 +1721,82 @@ export function CommunicationsWorkspace({
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
-                    gap: "0.55rem",
+                    gap: "0.65rem",
                   }}
                 >
+                  {/* 1. Create Notice */}
                   <button
                     type="button"
-                    className="cg19-recent-item"
-                    style={{
-                      flexDirection: "column",
-                      alignItems: "center",
-                      textAlign: "center",
-                      padding: "0.75rem 0.5rem",
-                      background: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                    }}
+                    className="cg19-qa-btn"
                     onClick={() => setComposerOpen(true)}
                   >
-                    <PlusCircle className="w-5 h-5 text-indigo-600 mb-1" />
-                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155" }}>
-                      Create Notice
-                    </span>
+                    <div className="cg19-qa-icon" style={{ background: "#eef2ff", color: "#4f46e5", border: "1px solid #c7d2fe" }}>
+                      <PlusCircle className="w-4 h-4" />
+                    </div>
+                    <span className="cg19-qa-label">Create Notice</span>
                   </button>
 
+                  {/* 2. Send Notice */}
                   <button
                     type="button"
-                    className="cg19-recent-item"
-                    style={{
-                      flexDirection: "column",
-                      alignItems: "center",
-                      textAlign: "center",
-                      padding: "0.75rem 0.5rem",
-                      background: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                    }}
+                    className="cg19-qa-btn"
                     onClick={() => setComposerOpen(true)}
                   >
-                    <Send className="w-5 h-5 text-blue-600 mb-1" />
-                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155" }}>
-                      Send Notice
-                    </span>
+                    <div className="cg19-qa-icon" style={{ background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe" }}>
+                      <Send className="w-4 h-4" />
+                    </div>
+                    <span className="cg19-qa-label">Send Notice</span>
                   </button>
 
+                  {/* 3. Schedule Notice */}
                   <button
                     type="button"
-                    className="cg19-recent-item"
-                    style={{
-                      flexDirection: "column",
-                      alignItems: "center",
-                      textAlign: "center",
-                      padding: "0.75rem 0.5rem",
-                      background: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                    }}
+                    className="cg19-qa-btn"
                     onClick={() => setComposerOpen(true)}
                   >
-                    <Calendar className="w-5 h-5 text-teal-600 mb-1" />
-                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155" }}>
-                      Schedule Notice
-                    </span>
+                    <div className="cg19-qa-icon" style={{ background: "#f0fdfa", color: "#0d9488", border: "1px solid #99f6e4" }}>
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <span className="cg19-qa-label">Schedule</span>
                   </button>
 
+                  {/* 4. Templates */}
                   <button
                     type="button"
-                    className="cg19-recent-item"
-                    style={{
-                      flexDirection: "column",
-                      alignItems: "center",
-                      textAlign: "center",
-                      padding: "0.75rem 0.5rem",
-                      background: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                    }}
+                    className="cg19-qa-btn"
                     onClick={() => {
                       setTab("EMAIL_TEMPLATES");
                       void loadEmailReferences();
                     }}
                   >
-                    <FileText className="w-5 h-5 text-purple-600 mb-1" />
-                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155" }}>
-                      Templates
-                    </span>
+                    <div className="cg19-qa-icon" style={{ background: "#faf5ff", color: "#9333ea", border: "1px solid #e9d5ff" }}>
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <span className="cg19-qa-label">Templates</span>
                   </button>
 
+                  {/* 5. Live Broadcasts */}
                   <button
                     type="button"
-                    className="cg19-recent-item"
-                    style={{
-                      flexDirection: "column",
-                      alignItems: "center",
-                      textAlign: "center",
-                      padding: "0.75rem 0.5rem",
-                      background: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                    }}
+                    className="cg19-qa-btn"
                     onClick={() => setStatusFilter("ACTIVE")}
                   >
-                    <Megaphone className="w-5 h-5 text-green-600 mb-1" />
-                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155" }}>
-                      Live Broadcasts
-                    </span>
+                    <div className="cg19-qa-icon" style={{ background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0" }}>
+                      <Megaphone className="w-4 h-4" />
+                    </div>
+                    <span className="cg19-qa-label">Live Notices</span>
                   </button>
 
+                  {/* 6. Sync Data */}
                   <button
                     type="button"
-                    className="cg19-recent-item"
-                    style={{
-                      flexDirection: "column",
-                      alignItems: "center",
-                      textAlign: "center",
-                      padding: "0.75rem 0.5rem",
-                      background: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                    }}
+                    className="cg19-qa-btn"
                     onClick={() => void reload()}
                   >
-                    <RefreshCw className="w-5 h-5 text-slate-600 mb-1" />
-                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155" }}>
-                      Sync Data
-                    </span>
+                    <div className="cg19-qa-icon" style={{ background: "#fefce8", color: "#ca8a04", border: "1px solid #fef08a" }}>
+                      <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                    </div>
+                    <span className="cg19-qa-label">Sync Data</span>
                   </button>
                 </div>
               </div>
@@ -2021,7 +2029,7 @@ export function CommunicationsWorkspace({
               </div>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               {emailReferences
                 .filter((t) =>
                   (t.code + " " + t.title + " " + t.owner).toLowerCase().includes(emailSearch.trim().toLowerCase())
@@ -2029,64 +2037,165 @@ export function CommunicationsWorkspace({
                 .map((t) => (
                   <details
                     key={t.code}
+                    className="cg19-template-card"
                     style={{
                       background: "#ffffff",
                       border: "1px solid #e2e8f0",
                       borderRadius: "10px",
-                      padding: "0.85rem",
+                      overflow: "hidden",
                     }}
                   >
-                    <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: "0.875rem", color: "#1e293b" }}>
-                      <strong>{t.code}</strong> · {t.title} ·{" "}
-                      <span className="cg19-status-pill waiting" style={{ fontSize: "0.7rem" }}>
-                        {t.state.replaceAll("_", " ")}
-                      </span>
+                    <summary
+                      style={{
+                        padding: "0.85rem 1.15rem",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        listStyle: "none",
+                        background: "#ffffff",
+                        transition: "background 0.15s",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", flexWrap: "wrap" }}>
+                        <span
+                          style={{
+                            background: "#eef2ff",
+                            color: "#4f46e5",
+                            padding: "0.2rem 0.55rem",
+                            borderRadius: "6px",
+                            fontFamily: "monospace",
+                            fontWeight: 700,
+                            fontSize: "0.8rem",
+                            border: "1px solid #c7d2fe",
+                          }}
+                        >
+                          {t.code}
+                        </span>
+                        <strong style={{ fontSize: "0.9rem", color: "#1e293b" }}>{t.title}</strong>
+                        <span
+                          className={`cg19-status-pill ${t.state === "PUBLISHED" ? "open" : "waiting"}`}
+                          style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem" }}
+                        >
+                          {t.state.replaceAll("_", " ")}
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
                     </summary>
-                    <div style={{ marginTop: "0.75rem", fontSize: "0.825rem", color: "#334155", lineHeight: 1.6 }}>
-                      <p style={{ margin: "0.25rem 0" }}>
-                        <strong>Source trigger:</strong> {t.trigger}
-                      </p>
-                      <p style={{ margin: "0.25rem 0" }}>
-                        <strong>Recipient:</strong> {t.recipient || "Verify the recipient from the owning source"}
-                      </p>
-                      <p style={{ margin: "0.25rem 0" }}>
-                        <strong>Approved document requirement:</strong> {t.attachmentRule}
-                      </p>
-                      <p style={{ margin: "0.25rem 0" }}>
-                        <strong>Required fields:</strong> {t.placeholders.join(", ") || "None"}
-                      </p>
-                      <p style={{ margin: "0.5rem 0 0.2rem 0", fontWeight: 700 }}>
-                        Subject preview (placeholders only):
-                      </p>
-                      <pre
+
+                    <div
+                      style={{
+                        padding: "1.15rem",
+                        borderTop: "1px solid #f1f5f9",
+                        background: "#fafbfc",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.85rem",
+                        fontSize: "0.825rem",
+                      }}
+                    >
+                      {/* Meta Grid */}
+                      <div
                         style={{
-                          whiteSpace: "pre-wrap",
-                          overflowWrap: "anywhere",
-                          background: "#f8fafc",
-                          border: "1px solid #e2e8f0",
-                          padding: "0.5rem",
-                          borderRadius: "6px",
-                          fontSize: "0.8rem",
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                          gap: "0.75rem",
                         }}
                       >
-                        {t.subject}
-                      </pre>
-                      <p style={{ margin: "0.5rem 0 0.2rem 0", fontWeight: 700 }}>
-                        Email body preview (placeholders only):
-                      </p>
-                      <pre
-                        style={{
-                          whiteSpace: "pre-wrap",
-                          overflowWrap: "anywhere",
-                          background: "#f8fafc",
-                          border: "1px solid #e2e8f0",
-                          padding: "0.5rem",
-                          borderRadius: "6px",
-                          fontSize: "0.8rem",
-                        }}
-                      >
-                        {t.body}
-                      </pre>
+                        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.65rem 0.85rem" }}>
+                          <span style={{ fontSize: "0.72rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: "0.2rem" }}>
+                            Source Trigger
+                          </span>
+                          <span style={{ color: "#1e293b", fontWeight: 500 }}>{t.trigger}</span>
+                        </div>
+
+                        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.65rem 0.85rem" }}>
+                          <span style={{ fontSize: "0.72rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: "0.2rem" }}>
+                            Intended Recipient
+                          </span>
+                          <span style={{ color: "#1e293b", fontWeight: 500 }}>{t.recipient || "Verify from source"}</span>
+                        </div>
+
+                        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.65rem 0.85rem" }}>
+                          <span style={{ fontSize: "0.72rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: "0.2rem" }}>
+                            Attachment Policy
+                          </span>
+                          <span style={{ color: "#1e293b", fontWeight: 500 }}>{t.attachmentRule}</span>
+                        </div>
+
+                        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.65rem 0.85rem" }}>
+                          <span style={{ fontSize: "0.72rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: "0.2rem" }}>
+                            Required Dynamic Fields
+                          </span>
+                          <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", marginTop: "0.15rem" }}>
+                            {t.placeholders.length ? (
+                              t.placeholders.map((p) => (
+                                <span
+                                  key={p}
+                                  style={{
+                                    background: "#f1f5f9",
+                                    color: "#475569",
+                                    padding: "0.1rem 0.35rem",
+                                    borderRadius: "4px",
+                                    fontSize: "0.7rem",
+                                    fontFamily: "monospace",
+                                  }}
+                                >
+                                  {p}
+                                </span>
+                              ))
+                            ) : (
+                              <span style={{ color: "#94a3b8" }}>None</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Subject Preview */}
+                      <div>
+                        <strong style={{ display: "block", color: "#334155", marginBottom: "0.35rem", fontSize: "0.8rem" }}>
+                          Subject Preview (Placeholders Only):
+                        </strong>
+                        <div
+                          style={{
+                            background: "#ffffff",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: "6px",
+                            padding: "0.6rem 0.85rem",
+                            fontFamily: "monospace",
+                            fontSize: "0.8rem",
+                            color: "#1e293b",
+                          }}
+                        >
+                          {t.subject}
+                        </div>
+                      </div>
+
+                      {/* Body Preview */}
+                      <div>
+                        <strong style={{ display: "block", color: "#334155", marginBottom: "0.35rem", fontSize: "0.8rem" }}>
+                          Email Body Preview (Placeholders Only):
+                        </strong>
+                        <div
+                          style={{
+                            background: "#ffffff",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: "6px",
+                            padding: "0.85rem",
+                            fontFamily: "monospace",
+                            fontSize: "0.8rem",
+                            lineHeight: 1.6,
+                            color: "#1e293b",
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {t.body}
+                        </div>
+                      </div>
+
+                      <small style={{ color: "#94a3b8", fontSize: "0.75rem", fontStyle: "italic" }}>
+                        Delivery unavailable until the source event, permission and every required approved document are verified.
+                      </small>
                     </div>
                   </details>
                 ))}

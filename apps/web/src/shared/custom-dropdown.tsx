@@ -134,7 +134,8 @@ export function CustomDropdown({
         </span>
 
         <ChevronDown
-          className="w-4 h-4 text-slate-400"
+          className="w-3.5 h-3.5 text-slate-400"
+          strokeWidth={2.2}
           style={{
             flexShrink: 0,
             transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
