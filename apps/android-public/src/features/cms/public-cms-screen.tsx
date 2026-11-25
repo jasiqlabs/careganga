@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
+import {ActivityIndicator,AppState,BackHandler,Image,Linking,Pressable,
  StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {CmsPublicExtendedSection} from "./cms-extended-native-screen";
@@ -164,13 +164,45 @@ function NativeTeamDirectory(){
   {loading?<ActivityIndicator/>:filtered.length?filtered.map((p,i)=><View key={i} style={styles.person}><Text style={styles.heading}>{p.name}</Text><Text style={styles.role}>{p.designation}</Text></View>):<View style={styles.person}><Text style={styles.heading}>{name.trim()||designation?"No matching profiles":"No public profiles yet"}</Text><Text style={styles.muted}>{name.trim()||designation?"Try another name or designation.":"Consented team profiles will appear here once published."}</Text></View>}
  </View></View>;
 }
+/** Same current public Gallery projection as the Web financial report route.
+ * No private finance or report-owner data is queried. */
+function NativeFinancialReports(){
+ const [result,setResult]=useState<Result>({state:"UNAVAILABLE",page:null});
+ const [loading,setLoading]=useState(true),[year,setYear]=useState("ALL"),[openError,setOpenError]=useState("");
+ const request=useRef(0);
+ const refresh=useCallback(async()=>{
+  const id=++request.current;setLoading(true);setResult({state:"UNAVAILABLE",page:null});setOpenError("");
+  const next=await published("gallery");if(id!==request.current)return;
+  setResult(next);setLoading(false);
+ },[]);
+ useEffect(()=>{void refresh();const sub=AppState.addEventListener("change",v=>{if(v==="active")void refresh();});return()=>{request.current++;sub.remove();};},[refresh]);
+ const records=result.state==="PUBLISHED"&&result.page?result.page.sections.filter(s=>s.kind==="GALLERY_GRID").flatMap(s=>
+  (Array.isArray(s.fields.items)?s.fields.items.slice(0,12):[]).flatMap(item=>{
+   if(!item||typeof item!=="object"||Array.isArray(item)||item.mediaType!=="PUBLICATION"||text(item.category).toLowerCase()!=="financial reports"||item.visible===false||!Number.isSafeInteger(item.originalIndex))return [];
+   const a=result.page?.assets.find(v=>v.role==="GALLERY"&&v.order===item.originalIndex&&/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(v.src));
+   return a&&base&&text(item.title)&&text(item.asOfDate)?[{title:text(item.title),date:text(item.asOfDate),href:new URL(a.src,base).toString()}]:[];
+  })): [];
+ const years=Array.from(new Set(records.map(v=>v.date.slice(0,4)).filter(v=>/^\d{4}$/.test(v)))).sort((a,b)=>b.localeCompare(a));
+ const matching=records.filter(v=>year==="ALL"||v.date.startsWith(year+"-"));
+ return <View style={styles.card}>
+  <Text accessibilityRole="header" style={styles.heading}>Financial Reports</Text>
+  <Text style={styles.body}>Current Foundation-published financial reports only.</Text>
+  {loading?<ActivityIndicator accessibilityLabel="Checking current financial reports"/>:result.state==="UNAVAILABLE"?<Text accessibilityRole="alert">Published financial reports cannot currently be verified.</Text>:<>
+   <View style={styles.actions}>{["ALL",...years].map(v=><CmsButton key={v} title={v==="ALL"?"All years":v} secondary={year!==v} onPress={()=>setYear(v)}/>)}</View>
+   <CmsButton title="Reset filters" secondary onPress={()=>setYear("ALL")}/>
+   {!matching.length?<Text style={styles.muted}>No approved financial report is available for the selected year.</Text>:matching.map((v,i)=><View key={v.href+"-"+i} style={styles.person}><Text style={styles.heading}>{v.title}</Text><Text>{v.date}</Text><CmsButton title="View document" onPress={()=>{setOpenError("");void Linking.openURL(v.href).catch(()=>setOpenError("This document could not be opened. Please try again."));}}}/></View>)}
+  </>}
+  {!!openError&&<Text accessibilityRole="alert">{openError}</Text>}
+  <CmsButton title="Refresh reports" secondary onPress={()=>void refresh()}/>
+ </View>;
+}
 export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApply,onVolunteerApply,onLoginVisibility,onHealthcareDirectory,onPatientProfile}: {
  onContact:()=>void;onPartnerApplication:()=>void;onMembershipApply:(planCode:string)=>void;onVolunteerApply:()=>void;
  onLoginVisibility:(visible:boolean)=>void;onHealthcareDirectory:(category?:string)=>void;onPatientProfile:()=>void}){
  const [slug,setSlug]=useState("home"),[projectCategory,setProjectCategory]=useState("All Projects");
  const [mediaScope,setMediaScope]=useState<"PHOTO"|"VIDEO"|"PUBLICATION">("PHOTO");
  const [ngoScope,setNgoScope]=useState<"80g"|"pan-details"|
-  "registration-certificate"|"annual-reports">("80g");
+  "registration-certificate"|"annual-reports"|"financial-reports">("80g");
  const [policiesExpanded,setPoliciesExpanded]=useState(false);
  const [publishedPaths,setPublishedPaths]=useState<string[]>([]);
  const [volunteerJoin,setVolunteerJoin]=useState(false);
@@ -324,10 +356,9 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
      ["80g","80G Registration"],
      ["pan-details","PAN Details"],
      ["registration-certificate","Registration Certificate"],
-     ["annual-reports","Annual Reports"]
-    ] as const).filter(([scope])=>scope==="80g"||
-      (scope==="pan-details"?ngoHasPan:
-       hasOfficialDocument(scope==="annual-reports"?"ANNUAL_REPORT":"REGISTRATION")))
+     ["annual-reports","Annual Reports"],["financial-reports","Financial Reports"]
+    ] as const).filter(([scope])=>scope==="80g"||scope==="annual-reports"||scope==="financial-reports"||
+      (scope==="pan-details"?ngoHasPan:hasOfficialDocument("REGISTRATION")))
      .map(([scope,label])=><CmsButton key={scope} title={label}
       secondary={ngoScope!==scope} onPress={()=>setNgoScope(scope)}/>)}
     {publishedPaths.includes("/gallery")&&([
@@ -445,7 +476,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       {!!text(fields.description)&&<Text style={styles.heroBody}>{text(fields.description)}</Text>}
       {!!src&&<Image source={{uri:src}} accessibilityLabel={media?.altText||"Foundation initiative"}
        resizeMode="cover" style={styles.image}/>}
-      {src&&media?.altText.startsWith("AI-generated illustration")&&<Text style={styles.heroBody}>AI-generated illustration; not a photograph of Foundation activities.</Text>}
+      {src&&media?.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<Text style={styles.heroBody}>Illustration; not a photograph of Foundation activities.</Text>}
       {tags.length>0&&<View style={styles.actions}>{tags.map((tag,j)=>
        <Text key={j} style={styles.tag}>{String(tag)}</Text>)}</View>}
       <View style={styles.actions}>
@@ -550,12 +581,13 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       })}
      </View>;
     }
+    if(section.kind==="COMPLIANCE_FACTS"&&ngoScope==="financial-reports")return <NativeFinancialReports key={i}/>;
     if(["IMPACT_GROUP","COMPLIANCE_FACTS","GALLERY_GRID","ARTICLE_BODY",
        "HEALTHCARE_CATEGORIES","CONTACT_INFO"].includes(section.kind))
      return <CmsPublicExtendedSection key={i} section={section} assets={page.assets}
       mediaUrl={safeImage} onContact={onContact} onNavigate={navigate} canNavigate={canNavigate} onHealthcareDirectory={onHealthcareDirectory}
       mediaScope={section.kind==="GALLERY_GRID"?mediaScope:undefined}
-       ngoScope={section.kind==="COMPLIANCE_FACTS"?ngoScope:undefined}
+       ngoScope={section.kind==="COMPLIANCE_FACTS"&&ngoScope!=="financial-reports"?ngoScope:undefined}
       onBackToNews={()=>setSlug(articleBackTarget)}
        backLabel={articleBackTarget==="notices"?"Back to notices":articleBackTarget==="@events"?"Back to events":"Back to approved articles"}/>;
     if(section.kind==="CAMPAIGN_TEASER"){
