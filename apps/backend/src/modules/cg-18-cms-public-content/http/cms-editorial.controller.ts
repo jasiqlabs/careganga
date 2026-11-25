@@ -17,6 +17,9 @@ export class CmsEditorialController{
  partnerSources(@Headers("authorization")auth:string){return this.cms.partnerSources(auth);}
  @Get("project-sources") @Header("Cache-Control","private, no-store")
  projectSources(@Headers("authorization")auth:string){return this.cms.projectSources(auth);}
+ @Get("release-media/preview/:key")
+ @Header("Cache-Control","private, no-store") @Header("X-Content-Type-Options","nosniff") @Header("X-Robots-Tag","noindex")
+ async releaseMediaPreview(@Headers("authorization")auth:string,@Param("key")key:string){const bytes=await this.cms.releaseMediaPreview(auth,key);return new StreamableFile(bytes,{type:"image/webp",length:bytes.length,disposition:"inline"});}
  @Get("pages")
  @Header("Cache-Control","private, no-store")
  pages(@Headers("authorization")auth:string,@Query("scope")scope?:string){return this.cms.list(auth,scope);}
