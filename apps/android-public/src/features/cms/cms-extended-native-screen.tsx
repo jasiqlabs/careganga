@@ -273,10 +273,11 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
     <Text accessibilityRole="header" style={styles.itemTitle}>
      Frequently Asked Questions</Text>}
    {rows(f.faqs).map((item,i)=><View key={i} style={styles.item}>
-    <Pressable accessibilityRole="button"
+    <Pressable style={styles.faqToggle} accessibilityRole="button"
      accessibilityState={{expanded:openFaq===i}}
      onPress={()=>setOpenFaq(current=>current===i?null:i)}>
-     <Text style={styles.itemTitle}>{text(item.question)}</Text>
+     <Text style={[styles.itemTitle,styles.faqQuestion]}>{text(item.question)}</Text>
+     <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.faqIndicator}>{openFaq===i?"−":"+"}</Text>
     </Pressable>
     {openFaq===i&&<Text style={styles.body}>{text(item.answer)}</Text>}
    </View>)}
@@ -287,9 +288,6 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
     return url?<Action key={i} title={"Follow on "+network}
      onPress={()=>open(url)}/>:null;
    })}
-   <Action title="Send a private message" onPress={onContact}/>
-   <Text style={styles.source}>Private messages use the Foundation's
-    existing contact-support service.</Text>
   </View>;
  }
  if(section.kind==="HEALTHCARE_CATEGORIES")return <View style={styles.section}>
@@ -325,6 +323,9 @@ const styles=StyleSheet.create({
   borderRadius:7,overflow:"hidden"},
  barFill:{backgroundColor:"#3b8d5a",borderRadius:7},
  item:{borderRadius:10,backgroundColor:t.selectedSurface,padding:13,gap:7},
+ faqToggle:{minHeight:48,flexDirection:"row",alignItems:"center",gap:12},
+ faqQuestion:{flex:1,flexShrink:1},
+ faqIndicator:{fontSize:22,fontWeight:"700",color:t.primary},
  itemTitle:{fontSize:18,fontWeight:"700",color:t.primary},
  value:{fontSize:21,fontWeight:"700",color:"#17694a"},
  photo:{width:"100%",height:220,borderRadius:10},
