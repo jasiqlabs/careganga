@@ -537,7 +537,11 @@ checks.push(["Current Home CG03 approval only controls Member and Volunteer Join
  files.backend.includes("c.status='OWNER_COMPLETED'")&&
  files.backend.includes("n.status='APPROVED'")]);
 checks.push(["Public Web/footer never fabricate fundraiser links",
- files.web.includes('isPublished("/campaigns")?<Link href="/campaigns">Campaigns</Link>')&&
+ files.web.includes('<Link href="/campaigns">Campaigns</Link>')&&
+ files.header.includes('<Link href="/campaigns"')&&
+ files.header.includes('text==="Blog"?"/blog":undefined')&&
+ files.android.includes('<CmsButton title="Campaigns" secondary={slug!=="campaigns"}')&&
+ files.android.includes('<CmsButton title="News & Articles" secondary={slug!=="articles"}')&&
  files.web.includes('isPublished("/donate")?<Link href="/donate">Donate</Link>')&&
  files.web.includes('aria-disabled="true"')]);
 checks.push(["Unpublished Home remains non-indexed but exposes truthful shared public shell",
