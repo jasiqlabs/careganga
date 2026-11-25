@@ -1006,3 +1006,8 @@
 @media(max-width:540px){.cg-public-campaign-list-actions>a{width:100%}}
 .cg-site a.cg-public-campaign-primary{color:#fff}
 .cg-site a.cg-public-campaign-secondary{color:#194a3a}
+
+/* Standalone team directory: readable single result and unobstructed content. */
+.cg-site-team:has(.cg-site-team-hero)>.cg-site-team-grid:has(>.cg-site-person:only-child){grid-template-columns:minmax(0,640px);justify-content:center}
+.cg-site-team:has(.cg-site-team-hero)>.cg-site-team-grid>.cg-site-person{padding:clamp(1rem,2vw,1.5rem);box-shadow:0 4px 14px #194a3a0b}
+.cg-site-team:has(.cg-site-team-hero)~.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
