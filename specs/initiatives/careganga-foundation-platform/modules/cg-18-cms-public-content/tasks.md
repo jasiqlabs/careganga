@@ -755,7 +755,7 @@ Baseline from current Web route inventory and earlier local QA evidence. This is
 | 23 | `/membership/apply` | PENDING — second-pass assembled page manual inspection |
 | 24 | `/ngo-information` | PENDING — second-pass assembled page manual inspection |
 | 25 | `/ngo-information/[section]` | PENDING — second-pass assembled page manual inspection |
-| 26 | `/notices` | PENDING — second-pass assembled page manual inspection |
+| 26 | `/notices` | ASSEMBLED_OFFLINE_162_OF_162 — manual 390/1440 visual inspection; full Next/backend pending |
 | 27 | `/our-impact` | PENDING — second-pass assembled page manual inspection |
 | 28 | `/our-work` | PENDING — second-pass assembled page manual inspection |
 | 29 | `/patients/me` | PENDING — second-pass assembled page manual inspection |
@@ -796,3 +796,6 @@ Baseline from current Web route inventory and earlier local QA evidence. This is
 
 ### 2026-11-25 — Second-pass team directory
 - Actual route, extracted CMS publication/navigation/intro functions, shared chrome, synthetic approved/withheld records, six widths 320–1920; baseline 94/156, corrected 156/156. Manual full-page screenshots at 390 and 1440. Blank names/designations excluded, malformed section/fields/navigation rejected safely, single result bounded, floating CTA moved below footer for this route. Source e99e4e3f238b72a371d832218c540a55f3719aaa, 5a4b957edbe4e911562cce2c925a827b6d81a952, 0f3c4204cc38fce1dcb86b5bc68f180779bb5dd1. Evidence `/mnt/data/cg-recheck/team-page/after-results.json`, `after-390.png`, `after-1440.png`. Original dedicated reference, real assets, Next/backend and independent review remain pending; no canonical acceptance promotion.
+
+### 2026-11-25 — Second-pass notice board
+- Exact route and board component, extracted CMS functions and shell, selected CSS and synthetic approved data: 124/162 baseline, 162/162 final across six widths. Manual screenshots inspected at 390/1440; priority/search/category/reset, empty/unavailable, invalid calendar dates, clearly expired/future/reversed days and duplicate paths tested. UTC date-only display preserves backend authority for exact same-day expiry. Balanced 1/2-card layouts, compact mobile filter, accessible reset and non-overlapping CTA. Source 19bc1269f603f1fe0cfcc9a74779fb764088452f and 506acd427829f24c781b2ca11549cf2161c97c2c. Evidence `/mnt/data/cg-recheck/notice-page/after-results.json`, `after-390.png`, `after-1440.png`. Real data/assets, original dedicated reference, exact expiry integration and full Next/backend/independent review pending; no canonical acceptance promotion.
