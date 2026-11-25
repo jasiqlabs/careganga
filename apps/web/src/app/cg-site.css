@@ -973,3 +973,13 @@
 .cg-site-editorial-back:focus-visible{outline:3px solid #194a3a;outline-offset:3px}
 .cg-site-editorial-detail .cg-site-tags{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:1.25rem}
 .cg-site-editorial-detail .cg-site-tags span{border:1px solid #d7e5d3;border-radius:1rem;padding:.3rem .8rem;color:#235e46;background:#f4f8f4}
+
+/* Public legal reading layout. */
+.cg-site-page-policy{background:#f9f6ed;padding:clamp(1rem,3vw,2.5rem) 0}
+.cg-site-page-policy .cg-site-policy-title,.cg-site-page-policy .cg-site-article{width:min(calc(100% - 2rem),880px);margin-inline:auto;min-width:0;padding:clamp(1rem,3vw,2rem);background:#fff;border:1px solid #dce4ed;border-radius:.9rem;overflow-wrap:anywhere}
+.cg-site-page-policy .cg-site-policy-title{margin-bottom:1rem}
+.cg-site-page-policy .cg-site-policy-title h1{color:#112039;margin-bottom:0;overflow-wrap:anywhere}
+.cg-site-page-policy .cg-site-article{margin-block:.8rem}
+.cg-site-page-policy .cg-site-article h2{font:700 clamp(1.25rem,2.2vw,1.7rem)/1.35 Georgia,"Times New Roman",serif;letter-spacing:normal;color:#112039;margin:0 0 .75rem;overflow-wrap:anywhere}
+.cg-site-page-policy .cg-site-body{font-size:1rem;line-height:1.8;color:#34465b;margin:0}
+.cg-site-page-policy .cg-site-highlights{margin:1rem 0 0}
