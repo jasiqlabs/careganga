@@ -36,7 +36,12 @@ async function source<T>(path:string):Promise<T|null>{
   return await res.json() as T;
  }catch{return null;}
 }
-const displayFee=(minor:string|null)=>minor!==null&&/^[0-9]+$/.test(minor)?
+const validMinor=(v:unknown)=>typeof v==="string"&&/^[0-9]+$/.test(v)&&Number.isSafeInteger(Number(v));
+const validFee=(minor:unknown,version:unknown)=>validMinor(minor)&&typeof version==="number"&&Number.isSafeInteger(version)&&version>0;
+const validZone=(zone:unknown)=>{if(typeof zone!=="string"||!zone)return false;try{new Intl.DateTimeFormat("en-IN",{timeZone:zone});return true;}catch{return false;}};
+const validWindow=(slot:unknown)=>{if(!slot||typeof slot!=="object"||Array.isArray(slot))return false;const v=slot as Record<string,unknown>;return typeof v.startAt==="string"&&typeof v.endAt==="string"&&Number.isFinite(Date.parse(v.startAt))&&Number.isFinite(Date.parse(v.endAt))&&Date.parse(v.endAt)>Date.parse(v.startAt)&&typeof v.bookable==="boolean";};
+const validCenterFields=(value:unknown)=>{if(!value||typeof value!=="object"||Array.isArray(value))return false;const v=value as Record<string,unknown>;return typeof v.centerRef==="string"&&ID.test(v.centerRef)&&typeof v.centerSlug==="string"&&/^[a-z0-9][a-z0-9-]{2,79}$/.test(v.centerSlug)&&["centerName","address","pinCode"].every(k=>typeof v[k]==="string")&&validZone(v.timeZone)&&(v.consultationFeeMinor===null||validMinor(v.consultationFeeMinor));};
+const displayFee=(minor:string|null)=>validMinor(minor)?
  new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR"})
   .format(Number(minor)/100):"Ask the center for consultation fees.";
 export default async function DoctorSchedulePreview({params,searchParams}:Props){
@@ -56,22 +61,22 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
  const validReschedule=!!rescheduleRef&&Number.isSafeInteger(version)&&version>0;
  const rawOptions=date?await source<Options>("doctor/"+
   encodeURIComponent(doctorRef)+"/center-options?date="+encodeURIComponent(date)):null;
- const options=rawOptions?.day===date&&Array.isArray(rawOptions.centers)&&rawOptions.centers.length<=40?rawOptions:null;
+ const options=rawOptions?.day===date&&Array.isArray(rawOptions.centers)&&rawOptions.centers.length<=40&&rawOptions.centers.every(c=>validCenterFields(c)&&typeof c.hasWorkingSchedule==="boolean"&&doctor.centers.some(d=>d.centerSlug===c.centerSlug))?rawOptions:null;
  const centerRef=requestedCenterRef||(query.centerRef===undefined&&preferredCenter?options?.centers.find(c=>c.centerSlug===preferredCenter.centerSlug)?.centerRef??"":"");
  const validCenter=!!options?.centers.some(x=>x.centerRef===centerRef);
  const rawSelected=mode==="center"&&date&&validCenter?
   await source<Daily>("center-first?doctorRef="+encodeURIComponent(doctorRef)+
    "&centerRef="+encodeURIComponent(centerRef)+"&date="+encodeURIComponent(date)):null;
- const selected=rawSelected?.day===date&&rawSelected.centerRef===centerRef&&Array.isArray(rawSelected.slots)&&rawSelected.slots.length<=144?rawSelected:null;
+ const selected=rawSelected?.day===date&&rawSelected.centerRef===centerRef&&typeof rawSelected.centerName==="string"&&typeof rawSelected.doctorName==="string"&&validZone(rawSelected.timeZone)&&Array.isArray(rawSelected.slots)&&rawSelected.slots.length<=144&&rawSelected.slots.every(s=>validWindow(s)&&/^([01]\d|2[0-3]):[0-5]\d$/.test(s.startLocal)&&/^(?:[01]\d|2[0-3]):[0-5]\d$|^24:00$/.test(s.endLocal))?rawSelected:null;
  const rawAlternatives=mode==="time"&&date&&time?
   await source<Choices>("slot-first?doctorRef="+encodeURIComponent(doctorRef)+
    "&date="+encodeURIComponent(date)+"&time="+encodeURIComponent(time)):null;
- const alternatives=rawAlternatives?.day===date&&rawAlternatives.time===time&&Array.isArray(rawAlternatives.centerChoices)&&rawAlternatives.centerChoices.length<=40?rawAlternatives:null;
+ const alternatives=rawAlternatives?.day===date&&rawAlternatives.time===time&&Array.isArray(rawAlternatives.centerChoices)&&rawAlternatives.centerChoices.length<=40&&!!options&&rawAlternatives.centerChoices.every(c=>validCenterFields(c)&&validWindow(c)&&options.centers.some(o=>o.centerRef===c.centerRef&&o.centerSlug===c.centerSlug))?rawAlternatives:null;
  const chosenStart=typeof query.slot==="string"?query.slot:"",chosenCenter=typeof query.choice==="string"?query.choice:"";
  const choose=(slot:string,choice:string)=>{const p=new URLSearchParams({date,mode});if(centerRef)p.set("centerRef",centerRef);if(time)p.set("time",time);if(preferredCenter)p.set("center",preferredCenter.centerSlug);if(slot)p.set("slot",slot);if(choice)p.set("choice",choice);if(validReschedule){p.set("reschedule",rescheduleRef);p.set("version",String(version));}return "?"+p.toString()+"#booking-summary";};
- const activeSlot=selected?.slots.find(s=>s.bookable&&s.startAt===chosenStart);
- const activeChoice=alternatives?.centerChoices.find(c=>c.bookable&&c.centerRef===chosenCenter&&c.startAt===chosenStart);
- const active=activeSlot&&selected&&selected.consultationFeeMinor!==null&&selected.consultationFeeVersion!==null&&selected.consultationFeeVersion!==undefined?{doctorRef,centerRef,doctorName:selected.doctorName,centerName:selected.centerName,startAt:activeSlot.startAt,endAt:activeSlot.endAt,timeZone:selected.timeZone,feeMinor:selected.consultationFeeMinor,feeVersion:selected.consultationFeeVersion}:activeChoice&&activeChoice.consultationFeeMinor!==null&&activeChoice.consultationFeeVersion!==null?{doctorRef,centerRef:activeChoice.centerRef,doctorName:doctor.doctorName,centerName:activeChoice.centerName,startAt:activeChoice.startAt,endAt:activeChoice.endAt,timeZone:activeChoice.timeZone,feeMinor:activeChoice.consultationFeeMinor,feeVersion:activeChoice.consultationFeeVersion}:null;
+ const activeSlot=selected?.slots.find(s=>s.bookable===true&&s.startAt===chosenStart);
+ const activeChoice=alternatives?.centerChoices.find(c=>c.bookable===true&&c.centerRef===chosenCenter&&c.startAt===chosenStart);
+ const active=activeSlot&&selected&&typeof selected.consultationFeeMinor==="string"&&typeof selected.consultationFeeVersion==="number"&&validFee(selected.consultationFeeMinor,selected.consultationFeeVersion)?{doctorRef,centerRef,doctorName:selected.doctorName,centerName:selected.centerName,startAt:activeSlot.startAt,endAt:activeSlot.endAt,timeZone:selected.timeZone,feeMinor:selected.consultationFeeMinor,feeVersion:selected.consultationFeeVersion}:activeChoice&&typeof activeChoice.consultationFeeMinor==="string"&&typeof activeChoice.consultationFeeVersion==="number"&&validFee(activeChoice.consultationFeeMinor,activeChoice.consultationFeeVersion)?{doctorRef,centerRef:activeChoice.centerRef,doctorName:doctor.doctorName,centerName:activeChoice.centerName,startAt:activeChoice.startAt,endAt:activeChoice.endAt,timeZone:activeChoice.timeZone,feeMinor:activeChoice.consultationFeeMinor,feeVersion:activeChoice.consultationFeeVersion}:null;
  const returnPath="/health-network/doctors/"+encodeURIComponent(doctorRef)+"/schedule"+choose(active?.startAt??"",activeChoice?.centerRef??"");
  const patientHref="/patients/me?returnTo="+encodeURIComponent(returnPath);
  return <HealthcarePublicChrome><main className="cg-public-shell">
@@ -145,13 +150,13 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
     <p>All times shown in {selected.timeZone}. A visible time is not reserved until you receive confirmation.</p>
     {selected.slots.length===0?<p>No scheduled consultation window is
      confirmed for this date.</p>:
-     <div>{[["Morning",0,12],["Afternoon",12,16],["Evening",16,24]].map(([label,from,to])=>{const slots=selected.slots.filter(s=>Number(s.startLocal.slice(0,2))>=Number(from)&&Number(s.startLocal.slice(0,2))<Number(to));return slots.length>0?<section key={label}><h3>{label}</h3><div className={styles.slots}>{slots.map(slot=>slot.bookable&&selected.consultationFeeMinor!==null&&selected.consultationFeeVersion!==null?<Link key={[doctorRef,centerRef,slot.startAt,slot.endAt,selected.consultationFeeMinor,selected.consultationFeeVersion].join("|")} className={styles.slot} aria-current={activeSlot?.startAt===slot.startAt?"true":undefined} href={choose(slot.startAt,"")}>{slot.startLocal}–{slot.endLocal}</Link>:<span key={slot.startAt} className={styles.unavailableSlot}>{slot.startLocal}–{slot.endLocal} · unavailable</span>)}</div></section>:null;})}</div>}
+     <div>{[["Morning",0,12],["Afternoon",12,16],["Evening",16,24]].map(([label,from,to])=>{const slots=selected.slots.filter(s=>Number(s.startLocal.slice(0,2))>=Number(from)&&Number(s.startLocal.slice(0,2))<Number(to));return slots.length>0?<section key={label}><h3>{label}</h3><div className={styles.slots}>{slots.map(slot=>slot.bookable===true&&validFee(selected.consultationFeeMinor,selected.consultationFeeVersion)?<Link key={[doctorRef,centerRef,slot.startAt,slot.endAt,selected.consultationFeeMinor,selected.consultationFeeVersion].join("|")} className={styles.slot} aria-current={activeSlot?.startAt===slot.startAt?"true":undefined} href={choose(slot.startAt,"")}>{slot.startLocal}–{slot.endLocal}</Link>:<span key={slot.startAt} className={styles.unavailableSlot}>{slot.startLocal}–{slot.endLocal} · unavailable</span>)}</div></section>:null;})}</div>}
    </>}
    {mode==="time"&&date&&time&&alternatives&&<>
     <h2>Center choices for {time}</h2>
     {alternatives.centerChoices.length===0?
      <p>No matching verified working time was found.</p>:
-     <div className={styles.centers}>{alternatives.centerChoices.map(c=><article key={[doctorRef,c.centerRef,c.startAt,c.endAt,c.consultationFeeMinor,c.consultationFeeVersion].join("|")} className={activeChoice?.centerRef===c.centerRef?styles.selectedCard:styles.centerCard}><h3><Link href={"/healthcare/centers/"+encodeURIComponent(c.centerSlug)}>{c.centerName}</Link></h3><p>{c.address}, {c.pinCode}</p><p>{displayFee(c.consultationFeeMinor)} · {c.timeZone}</p>{c.bookable&&c.consultationFeeMinor!==null&&c.consultationFeeVersion!==null?<Link className={styles.slot} href={choose(c.startAt,c.centerRef)}>Select this center &amp; time</Link>:<p>Booking unavailable</p>}</article>)}</div>}
+     <div className={styles.centers}>{alternatives.centerChoices.map(c=><article key={[doctorRef,c.centerRef,c.startAt,c.endAt,c.consultationFeeMinor,c.consultationFeeVersion].join("|")} className={activeChoice?.centerRef===c.centerRef?styles.selectedCard:styles.centerCard}><h3><Link href={"/healthcare/centers/"+encodeURIComponent(c.centerSlug)}>{c.centerName}</Link></h3><p>{c.address}, {c.pinCode}</p><p>{displayFee(c.consultationFeeMinor)} · {c.timeZone}</p>{c.bookable===true&&validFee(c.consultationFeeMinor,c.consultationFeeVersion)?<Link className={styles.slot} href={choose(c.startAt,c.centerRef)}>Select this center &amp; time</Link>:<p>Booking unavailable</p>}</article>)}</div>}
    </>}
   </section></div>
   <aside id="booking-summary" className={"cg-public-section "+styles.panel}><h2>Appointment summary</h2><p><strong>{doctor.doctorName}</strong></p><p>{date||"Choose appointment date"}</p>
