@@ -1,759 +1,2099 @@
 "use client";
-import {useCallback,useEffect,useState} from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
+import {
+  Bell,
+  Send,
+  Radio,
+  Megaphone,
+  Users,
+  Mail,
+  FileText,
+  Calendar,
+  SlidersHorizontal,
+  Search,
+  RefreshCw,
+  PlusCircle,
+  CheckCircle,
+  XCircle,
+  Activity,
+  Check,
+  AlertCircle,
+  Eye,
+  Archive,
+  Clock,
+  ShieldCheck,
+  ChevronRight,
+  X,
+  Smartphone,
+  Inbox,
+  Filter,
+  CheckCircle2,
+  Bookmark,
+  Share2,
+  Layers,
+  BarChart2,
+  ExternalLink,
+  MessageSquare,
+  Lock,
+} from "lucide-react";
+import { CustomDropdown, DropdownOption } from "../../shared/custom-dropdown";
 
-type Option={value:string;label:string};
-type Channel="IN_APP"|"EMAIL"|"SMS";
-type Notice={noticeRef:string;title:string;body:string;priority:string;
-  state:string;purpose:string;revision:number;audienceCount:number;
-  audienceKind:string;channels:Channel[];targetHref:string|null;
-  scheduledAt:string|null;expiresAt:string;createdAt:string};
-type InboxItem={notificationRef:string;title:string;body:string;
-  status:string;channel:Channel;receivedAt:string;read:boolean};
-type Providers={channels:Array<{channel:string;state:string;configured:boolean}>};
-type NoticeCounts={counts:Array<{channel:Channel;status:string;count:number}>};
-type PhoneProof={hasNumber:boolean;verified:boolean;maskedContact:string|null;
-  verifiedAt:string|null;providerConfigured:boolean};
-type Alert={kind:"error"|"success"|"info";message:string};
-type ClientEmailReference={code:string;title:string;owner:string;trigger:string;
-  recipient:string;subject:string;body:string;attachmentRule:string;
-  placeholders:string[];state:string;deliveryEnabled:false};
-
-async function req<T>(path:string,method:"GET"|"POST"="GET",body?:object){
-  let response:Response;
-  try{response=await fetch("/api/communications/"+path,{
-    method,cache:"no-store",credentials:"same-origin",
-    ...(body?{headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})
-  });}catch{throw Error("UNKNOWN")}
-  if(response.status===401)throw Error("LOGIN");
-  if(response.status===403)throw Error("DENIED");
-  if(response.status===409)throw Error("CONFLICT");
-  if(response.status===400)throw Error("INVALID");
-  if(!response.ok)throw Error("UNKNOWN");
-  try{return await response.json() as T;}catch{throw Error("UNKNOWN")}
-}
-
-async function mobile<T>(path:string,method:"GET"|"POST"="GET",body?:object){
-  const options:RequestInit={method,credentials:"same-origin",cache:"no-store",
-    ...(body?{headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(body)}:{})};
-  let res:Response;
-  try{res=await fetch("/api/mobile-verification/"+path,options);}
-  catch{throw Error("UNKNOWN")}
-  if(!res.ok)throw Error(res.status===401?"LOGIN":
-    res.status===403?"DENIED":"UNKNOWN");
-  try{return await res.json() as T;}catch{throw Error("UNKNOWN")}
-}
-
-const explain=(e:unknown)=>{
-  const code=e instanceof Error?e.message:"UNKNOWN";
-  return code==="DENIED"?"Your current role does not permit this action.":
-    code==="LOGIN"?"Your session expired. Sign in again.":
-    code==="CONFLICT"?"The notice was changed. Refresh before continuing.":
-    code==="INVALID"?"Check the audience, message and schedule.":
-    "This action could not be confirmed. Check the original status before retrying.";
+type Option = { value: string; label: string };
+type Channel = "IN_APP" | "EMAIL" | "SMS";
+type Notice = {
+  noticeRef: string;
+  title: string;
+  body: string;
+  priority: string;
+  state: string;
+  purpose: string;
+  revision: number;
+  audienceCount: number;
+  audienceKind: string;
+  channels: Channel[];
+  targetHref: string | null;
+  scheduledAt: string | null;
+  expiresAt: string;
+  createdAt: string;
+};
+type InboxItem = {
+  notificationRef: string;
+  title: string;
+  body: string;
+  status: string;
+  channel: Channel;
+  receivedAt: string;
+  read: boolean;
+};
+type Providers = { channels: Array<{ channel: string; state: string; configured: boolean }> };
+type NoticeCounts = { counts: Array<{ channel: Channel; status: string; count: number }> };
+type PhoneProof = {
+  hasNumber: boolean;
+  verified: boolean;
+  maskedContact: string | null;
+  verifiedAt: string | null;
+  providerConfigured: boolean;
+};
+type Alert = { kind: "error" | "success" | "info"; message: string };
+type ClientEmailReference = {
+  code: string;
+  title: string;
+  owner: string;
+  trigger: string;
+  recipient: string;
+  subject: string;
+  body: string;
+  attachmentRule: string;
+  placeholders: string[];
+  state: string;
+  deliveryEnabled: false;
 };
 
-function stateBadgeClass(state:string){
-  switch(state){
-    case "ACTIVE": return "cg19-badge cg19-badge-success";
-    case "SCHEDULED": return "cg19-badge cg19-badge-info";
-    case "DRAFT": return "cg19-badge cg19-badge-warning";
-    case "EXPIRED": return "cg19-badge cg19-badge-neutral";
-    case "CANCELLED": return "cg19-badge cg19-badge-danger";
-    default: return "cg19-badge cg19-badge-neutral";
+async function req<T>(path: string, method: "GET" | "POST" = "GET", body?: object) {
+  let response: Response;
+  try {
+    response = await fetch("/api/communications/" + path, {
+      method,
+      cache: "no-store",
+      credentials: "same-origin",
+      ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}),
+    });
+  } catch {
+    throw Error("UNKNOWN");
+  }
+  if (response.status === 401) throw Error("LOGIN");
+  if (response.status === 403) throw Error("DENIED");
+  if (response.status === 409) throw Error("CONFLICT");
+  if (response.status === 400) throw Error("INVALID");
+  if (!response.ok) throw Error("UNKNOWN");
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw Error("UNKNOWN");
   }
 }
 
-function priorityBadgeClass(priority:string){
-  return priority==="IMPORTANT"
+async function mobile<T>(path: string, method: "GET" | "POST" = "GET", body?: object) {
+  const options: RequestInit = {
+    method,
+    credentials: "same-origin",
+    cache: "no-store",
+    ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}),
+  };
+  let res: Response;
+  try {
+    res = await fetch("/api/mobile-verification/" + path, options);
+  } catch {
+    throw Error("UNKNOWN");
+  }
+  if (!res.ok) throw Error(res.status === 401 ? "LOGIN" : res.status === 403 ? "DENIED" : "UNKNOWN");
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw Error("UNKNOWN");
+  }
+}
+
+const explain = (e: unknown) => {
+  const code = e instanceof Error ? e.message : "UNKNOWN";
+  return code === "DENIED"
+    ? "Your current role does not permit this action."
+    : code === "LOGIN"
+    ? "Your session expired. Sign in again."
+    : code === "CONFLICT"
+    ? "The notice was changed. Refresh before continuing."
+    : code === "INVALID"
+    ? "Check the audience, message and schedule."
+    : "This action could not be confirmed. Check the original status before retrying.";
+};
+
+function stateBadgeClass(state: string) {
+  switch (state) {
+    case "ACTIVE":
+      return "cg19-status-pill open";
+    case "SCHEDULED":
+      return "cg19-status-pill in_progress";
+    case "DRAFT":
+      return "cg19-status-pill waiting";
+    case "EXPIRED":
+      return "cg19-status-pill escalated";
+    case "CANCELLED":
+      return "cg19-status-pill closed";
+    default:
+      return "cg19-status-pill waiting";
+  }
+}
+
+function priorityBadgeClass(priority: string) {
+  return priority === "IMPORTANT"
     ? "cg19-badge cg19-badge-danger"
     : "cg19-badge cg19-badge-info";
 }
 
-function channelBadgeClass(channel:string){
-  switch(channel){
-    case "IN_APP": return "cg19-badge cg19-badge-neutral";
-    case "EMAIL": return "cg19-badge cg19-badge-teal";
-    case "SMS": return "cg19-badge cg19-badge-purple";
-    default: return "cg19-badge cg19-badge-neutral";
+function channelBadgeClass(channel: string) {
+  switch (channel) {
+    case "IN_APP":
+      return "cg19-badge cg19-badge-neutral";
+    case "EMAIL":
+      return "cg19-badge cg19-badge-teal";
+    case "SMS":
+      return "cg19-badge cg19-badge-purple";
+    default:
+      return "cg19-badge cg19-badge-neutral";
   }
 }
 
 export function CommunicationsWorkspace({
-  mayManage,mayApprove,mayProcess,mayRead,mayViewDelivery,mayChooseAccounts,mayChooseRoles
-}:{
-  mayManage:boolean;mayApprove:boolean;mayProcess:boolean;mayRead:boolean;
-  mayViewDelivery:boolean;mayChooseAccounts:boolean;mayChooseRoles:boolean;
-}){
-  const [tab,setTab]=useState<"NOTICES"|"INBOX"|"EMAIL_TEMPLATES">(
-    mayManage?"NOTICES":"INBOX");
-  const [notices,setNotices]=useState<Notice[]>([]);
-  const [inbox,setInbox]=useState<InboxItem[]>([]);
-  const [providers,setProviders]=useState<Providers|null>(null);
-  const [phoneProof,setPhoneProof]=useState<PhoneProof|null>(null);
-  const [phoneCode,setPhoneCode]=useState("");
-  const [options,setOptions]=useState<Option[]>([]);
-  const [search,setSearch]=useState("");
-  const [statusFilter,setStatusFilter]=useState("ALL");
-  const [priorityFilter,setPriorityFilter]=useState("ALL");
-  const [purposeFilter,setPurposeFilter]=useState("ALL");
-  const [audienceFilter,setAudienceFilter]=useState("ALL");
-  const [composerOpen,setComposerOpen]=useState(false);
-  const [title,setTitle]=useState("");
-  const [body,setBody]=useState("");
-  const [priority,setPriority]=useState("NORMAL");
-  const [purpose,setPurpose]=useState("TRANSACTIONAL");
-  const [audienceKind,setAudienceKind]=useState("ALL_ACTIVE");
-  const [audienceRef,setAudienceRef]=useState("");
-  const [email,setEmail]=useState(false),[sms,setSms]=useState(false);
-  const [schedule,setSchedule]=useState("");
-  const [expiry,setExpiry]=useState("");
-  const [href,setHref]=useState("");
-  const [currentPassword,setCurrentPassword]=useState("");
-  const [review,setReview]=useState<{id:string;action:"APPROVE"|"CANCEL";
-    revision:number}|null>(null);
-  const [pendingKey,setPendingKey]=useState("");
-  const [reviewKey,setReviewKey]=useState("");
-  const [unknown,setUnknown]=useState(false);
-  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
-  const [alert,setAlert]=useState<Alert|null>(null);
-  const [delivery,setDelivery]=useState<NoticeCounts|null>(null);
-  const [deliveryRef,setDeliveryRef]=useState("");
-  const [emailReferences,setEmailReferences]=useState<ClientEmailReference[]>([]);
-  const [emailSearch,setEmailSearch]=useState("");
-  const [emailLoading,setEmailLoading]=useState(false);
+  mayManage,
+  mayApprove,
+  mayProcess,
+  mayRead,
+  mayViewDelivery,
+  mayChooseAccounts,
+  mayChooseRoles,
+}: {
+  mayManage: boolean;
+  mayApprove: boolean;
+  mayProcess: boolean;
+  mayRead: boolean;
+  mayViewDelivery: boolean;
+  mayChooseAccounts: boolean;
+  mayChooseRoles: boolean;
+}) {
+  const [tab, setTab] = useState<"NOTICES" | "INBOX" | "EMAIL_TEMPLATES">(mayManage ? "NOTICES" : "INBOX");
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [inbox, setInbox] = useState<InboxItem[]>([]);
+  const [providers, setProviders] = useState<Providers | null>(null);
+  const [phoneProof, setPhoneProof] = useState<PhoneProof | null>(null);
+  const [phoneCode, setPhoneCode] = useState("");
+  const [options, setOptions] = useState<Option[]>([]);
+  
+  // Filter States
+  const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [priorityFilter, setPriorityFilter] = useState("ALL");
+  const [purposeFilter, setPurposeFilter] = useState("ALL");
+  const [audienceFilter, setAudienceFilter] = useState("ALL");
 
-  const reload=useCallback(async()=>{
+  // Composer Form States
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [priority, setPriority] = useState("NORMAL");
+  const [purpose, setPurpose] = useState("TRANSACTIONAL");
+  const [audienceKind, setAudienceKind] = useState("ALL_ACTIVE");
+  const [audienceRef, setAudienceRef] = useState("");
+  const [email, setEmail] = useState(false);
+  const [sms, setSms] = useState(false);
+  const [schedule, setSchedule] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [href, setHref] = useState("");
+
+  // Review & Security States
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [review, setReview] = useState<{
+    id: string;
+    action: "APPROVE" | "CANCEL";
+    revision: number;
+  } | null>(null);
+  const [pendingKey, setPendingKey] = useState("");
+  const [reviewKey, setReviewKey] = useState("");
+  const [unknown, setUnknown] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [alert, setAlert] = useState<Alert | null>(null);
+
+  // Delivery Counts Dialog
+  const [delivery, setDelivery] = useState<NoticeCounts | null>(null);
+  const [deliveryRef, setDeliveryRef] = useState("");
+
+  // Client Email References
+  const [emailReferences, setEmailReferences] = useState<ClientEmailReference[]>([]);
+  const [emailSearch, setEmailSearch] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
+
+  const reload = useCallback(async () => {
     setLoading(true);
-    try{
-      const result=await Promise.all([
-        mayManage?req<{notices:Notice[]}>("notices?limit=30"):Promise.resolve({notices:[]}),
-        mayRead?req<{items:InboxItem[]}>("inbox?limit=30"):Promise.resolve({items:[]}),
-        mayViewDelivery?req<Providers>("providers/status"):Promise.resolve(null),
-        mayRead?mobile<PhoneProof>("status"):Promise.resolve(null)
+    try {
+      const result = await Promise.all([
+        mayManage ? req<{ notices: Notice[] }>("notices?limit=30") : Promise.resolve({ notices: [] }),
+        mayRead ? req<{ items: InboxItem[] }>("inbox?limit=30") : Promise.resolve({ items: [] }),
+        mayViewDelivery ? req<Providers>("providers/status") : Promise.resolve(null),
+        mayRead ? mobile<PhoneProof>("status") : Promise.resolve(null),
       ]);
-      if(result[0].notices.length>30||result[1].items.length>30)
-        throw Error("UNKNOWN");
-      setNotices(result[0].notices);setInbox(result[1].items);
-      setProviders(result[2]);setPhoneProof(result[3]);
-    }catch(e){setAlert({kind:"error",message:explain(e)})}
-    finally{setLoading(false);}
-  },[mayManage,mayRead,mayViewDelivery]);
+      if (result[0].notices.length > 30 || result[1].items.length > 30) throw Error("UNKNOWN");
+      setNotices(result[0].notices);
+      setInbox(result[1].items);
+      setProviders(result[2]);
+      setPhoneProof(result[3]);
+    } catch (e) {
+      setAlert({ kind: "error", message: explain(e) });
+    } finally {
+      setLoading(false);
+    }
+  }, [mayManage, mayRead, mayViewDelivery]);
 
-  useEffect(()=>{void reload();},[reload]);
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
-  useEffect(()=>{
-    setOptions([]);setAudienceRef("");
-    if(audienceKind==="ALL_ACTIVE"||!mayManage)return;
-    const controller=new AbortController();
-    const path=audienceKind==="ROLE"?"roles":"accounts";
-    if((path==="roles"&&!mayChooseRoles)||
-      (path==="accounts"&&!mayChooseAccounts))return;
-    void (async()=>{
-      try{
-        const res=await fetch("/api/access/"+path+"/options?search=",{
-          credentials:"same-origin",signal:controller.signal,cache:"no-store"});
-        if(!res.ok)throw Error();
-        const data=await res.json() as {options?:Option[]};
-        if(!controller.signal.aborted&&Array.isArray(data.options)&&
-          data.options.length<=30)setOptions(data.options);
-      }catch{if(!controller.signal.aborted)
-        setAlert({kind:"error",message:"Authorized audience options unavailable."})}
+  useEffect(() => {
+    setOptions([]);
+    setAudienceRef("");
+    if (audienceKind === "ALL_ACTIVE" || !mayManage) return;
+    const controller = new AbortController();
+    const path = audienceKind === "ROLE" ? "roles" : "accounts";
+    if ((path === "roles" && !mayChooseRoles) || (path === "accounts" && !mayChooseAccounts)) return;
+    void (async () => {
+      try {
+        const res = await fetch("/api/access/" + path + "/options?search=", {
+          credentials: "same-origin",
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!res.ok) throw Error();
+        const data = (await res.json()) as { options?: Option[] };
+        if (!controller.signal.aborted && Array.isArray(data.options) && data.options.length <= 30) {
+          setOptions(data.options);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setAlert({ kind: "error", message: "Authorized audience options unavailable." });
+        }
+      }
     })();
-    return()=>controller.abort();
-  },[audienceKind,mayManage,mayChooseAccounts,mayChooseRoles]);
+    return () => controller.abort();
+  }, [audienceKind, mayManage, mayChooseAccounts, mayChooseRoles]);
 
-  async function create(){
-    if(!mayManage||busy||unknown)return;
-    setBusy(true);setAlert(null);
-    const key=pendingKey||crypto.randomUUID();
+  async function create() {
+    if (!mayManage || busy || unknown) return;
+    setBusy(true);
+    setAlert(null);
+    const key = pendingKey || crypto.randomUUID();
     setPendingKey(key);
-    try{
-      if(!expiry)throw Error("INVALID");
-      const data=await req<Notice&{result:string}>("notices","POST",{
-        title,body,priority,purpose,channels:[
-          "IN_APP",...(email?["EMAIL"]:[]),...(sms?["SMS"]:[])
-        ],audienceKind,audienceRef:audienceKind==="ALL_ACTIVE"?null:audienceRef,
-        scheduledAt:schedule?new Date(schedule).toISOString():null,
-        expiresAt:new Date(expiry).toISOString(),requestKey:key,
-        targetHref:href||null
+    try {
+      if (!expiry) throw Error("INVALID");
+      const data = await req<Notice & { result: string }>("notices", "POST", {
+        title,
+        body,
+        priority,
+        purpose,
+        channels: ["IN_APP", ...(email ? ["EMAIL"] : []), ...(sms ? ["SMS"] : [])],
+        audienceKind,
+        audienceRef: audienceKind === "ALL_ACTIVE" ? null : audienceRef,
+        scheduledAt: schedule ? new Date(schedule).toISOString() : null,
+        expiresAt: new Date(expiry).toISOString(),
+        requestKey: key,
+        targetHref: href || null,
       });
-      if(!data.noticeRef||!Number.isInteger(data.revision))
-        throw Error("UNKNOWN");
-      setPendingKey("");setUnknown(false);
-      setAlert({kind:"success",message:
-        "Notice draft saved with its frozen permitted audience. It has not been sent."});
-      setTitle("");setBody("");setSchedule("");setHref("");
+      if (!data.noticeRef || !Number.isInteger(data.revision)) throw Error("UNKNOWN");
+      setPendingKey("");
+      setUnknown(false);
+      setAlert({
+        kind: "success",
+        message: "Notice draft saved with its frozen permitted audience. It has not been sent.",
+      });
+      setTitle("");
+      setBody("");
+      setSchedule("");
+      setHref("");
       setComposerOpen(false);
       await reload();
-    }catch(e){
-      if(e instanceof Error&&e.message==="UNKNOWN")setUnknown(true);
-      setAlert({kind:"error",message:explain(e)});
-    }finally{setBusy(false);}
-  }
-
-  async function findOriginal(){
-    if(!pendingKey||busy)return;
-    setBusy(true);setAlert(null);
-    try{
-      const x=await req<{status:string;notice:Notice|null}>(
-        "notices/requests/"+encodeURIComponent(pendingKey));
-      setUnknown(x.status!=="CONFIRMED");
-      setAlert({kind:x.status==="CONFIRMED"?"success":"info",
-        message:x.status==="CONFIRMED"?
-          "Original draft located: "+x.notice?.title:
-          "No confirmed draft found. Keep the original request key and contact Foundation operations."});
-      if(x.status==="CONFIRMED"){setPendingKey("");await reload();}
-    }catch(e){setAlert({kind:"error",message:explain(e)})}
-    finally{setBusy(false);}
-  }
-
-  async function decide(){
-    if(!review||!mayApprove||busy||unknown)return;
-    if((currentPassword.length<8||currentPassword.length>1024)){
-      setAlert({kind:"error",message:"Enter a fresh current password."});return;
+    } catch (e) {
+      if (e instanceof Error && e.message === "UNKNOWN") setUnknown(true);
+      setAlert({ kind: "error", message: explain(e) });
+    } finally {
+      setBusy(false);
     }
-    setBusy(true);setAlert(null);
-    const requestKey=reviewKey||crypto.randomUUID();
-    setReviewKey(requestKey);
-    try{
-      const result=await req<{status:string;revision:number}>(
-        "notices/"+encodeURIComponent(review.id)+"/decision","POST",{
-          action:review.action,expectedRevision:review.revision,
-          requestKey,currentPassword
-        });
-      if(!Number.isInteger(result.revision))throw Error("UNKNOWN");
-      setReview(null);setReviewKey("");setCurrentPassword("");
-      setAlert({kind:"success",message:"Notice status confirmed: "+result.status});
-      await reload();
-    }catch(e){
-      if(e instanceof Error&&e.message==="UNKNOWN")setUnknown(true);
-      setAlert({kind:"error",message:explain(e)});
-    }finally{setBusy(false);}
   }
 
-  async function checkOriginalDecision(){
-    if(!review||!reviewKey||busy)return;
-    setBusy(true);setAlert(null);
-    try{
-      const state=await req<{status:string;action:string|null;revision:number|null}>(
-        "notices/"+encodeURIComponent(review.id)+"/requests/"+
-        encodeURIComponent(reviewKey));
-      if(state.status!=="CONFIRMED"||!Number.isInteger(state.revision)){
-        setAlert({kind:"error",message:
-          "The original approval is not confirmed. Keep the request key; contact Foundation operations."});
+  async function findOriginal() {
+    if (!pendingKey || busy) return;
+    setBusy(true);
+    setAlert(null);
+    try {
+      const x = await req<{ status: string; notice: Notice | null }>(
+        "notices/requests/" + encodeURIComponent(pendingKey)
+      );
+      setUnknown(x.status !== "CONFIRMED");
+      setAlert({
+        kind: x.status === "CONFIRMED" ? "success" : "info",
+        message:
+          x.status === "CONFIRMED"
+            ? "Original draft located: " + x.notice?.title
+            : "No confirmed draft found. Keep the original request key and contact Foundation operations.",
+      });
+      if (x.status === "CONFIRMED") {
+        setPendingKey("");
+        await reload();
+      }
+    } catch (e) {
+      setAlert({ kind: "error", message: explain(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function decide() {
+    if (!review || !mayApprove || busy || unknown) return;
+    if (currentPassword.length < 8 || currentPassword.length > 1024) {
+      setAlert({ kind: "error", message: "Enter a fresh current password." });
+      return;
+    }
+    setBusy(true);
+    setAlert(null);
+    const requestKey = reviewKey || crypto.randomUUID();
+    setReviewKey(requestKey);
+    try {
+      const result = await req<{ status: string; revision: number }>(
+        "notices/" + encodeURIComponent(review.id) + "/decision",
+        "POST",
+        {
+          action: review.action,
+          expectedRevision: review.revision,
+          requestKey,
+          currentPassword,
+        }
+      );
+      if (!Number.isInteger(result.revision)) throw Error("UNKNOWN");
+      setReview(null);
+      setReviewKey("");
+      setCurrentPassword("");
+      setAlert({ kind: "success", message: "Notice status confirmed: " + result.status });
+      await reload();
+    } catch (e) {
+      if (e instanceof Error && e.message === "UNKNOWN") setUnknown(true);
+      setAlert({ kind: "error", message: explain(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function checkOriginalDecision() {
+    if (!review || !reviewKey || busy) return;
+    setBusy(true);
+    setAlert(null);
+    try {
+      const state = await req<{ status: string; action: string | null; revision: number | null }>(
+        "notices/" + encodeURIComponent(review.id) + "/requests/" + encodeURIComponent(reviewKey)
+      );
+      if (state.status !== "CONFIRMED" || !Number.isInteger(state.revision)) {
+        setAlert({
+          kind: "error",
+          message: "The original approval is not confirmed. Keep the request key; contact Foundation operations.",
+        });
         return;
       }
-      setUnknown(false);setReview(null);setReviewKey("");setCurrentPassword("");
-      setAlert({kind:"success",message:"Original notice command confirmed: "+state.action});
+      setUnknown(false);
+      setReview(null);
+      setReviewKey("");
+      setCurrentPassword("");
+      setAlert({ kind: "success", message: "Original notice command confirmed: " + state.action });
       await reload();
-    }catch(e){setAlert({kind:"error",message:explain(e)})}
-    finally{setBusy(false);}
-  }
-
-  async function startPhoneProof(){
-    if(busy||!mayRead||!phoneProof?.hasNumber)return;
-    setBusy(true);setAlert(null);
-    try{
-      const result=await mobile<{status:string}>("verify/start","POST");
-      setAlert({kind:result.status==="CODE_REQUESTED_UNCONFIRMED_DELIVERY"?
-        "info":"error",message:result.status==="CODE_REQUESTED_UNCONFIRMED_DELIVERY"?
-        "Verification code was requested for your recorded mobile number. Delivery is not guaranteed.":
-        "Original code request: "+result.status.replaceAll("_"," ")});
-    }catch(e){setAlert({kind:"error",message:explain(e)})}
-    finally{setBusy(false);}
-  }
-
-  async function confirmPhoneProof(){
-    if(busy||!mayRead||!/^\d{4,10}$/.test(phoneCode))return;
-    setBusy(true);setAlert(null);
-    try{
-      const result=await mobile<{status:string}>("verify/confirm",
-        "POST",{code:phoneCode});
-      if(result.status==="VERIFIED"){setPhoneCode("");await reload();}
-      setAlert({kind:result.status==="VERIFIED"?"success":"error",
-        message:result.status==="VERIFIED"?
-          "Your mobile contact was verified by its original proof provider.":
-          "Code has not been verified: "+result.status.replaceAll("_"," ")});
-    }catch(e){setAlert({kind:"error",message:explain(e)})}
-    finally{setBusy(false);}
-  }
-
-  async function counts(id:string){
-    setDeliveryRef(id);setDelivery(null);
-    try{
-      const result=await req<NoticeCounts>(
-        "notices/"+encodeURIComponent(id)+"/counts");
-      setDelivery(result);
-    }catch(e){setAlert({kind:"error",message:explain(e)})}
-  }
-
-  async function markRead(ref:string){
-    if(busy)return;
-    setBusy(true);
-    try{
-      await req("inbox/"+encodeURIComponent(ref)+"/read","POST");
-      await reload();
-    }catch(e){setAlert({kind:"error",message:explain(e)})}
-    finally{setBusy(false);}
-  }
-
-  async function runRecovery(kind:"recover-decisions"|"process-due"){
-    if(!mayProcess||busy)return;
-    setBusy(true);setAlert(null);
-    try{
-      await req(kind,"POST");
-      setAlert({kind:"info",message:
-        "The bounded original-source recovery was requested. Refresh for verified status."});
-      await reload();
-    }catch(e){setAlert({kind:"error",message:explain(e)})}
-    finally{setBusy(false);}
-  }
-
-  async function loadEmailReferences(){
-    if(!mayManage)return;
-    setEmailLoading(true);
-    try{
-      const data=await req<{templates:ClientEmailReference[];total:number;deliveryEnabled:false}>(
-        "client-email-templates");
-      if(!Array.isArray(data.templates)||data.total!==52||data.deliveryEnabled!==false)
-        throw Error("UNKNOWN");
-      setEmailReferences(data.templates);
-    }catch(e){setAlert({kind:"error",message:explain(e)})}
-    finally{setEmailLoading(false)}
-  }
-
-  async function importClientDrafts(){
-    if(!mayManage||busy)return;
-    setBusy(true);
-    try{
-      const result=await req<{imported:number;alreadyPresent:number;deliveryEnabled:false}>(
-        "client-email-templates/import-drafts","POST");
-      if(result.deliveryEnabled!==false)throw Error("UNKNOWN");
-      setAlert({kind:"success",message:
-        `${result.imported} email references imported as disabled drafts. `+
-        `${result.alreadyPresent} already existed. No messages were sent.`});
-      await loadEmailReferences();
-    }catch(e){
-      setAlert({kind:"error",message:
-        e instanceof Error&&e.message==="CONFLICT"?
-          "A saved client email reference differs from this source version. "+
-          "Review the original template before importing again; no emails were sent.":
-          explain(e)});
+    } catch (e) {
+      setAlert({ kind: "error", message: explain(e) });
+    } finally {
+      setBusy(false);
     }
-    finally{setBusy(false)}
   }
 
-  const activeCount=notices.filter(x=>x.state==="ACTIVE").length;
-  const scheduledCount=notices.filter(x=>x.state==="SCHEDULED").length;
-  const draftCount=notices.filter(x=>x.state==="DRAFT").length;
-  const expiredCount=notices.filter(x=>x.state==="EXPIRED").length;
-  const cancelledCount=notices.filter(x=>x.state==="CANCELLED").length;
-  const unreadInboxCount=inbox.filter(x=>!x.read).length;
+  async function startPhoneProof() {
+    if (busy || !mayRead || !phoneProof?.hasNumber) return;
+    setBusy(true);
+    setAlert(null);
+    try {
+      const result = await mobile<{ status: string }>("verify/start", "POST");
+      setAlert({
+        kind: result.status === "CODE_REQUESTED_UNCONFIRMED_DELIVERY" ? "info" : "error",
+        message:
+          result.status === "CODE_REQUESTED_UNCONFIRMED_DELIVERY"
+            ? "Verification code was requested for your recorded mobile number. Delivery is not guaranteed."
+            : "Original code request: " + result.status.replaceAll("_", " "),
+      });
+    } catch (e) {
+      setAlert({ kind: "error", message: explain(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  const shown=notices.filter(x=>
-    (statusFilter==="ALL"||x.state===statusFilter)&&
-    (priorityFilter==="ALL"||x.priority===priorityFilter)&&
-    (purposeFilter==="ALL"||x.purpose===purposeFilter)&&
-    (audienceFilter==="ALL"||x.audienceKind===audienceFilter)&&
-    (x.title+" "+x.state+" "+x.priority+" "+x.body).toLowerCase().includes(search.toLowerCase()));
+  async function confirmPhoneProof() {
+    if (busy || !mayRead || !/^\d{4,10}$/.test(phoneCode)) return;
+    setBusy(true);
+    setAlert(null);
+    try {
+      const result = await mobile<{ status: string }>("verify/confirm", "POST", { code: phoneCode });
+      if (result.status === "VERIFIED") {
+        setPhoneCode("");
+        await reload();
+      }
+      setAlert({
+        kind: result.status === "VERIFIED" ? "success" : "error",
+        message:
+          result.status === "VERIFIED"
+            ? "Your mobile contact was verified by its original proof provider."
+            : "Code has not been verified: " + result.status.replaceAll("_", " "),
+      });
+    } catch (e) {
+      setAlert({ kind: "error", message: explain(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  const selectedNotice=notices.find(n=>n.noticeRef===deliveryRef);
+  async function counts(id: string) {
+    setDeliveryRef(id);
+    setDelivery(null);
+    try {
+      const result = await req<NoticeCounts>("notices/" + encodeURIComponent(id) + "/counts");
+      setDelivery(result);
+    } catch (e) {
+      setAlert({ kind: "error", message: explain(e) });
+    }
+  }
 
-  return <section className="role-workspace">
-    <header className="topbar"><div><h1>Foundation communications</h1>
-      <p>Notification delivery, notice approval and own-account updates (C15–C18)</p></div>
-      <div className="toolbar">
-        {mayManage&&<button type="button" className="primary" onClick={()=>setComposerOpen(p=>!p)}>
-          {composerOpen?"Close composer":"+ Draft New Notice (C16)"}
-        </button>}
-        <button type="button" onClick={()=>void reload()} disabled={busy||loading}>Refresh</button>
+  async function markRead(ref: string) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await req("inbox/" + encodeURIComponent(ref) + "/read", "POST");
+      await reload();
+    } catch (e) {
+      setAlert({ kind: "error", message: explain(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runRecovery(kind: "recover-decisions" | "process-due") {
+    if (!mayProcess || busy) return;
+    setBusy(true);
+    setAlert(null);
+    try {
+      await req(kind, "POST");
+      setAlert({
+        kind: "info",
+        message: "The bounded original-source recovery was requested. Refresh for verified status.",
+      });
+      await reload();
+    } catch (e) {
+      setAlert({ kind: "error", message: explain(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadEmailReferences() {
+    if (!mayManage) return;
+    setEmailLoading(true);
+    try {
+      const data = await req<{ templates: ClientEmailReference[]; total: number; deliveryEnabled: false }>(
+        "client-email-templates"
+      );
+      if (!Array.isArray(data.templates) || data.total !== 52 || data.deliveryEnabled !== false) {
+        throw Error("UNKNOWN");
+      }
+      setEmailReferences(data.templates);
+    } catch (e) {
+      setAlert({ kind: "error", message: explain(e) });
+    } finally {
+      setEmailLoading(false);
+    }
+  }
+
+  async function importClientDrafts() {
+    if (!mayManage || busy) return;
+    setBusy(true);
+    try {
+      const result = await req<{ imported: number; alreadyPresent: number; deliveryEnabled: false }>(
+        "client-email-templates/import-drafts",
+        "POST"
+      );
+      if (result.deliveryEnabled !== false) throw Error("UNKNOWN");
+      setAlert({
+        kind: "success",
+        message:
+          `${result.imported} email references imported as disabled drafts. ` +
+          `${result.alreadyPresent} already existed. No messages were sent.`,
+      });
+      await loadEmailReferences();
+    } catch (e) {
+      setAlert({
+        kind: "error",
+        message:
+          e instanceof Error && e.message === "CONFLICT"
+            ? "A saved client email reference differs from this source version. " +
+              "Review the original template before importing again; no emails were sent."
+            : explain(e),
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Real Counts calculated from actual DB state
+  const activeCount = notices.filter((x) => x.state === "ACTIVE").length;
+  const scheduledCount = notices.filter((x) => x.state === "SCHEDULED").length;
+  const draftCount = notices.filter((x) => x.state === "DRAFT").length;
+  const expiredCount = notices.filter((x) => x.state === "EXPIRED").length;
+  const cancelledCount = notices.filter((x) => x.state === "CANCELLED").length;
+  const unreadInboxCount = inbox.filter((x) => !x.read).length;
+  const totalNoticesCount = notices.length;
+  const totalAudienceReached = useMemo(() => {
+    return notices.reduce((acc, n) => acc + (n.audienceCount || 0), 0);
+  }, [notices]);
+
+  // Dropdown Options for Filters
+  const statusOptions: DropdownOption[] = [
+    { value: "ALL", label: "All Statuses" },
+    { value: "ACTIVE", label: "Active Notices" },
+    { value: "SCHEDULED", label: "Scheduled" },
+    { value: "DRAFT", label: "Drafts" },
+    { value: "EXPIRED", label: "Expired" },
+    { value: "CANCELLED", label: "Cancelled" },
+  ];
+
+  const priorityOptions: DropdownOption[] = [
+    { value: "ALL", label: "All Priorities" },
+    { value: "IMPORTANT", label: "Important" },
+    { value: "NORMAL", label: "General (Normal)" },
+  ];
+
+  const purposeOptions: DropdownOption[] = [
+    { value: "ALL", label: "All Purposes" },
+    { value: "TRANSACTIONAL", label: "Service (Transactional)" },
+    { value: "PROMOTIONAL", label: "Campaign (Promotional)" },
+  ];
+
+  const audienceOptions: DropdownOption[] = [
+    { value: "ALL", label: "All User Types / Audiences" },
+    { value: "ALL_ACTIVE", label: "All Active Accounts" },
+    { value: "ROLE", label: "Specific Role" },
+    { value: "INDIVIDUAL", label: "Individual Account" },
+  ];
+
+  // Composer Priority & Purpose Options
+  const composerPriorityOptions: DropdownOption[] = [
+    { value: "NORMAL", label: "General (Normal)" },
+    { value: "IMPORTANT", label: "Important" },
+  ];
+
+  const composerPurposeOptions: DropdownOption[] = [
+    { value: "TRANSACTIONAL", label: "Service notice (Transactional)" },
+    { value: "PROMOTIONAL", label: "Optional campaign (Consent required)" },
+  ];
+
+  const composerAudienceKindOptions: DropdownOption[] = [
+    { value: "ALL_ACTIVE", label: "All active Foundation accounts" },
+    ...(mayChooseRoles ? [{ value: "ROLE", label: "One current role" }] : []),
+    ...(mayChooseAccounts ? [{ value: "INDIVIDUAL", label: "One active person" }] : []),
+  ];
+
+  const composerRecipientOptions: DropdownOption[] = [
+    { value: "", label: "Choose actual recipient" },
+    ...options.map((o) => ({ value: o.value, label: o.label })),
+  ];
+
+  const handleApplyFilter = () => {
+    setAppliedSearch(search.trim());
+  };
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setAppliedSearch("");
+    setStatusFilter("ALL");
+    setPriorityFilter("ALL");
+    setPurposeFilter("ALL");
+    setAudienceFilter("ALL");
+  };
+
+  const shown = notices.filter(
+    (x) =>
+      (statusFilter === "ALL" || x.state === statusFilter) &&
+      (priorityFilter === "ALL" || x.priority === priorityFilter) &&
+      (purposeFilter === "ALL" || x.purpose === purposeFilter) &&
+      (audienceFilter === "ALL" || x.audienceKind === audienceFilter) &&
+      (x.title + " " + x.state + " " + x.priority + " " + x.body)
+        .toLowerCase()
+        .includes(appliedSearch.toLowerCase())
+  );
+
+  const selectedNotice = notices.find((n) => n.noticeRef === deliveryRef);
+
+  return (
+    <section className="cg19-support-container" aria-label="Notifications and Communications Command Center">
+      {/* Top Header Toolbar */}
+      <header className="topbar" style={{ marginBottom: "0.25rem" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <h1 className="font-slab" style={{ fontSize: "1.65rem", fontWeight: 800, margin: 0 }}>
+              Notifications
+            </h1>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "20px",
+                height: "20px",
+                borderRadius: "50%",
+                background: "#dbeafe",
+                color: "#2563eb",
+              }}
+              title="Verified Foundation System"
+            >
+              <Check className="w-3.5 h-3.5" />
+            </span>
+          </div>
+          <p style={{ margin: "0.2rem 0 0 0", color: "#64748b", fontSize: "0.825rem" }}>
+            Complete Command Center &amp; Control Panel
+          </p>
+        </div>
+
+        <div className="toolbar" style={{ gap: "0.6rem" }}>
+          {mayManage && (
+            <button
+              type="button"
+              className="cg19-btn-apply"
+              style={{ padding: "0.55rem 1rem", fontSize: "0.85rem" }}
+              onClick={() => setComposerOpen((p) => !p)}
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>{composerOpen ? "Close Composer" : "Draft New Notice"}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            disabled={busy || loading}
+            style={{
+              borderRadius: "8px",
+              padding: "0.55rem 0.95rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              border: "1px solid #cbd5e1",
+              background: "#fff",
+              color: "#334155",
+              cursor: "pointer",
+              fontWeight: 600,
+              fontSize: "0.85rem",
+            }}
+            onClick={() => void reload()}
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      {/* Top 6 KPI Metric Cards matching Client Screenshot 2 */}
+      <div className="cg19-kpi-row" aria-label="Notifications status overview">
+        {/* 1. Total Notifications */}
+        <article className="cg19-kpi-card">
+          <div className="cg19-kpi-icon-wrap blue">
+            <Send className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <p className="cg19-kpi-label">Total Notifications</p>
+            <h3 className="cg19-kpi-val">{totalNoticesCount}</h3>
+            <span className="cg19-kpi-sub">All time</span>
+          </div>
+        </article>
+
+        {/* 2. Active Notices */}
+        <article className="cg19-kpi-card">
+          <div className="cg19-kpi-icon-wrap green">
+            <Megaphone className="w-5 h-5 text-green-600" />
+          </div>
+          <div>
+            <p className="cg19-kpi-label">Active Notices</p>
+            <h3 className="cg19-kpi-val">{activeCount}</h3>
+            <span className="cg19-kpi-sub">Currently live</span>
+          </div>
+        </article>
+
+        {/* 3. Recipients Reached */}
+        <article className="cg19-kpi-card">
+          <div className="cg19-kpi-icon-wrap orange">
+            <Users className="w-5 h-5 text-orange-600" />
+          </div>
+          <div>
+            <p className="cg19-kpi-label">Recipients Reached</p>
+            <h3 className="cg19-kpi-val">{totalAudienceReached}</h3>
+            <span className="cg19-kpi-sub">Across channels</span>
+          </div>
+        </article>
+
+        {/* 4. In-App Delivered */}
+        <article className="cg19-kpi-card">
+          <div className="cg19-kpi-icon-wrap purple">
+            <Mail className="w-5 h-5 text-purple-600" />
+          </div>
+          <div>
+            <p className="cg19-kpi-label">In-App Delivered</p>
+            <h3 className="cg19-kpi-val">{inbox.length}</h3>
+            <span className="cg19-kpi-sub">Personal inbox</span>
+          </div>
+        </article>
+
+        {/* 5. Pinned / Drafts */}
+        <article className="cg19-kpi-card">
+          <div className="cg19-kpi-icon-wrap red">
+            <FileText className="w-5 h-5 text-red-600" />
+          </div>
+          <div>
+            <p className="cg19-kpi-label">Draft Notices</p>
+            <h3 className="cg19-kpi-val">{draftCount}</h3>
+            <span className="cg19-kpi-sub">Pending review</span>
+          </div>
+        </article>
+
+        {/* 6. Scheduled */}
+        <article className="cg19-kpi-card">
+          <div className="cg19-kpi-icon-wrap teal">
+            <Calendar className="w-5 h-5 text-teal-600" />
+          </div>
+          <div>
+            <p className="cg19-kpi-label">Scheduled</p>
+            <h3 className="cg19-kpi-val">{scheduledCount}</h3>
+            <span className="cg19-kpi-sub">Queued to go out</span>
+          </div>
+        </article>
       </div>
-    </header>
 
-    {/* C15 Notifications KPI Dashboard */}
-    <div className="kpi-grid" aria-label="Notifications status overview (C15)">
-      <article className="kpi"><small>Active Notices</small>
-        <strong>{activeCount}</strong>
-        <span>Currently live broadcasts</span></article>
-      <article className="kpi"><small>Scheduled Notices</small>
-        <strong>{scheduledCount}</strong>
-        <span>Pending upcoming release</span></article>
-      <article className="kpi"><small>Draft Notices</small>
-        <strong>{draftCount}</strong>
-        <span>Not yet approved</span></article>
-      <article className="kpi"><small>Expired Notices</small>
-        <strong>{expiredCount}</strong>
-        <span>Passed expiry date</span></article>
-      <article className="kpi"><small>Cancelled Notices</small>
-        <strong>{cancelledCount}</strong>
-        <span>Revoked before delivery</span></article>
-      <article className="kpi"><small>Your Unread Notifications</small>
-        <strong>{unreadInboxCount}</strong>
-        <span>In-app recipient inbox</span></article>
-    </div>
-
-    {alert&&<p className={"notice "+alert.kind}
-      role={alert.kind==="success"?"status":"alert"}>{alert.message}</p>}
-
-    <div className="toolbar">
-      {mayManage&&<button type="button" onClick={()=>setTab("NOTICES")}
-        aria-pressed={tab==="NOTICES"}>Notices &amp; broadcasts (C15/C17)</button>}
-      {mayRead&&<button type="button" onClick={()=>setTab("INBOX")}
-        aria-pressed={tab==="INBOX"}>My notifications ({unreadInboxCount})</button>}
-      {mayManage&&<button type="button" onClick={()=>{setTab("EMAIL_TEMPLATES");
-        void loadEmailReferences();}} aria-pressed={tab==="EMAIL_TEMPLATES"}>
-        Email reference templates (52)</button>}
-      {mayProcess&&<button type="button" onClick={()=>void runRecovery("recover-decisions")}
-        disabled={busy}>Recover committed approvals</button>}
-      {mayProcess&&<button type="button" onClick={()=>void runRecovery("process-due")}
-        disabled={busy}>Process due messages</button>}
-    </div>
-
-    {mayViewDelivery&&providers&&<section className="role-pane">
-      <div className="role-pane-heading"><h2>External channel readiness</h2></div>
-      <div className="role-detail-content">
-        <div className="toolbar">
-          {providers.channels.map(c=><span key={c.channel} className={c.configured?"cg19-badge cg19-badge-success":"cg19-badge cg19-badge-warning"}>
-            <strong>{c.channel}</strong>: {c.state.replaceAll("_"," ")}
-            {c.configured?" (Configured)":" (Unavailable)"}
-          </span>)}
+      {alert && (
+        <div
+          role="status"
+          style={{
+            background: alert.kind === "success" ? "#f0fdf4" : alert.kind === "error" ? "#fef2f2" : "#eff6ff",
+            border:
+              "1px solid " +
+              (alert.kind === "success" ? "#bbf7d0" : alert.kind === "error" ? "#fecaca" : "#bfdbfe"),
+            color: alert.kind === "success" ? "#166534" : alert.kind === "error" ? "#991b1b" : "#1e40af",
+            padding: "0.75rem 1rem",
+            borderRadius: "10px",
+            fontSize: "0.85rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+          }}
+        >
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>{alert.message}</span>
         </div>
-        <small style={{display:"block",marginTop:"0.5rem",color:"var(--cg-muted)"}}>
-          In-app notifications deliver independently of external SMS or Email provider availability.
-        </small>
+      )}
+
+      {/* Main Workspace Navigation Tabs */}
+      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+        {mayManage && (
+          <button
+            type="button"
+            className="cg19-tab-pill"
+            style={{
+              padding: "0.45rem 0.95rem",
+              borderRadius: "8px",
+              border: tab === "NOTICES" ? "1px solid #4f46e5" : "1px solid #cbd5e1",
+              background: tab === "NOTICES" ? "#4f46e5" : "#ffffff",
+              color: tab === "NOTICES" ? "#ffffff" : "#475569",
+              fontWeight: 600,
+              fontSize: "0.85rem",
+              cursor: "pointer",
+            }}
+            onClick={() => setTab("NOTICES")}
+          >
+            Notices &amp; Broadcasts
+          </button>
+        )}
+
+        {mayRead && (
+          <button
+            type="button"
+            className="cg19-tab-pill"
+            style={{
+              padding: "0.45rem 0.95rem",
+              borderRadius: "8px",
+              border: tab === "INBOX" ? "1px solid #4f46e5" : "1px solid #cbd5e1",
+              background: tab === "INBOX" ? "#4f46e5" : "#ffffff",
+              color: tab === "INBOX" ? "#ffffff" : "#475569",
+              fontWeight: 600,
+              fontSize: "0.85rem",
+              cursor: "pointer",
+            }}
+            onClick={() => setTab("INBOX")}
+          >
+            My Notifications ({unreadInboxCount})
+          </button>
+        )}
+
+        {mayManage && (
+          <button
+            type="button"
+            className="cg19-tab-pill"
+            style={{
+              padding: "0.45rem 0.95rem",
+              borderRadius: "8px",
+              border: tab === "EMAIL_TEMPLATES" ? "1px solid #4f46e5" : "1px solid #cbd5e1",
+              background: tab === "EMAIL_TEMPLATES" ? "#4f46e5" : "#ffffff",
+              color: tab === "EMAIL_TEMPLATES" ? "#ffffff" : "#475569",
+              fontWeight: 600,
+              fontSize: "0.85rem",
+              cursor: "pointer",
+            }}
+            onClick={() => {
+              setTab("EMAIL_TEMPLATES");
+              void loadEmailReferences();
+            }}
+          >
+            Email Reference Templates (52)
+          </button>
+        )}
+
+        {mayProcess && (
+          <button
+            type="button"
+            className="cg19-btn-reset"
+            style={{ fontSize: "0.8rem", padding: "0.45rem 0.85rem" }}
+            onClick={() => void runRecovery("recover-decisions")}
+            disabled={busy}
+          >
+            Recover committed approvals
+          </button>
+        )}
+
+        {mayProcess && (
+          <button
+            type="button"
+            className="cg19-btn-reset"
+            style={{ fontSize: "0.8rem", padding: "0.45rem 0.85rem" }}
+            onClick={() => void runRecovery("process-due")}
+            disabled={busy}
+          >
+            Process due messages
+          </button>
+        )}
       </div>
-    </section>}
 
-    {tab==="EMAIL_TEMPLATES"&&mayManage&&<section className="role-pane">
-      <div className="role-pane-heading"><h2>Client transactional email templates (52)</h2></div>
-      <div className="role-detail-content">
-        <p>These are the client-approved reference words and attachment requirements.
-          Importing creates <strong>disabled source drafts only</strong>. They do not
-          send email or create membership, donation, HR or payroll records.
-          Each business trigger, recipient and approved PDF pack must first
-          be implemented and verified by its owning module.</p>
-        <div className="toolbar">
-          <button type="button" className="primary" disabled={busy||emailLoading}
-            onClick={()=>void importClientDrafts()}>
-            Import missing references as disabled drafts</button>
-          <button type="button" disabled={busy||emailLoading}
-            onClick={()=>void loadEmailReferences()}>Refresh references</button>
+      {/* External Channel Readiness Banner */}
+      {mayViewDelivery && providers && (
+        <div
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e2e8f0",
+            borderRadius: "12px",
+            padding: "0.85rem 1.15rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "0.75rem",
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <span style={{ fontWeight: 700, fontSize: "0.85rem", color: "#1e293b" }}>
+              External Channel Readiness:
+            </span>
+            <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+              {providers.channels.map((c) => (
+                <span
+                  key={c.channel}
+                  className={`cg19-status-pill ${c.configured ? "open" : "waiting"}`}
+                  style={{ textTransform: "none", fontSize: "0.75rem" }}
+                >
+                  <strong>{c.channel}:</strong> {c.state.replaceAll("_", " ")}
+                  {c.configured ? " (Configured)" : " (Unavailable)"}
+                </span>
+              ))}
+            </div>
+          </div>
+          <small style={{ color: "#94a3b8", fontSize: "0.75rem" }}>
+            In-app notifications deliver independently of external SMS or Email provider availability.
+          </small>
         </div>
-        <label className="field" style={{marginTop:"0.75rem"}}>Find a template
-          <input value={emailSearch} maxLength={80}
-            onChange={e=>setEmailSearch(e.target.value)}
-            placeholder="Template ID, name or module (e.g. CG-MEM, CG-DON, CG-SUP)"/></label>
-        {emailLoading&&<p role="status" className="cg-module-loading">Checking current template references…</p>}
-        {!emailLoading&&emailReferences.length===0&&<p role="status" className="cg-module-empty">
-          Select Refresh references to view the client catalog.</p>}
-        {emailReferences.filter(t=>(t.code+" "+t.title+" "+t.owner)
-          .toLowerCase().includes(emailSearch.trim().toLowerCase()))
-          .map(t=><details key={t.code} className="permission-group">
-            <summary style={{cursor:"pointer",fontWeight:600}}>
-              <strong>{t.code}</strong> · {t.title} · <span className="cg19-badge cg19-badge-neutral">{t.state.replaceAll("_"," ")}</span>
-            </summary>
-            <p><strong>Source trigger:</strong> {t.trigger}</p>
-            <p><strong>Recipient:</strong> {t.recipient||"Verify the recipient from the owning source"}</p>
-            <p><strong>Approved document requirement:</strong> {t.attachmentRule}</p>
-            <p><strong>Required fields:</strong> {t.placeholders.join(", ")||"None"}</p>
-            <p><strong>Subject preview (placeholders only)</strong></p>
-            <pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere",background:"#F8FAFC",padding:"0.5rem",borderRadius:"0.25rem"}}>{t.subject}</pre>
-            <p><strong>Email body preview (placeholders only)</strong></p>
-            <pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere",background:"#F8FAFC",padding:"0.5rem",borderRadius:"0.25rem"}}>{t.body}</pre>
-            <small style={{color:"var(--cg-muted)"}}>
-              Delivery unavailable until the source event, permission and every
-              required approved document are verified.
-            </small>
-          </details>)}
-      </div>
-    </section>}
+      )}
 
-    {tab==="NOTICES"&&mayManage&&<>
-      {/* C16 Send Notification Form */}
-      {composerOpen&&<section className="role-pane" aria-label="Draft New Notice (C16)">
-        <div className="role-pane-heading">
-          <h2>Draft new notice (C16)</h2>
-          <button type="button" onClick={()=>setComposerOpen(false)}>Close</button>
-        </div>
-        <div className="role-detail-content">
-          <p>A draft freezes its real CG-01 audience. Only a protected
-            authorized approver who confirms their current password can activate or schedule it.</p>
-          <label className="field">Notice title ({title.length}/120)
-            <input value={title} maxLength={120} disabled={busy||unknown}
-              placeholder="Notice headline (min 5 characters)"
-              onChange={e=>setTitle(e.target.value)}/>
-          </label>
-          <label className="field">Message ({body.length}/480)
-            <textarea rows={4} value={body} maxLength={480}
-              placeholder="Announcement message content (min 10 characters)"
-              disabled={busy||unknown} onChange={e=>setBody(e.target.value)}/>
-          </label>
-          <div className="toolbar">
-            <label>Priority <select value={priority} disabled={busy||unknown}
-              onChange={e=>setPriority(e.target.value)}>
-              <option value="NORMAL">General (Normal)</option>
-              <option value="IMPORTANT">Important</option>
-            </select></label>
-            <label>Purpose <select value={purpose} disabled={busy||unknown}
-              onChange={e=>setPurpose(e.target.value)}>
-              <option value="TRANSACTIONAL">Service notice (Transactional)</option>
-              <option value="PROMOTIONAL">Optional campaign (Consent required)</option>
-            </select></label>
-          </div>
-          <label className="field">Audience
-            <select value={audienceKind} disabled={busy||unknown}
-              onChange={e=>setAudienceKind(e.target.value)}>
-              <option value="ALL_ACTIVE">All active Foundation accounts</option>
-              {mayChooseRoles&&<option value="ROLE">One current role</option>}
-              {mayChooseAccounts&&<option value="INDIVIDUAL">One active person</option>}
-            </select></label>
-          {audienceKind!=="ALL_ACTIVE"&&<label className="field">
-            {audienceKind==="ROLE"?"Select current role":"Select current account"}
-            <select value={audienceRef} disabled={busy||unknown}
-              onChange={e=>setAudienceRef(e.target.value)}>
-              <option value="">Choose actual recipient</option>
-              {options.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
-            </select></label>}
-          <fieldset className="permission-group"><legend>Delivery channels</legend>
-            <label><input type="checkbox" checked readOnly/> In-app (always delivered)</label>
-            <label><input type="checkbox" checked={email} disabled={busy||unknown}
-              onChange={e=>setEmail(e.target.checked)}/> Email (verified and opted-in)</label>
-            <label><input type="checkbox" checked={sms} disabled={busy||unknown}
-              onChange={e=>setSms(e.target.checked)}/> SMS (verified and opted-in)</label>
-          </fieldset>
-          <div className="toolbar">
-            <label className="field" style={{flex:1}}>Schedule (optional)
-              <input type="datetime-local" value={schedule} disabled={busy||unknown}
-                onChange={e=>setSchedule(e.target.value)}/></label>
-            <label className="field" style={{flex:1}}>Expires (required)
-              <input type="datetime-local" value={expiry} disabled={busy||unknown}
-                onChange={e=>setExpiry(e.target.value)}/></label>
-          </div>
-          <label className="field">CareGanga internal action link (optional)
-            <input value={href} placeholder="/admin/approvals" maxLength={180}
-              disabled={busy||unknown} onChange={e=>setHref(e.target.value)}/></label>
-          {unknown&&<div className="permission-group">
-            <strong>Draft outcome unconfirmed</strong>
-            <p>Do not create another notice until the original request is checked.</p>
-            <button type="button" disabled={busy} onClick={()=>void findOriginal()}>
-              Check original draft request</button>
-          </div>}
-          <div className="toolbar">
-            <button type="button" className="primary" disabled={busy||unknown||!expiry||!title||!body||
-              (audienceKind!=="ALL_ACTIVE"&&!audienceRef)}
-              onClick={()=>void create()}>{busy?"Saving…":"Save frozen audience draft"}</button>
-            <button type="button" disabled={busy} onClick={()=>setComposerOpen(false)}>Cancel</button>
-          </div>
-        </div>
-      </section>}
-
-      {/* C17/C18 Notices & Bulletins Management */}
-      <section className="role-pane"><div className="role-pane-heading">
-        <h2>Notices and bulletins (C17/C18)</h2>
-        <div className="toolbar">
-          {!composerOpen&&<button type="button" className="primary" onClick={()=>setComposerOpen(true)}>
-            + Draft New Notice
-          </button>}
-        </div>
-      </div>
-        <div className="role-detail-content">
-          {/* C15 Status filter tabs */}
-          <div className="cg19-filter-tabs" role="tablist" aria-label="Notice status filter tabs">
-            {([
-              {key:"ALL",label:"All Notices",count:notices.length},
-              {key:"ACTIVE",label:"Active",count:activeCount},
-              {key:"SCHEDULED",label:"Scheduled",count:scheduledCount},
-              {key:"DRAFT",label:"Drafts",count:draftCount},
-              {key:"EXPIRED",label:"Expired",count:expiredCount},
-              {key:"CANCELLED",label:"Cancelled",count:cancelledCount}
-            ] as const).map(tabItem=>
-              <button key={tabItem.key} type="button"
-                className={`cg19-tab-btn ${statusFilter===tabItem.key?"is-active":""}`}
-                aria-pressed={statusFilter===tabItem.key}
-                onClick={()=>setStatusFilter(tabItem.key)}>
-                <span>{tabItem.label}</span>
-                <span className="cg19-tab-count">{tabItem.count}</span>
-              </button>)}
-          </div>
-
-          {/* Filter Bar */}
-          <div className="toolbar" style={{marginBottom:"0.75rem"}}>
-            <label style={{flex:1,minWidth:"14rem"}}>Search{" "}
-              <input value={search} onChange={e=>setSearch(e.target.value)}
-                placeholder="Search notice title, body or status"/></label>
-            <label>Priority{" "}
-              <select value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)}>
-                <option value="ALL">All priorities</option>
-                <option value="IMPORTANT">Important</option>
-                <option value="NORMAL">Normal</option>
-              </select>
-            </label>
-            <label>Purpose{" "}
-              <select value={purposeFilter} onChange={e=>setPurposeFilter(e.target.value)}>
-                <option value="ALL">All purposes</option>
-                <option value="TRANSACTIONAL">Service (Transactional)</option>
-                <option value="PROMOTIONAL">Campaign (Promotional)</option>
-              </select>
-            </label>
-            <label>Audience{" "}
-              <select value={audienceFilter} onChange={e=>setAudienceFilter(e.target.value)}>
-                <option value="ALL">All audience types</option>
-                <option value="ALL_ACTIVE">All Accounts</option>
-                <option value="ROLE">Specific Role</option>
-                <option value="INDIVIDUAL">Individual Account</option>
-              </select>
-            </label>
-            {(search||statusFilter!=="ALL"||priorityFilter!=="ALL"||purposeFilter!=="ALL"||audienceFilter!=="ALL")&&
-              <button type="button" onClick={()=>{
-                setSearch("");setStatusFilter("ALL");setPriorityFilter("ALL");
-                setPurposeFilter("ALL");setAudienceFilter("ALL");
-              }}>Reset filters</button>}
-          </div>
-
-          {loading?<p role="status" className="cg-module-loading">Verifying notices…</p>:!shown.length?<p className="cg-module-empty" role="status">No matching notices.</p>:
-            <div className="role-table-wrap"><table className="role-table">
-              <thead><tr><th>Notice</th><th>Audience</th>
-                <th>Channels</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody>{shown.map(x=><tr key={x.noticeRef}>
-                <td>
-                  <strong>{x.title}</strong>
-                  <p>{x.body}</p>
-                  <small style={{color:"var(--cg-muted)"}}>
-                    {x.scheduledAt?`Scheduled: ${new Date(x.scheduledAt).toLocaleString()} · `:""}
-                    Expires: {new Date(x.expiresAt).toLocaleDateString()}
-                  </small>
-                </td>
-                <td>
-                  <strong>{x.audienceCount} recipients</strong>
-                  <p style={{fontSize:"0.8rem",color:"var(--cg-muted)"}}>
-                    {x.audienceKind.replaceAll("_"," ")}
+      {/* TAB 1: NOTICES & BROADCASTS */}
+      {tab === "NOTICES" && mayManage && (
+        <>
+          {/* Draft New Notice Form / Composer Modal */}
+          {composerOpen && (
+            <div
+              className="cg19-filter-panel"
+              style={{
+                border: "1px solid #c7d2fe",
+                background: "#fdfefe",
+                boxShadow: "0 4px 12px rgba(79, 70, 229, 0.06)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "1rem",
+                  paddingBottom: "0.75rem",
+                  borderBottom: "1px solid #e2e8f0",
+                }}
+              >
+                <div>
+                  <h3 className="font-slab" style={{ margin: 0, fontSize: "1.15rem", color: "#1e293b" }}>
+                    Draft New Notice
+                  </h3>
+                  <p style={{ margin: "0.2rem 0 0 0", color: "#64748b", fontSize: "0.8rem" }}>
+                    A draft freezes its real Foundation audience. A protected approver confirms password to activate.
                   </p>
-                </td>
-                <td>
-                  <div style={{display:"flex",gap:"0.25rem",flexWrap:"wrap"}}>
-                    {x.channels.map(c=><span key={c} className={channelBadgeClass(c)}>{c}</span>)}
+                </div>
+                <button
+                  type="button"
+                  className="cg19-btn-reset"
+                  style={{ padding: "0.35rem 0.65rem" }}
+                  onClick={() => setComposerOpen(false)}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {/* Row 1: Title */}
+                <div className="cg19-input-group">
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <label htmlFor="notice-title">Notice Title</label>
+                    <span style={{ fontSize: "0.75rem", color: title.length >= 120 ? "#ef4444" : "#94a3b8" }}>
+                      {title.length} / 120
+                    </span>
                   </div>
-                </td>
-                <td>
-                  <span className={priorityBadgeClass(x.priority)}>
-                    {x.priority}
-                  </span>
-                </td>
-                <td>
-                  <span className={stateBadgeClass(x.state)}>
-                    {x.state.replaceAll("_"," ")}
-                  </span>
-                </td>
-                <td><div className="toolbar">
-                  {mayApprove&&x.state==="DRAFT"&&<button type="button"
-                    disabled={busy||unknown}
-                    onClick={()=>setReview({id:x.noticeRef,action:"APPROVE",
-                      revision:x.revision})}>Review approval</button>}
-                  {mayApprove&&!["EXPIRED","CANCELLED"].includes(x.state)&&
-                    <button type="button" disabled={busy||unknown}
-                      onClick={()=>setReview({id:x.noticeRef,action:"CANCEL",
-                        revision:x.revision})}>Review cancellation</button>}
-                  {mayViewDelivery&&<button type="button"
-                    onClick={()=>void counts(x.noticeRef)}>Delivery counts</button>}
-                </div></td>
-              </tr>)}</tbody>
-            </table></div>}
+                  <input
+                    id="notice-title"
+                    className="cg19-input"
+                    value={title}
+                    maxLength={120}
+                    disabled={busy || unknown}
+                    placeholder="Notice headline (min 5 characters)"
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </div>
 
-          {/* Delivery counts breakdown dialog */}
-          {delivery&&<div className="permission-group" style={{marginTop:"1rem"}} role="region" aria-label="Delivery Counts Breakdown">
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <h3>Delivery evidence: {selectedNotice?.title||deliveryRef}</h3>
-              <button type="button" onClick={()=>setDelivery(null)}>Close</button>
-            </div>
-            {delivery.counts.length?<div className="kpi-grid" style={{gridTemplateColumns:"repeat(auto-fit, minmax(10rem, 1fr))"}}>
-              {delivery.counts.map(c=>
-                <article key={c.channel+c.status} className="kpi">
-                  <small>{c.channel}</small>
-                  <strong>{c.count}</strong>
-                  <span><span className={stateBadgeClass(c.status)}>{c.status.replaceAll("_"," ")}</span></span>
-                </article>)}
-            </div>:<p className="cg-module-empty">No delivery attempts recorded for this notice yet.</p>}
-          </div>}
+                {/* Row 2: Message Body */}
+                <div className="cg19-input-group">
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <label htmlFor="notice-body">Message Content</label>
+                    <span style={{ fontSize: "0.75rem", color: body.length >= 480 ? "#ef4444" : "#94a3b8" }}>
+                      {body.length} / 480
+                    </span>
+                  </div>
+                  <textarea
+                    id="notice-body"
+                    className="cg19-input"
+                    rows={4}
+                    value={body}
+                    maxLength={480}
+                    placeholder="Announcement message content (min 10 characters)"
+                    disabled={busy || unknown}
+                    onChange={(e) => setBody(e.target.value)}
+                  />
+                </div>
 
-          {/* Review Modal for Approval / Cancellation */}
-          {review&&<div className="permission-group" style={{marginTop:"1rem"}} role="alert">
-            {unknown&&reviewKey&&<div role="alert" className="notice error">
-              <p>Previous notice approval result uncertain. Do not repeat as
-                a new request. Check the original command first.</p>
-              <button type="button" disabled={busy}
-                onClick={()=>void checkOriginalDecision()}>
-                Check original notice command
-              </button>
-            </div>}
-            <strong>{review.action==="APPROVE"?
-              "Confirm activation of frozen notice":"Confirm notice cancellation"}</strong>
-            <p>The request must use a current Foundation Super Admin password.</p>
-            <label className="field">Current password
-              <input type="password" minLength={8} maxLength={1024} autoComplete="current-password" value={currentPassword}
-                onChange={e=>setCurrentPassword(e.target.value)}/></label>
-            <div className="toolbar">
-              <button type="button" className="primary" disabled={busy||unknown}
-                onClick={()=>void decide()}>Confirm {review.action.toLowerCase()}</button>
-              <button type="button" disabled={busy||unknown}
-                onClick={()=>{setReview(null);setReviewKey("");setCurrentPassword("");}}>
-                Cancel
-              </button>
+                {/* Row 3: Priority & Purpose with CustomDropdown */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div className="cg19-input-group">
+                    <label>Priority</label>
+                    <CustomDropdown
+                      options={composerPriorityOptions}
+                      value={priority}
+                      onChange={(val) => setPriority(val)}
+                      disabled={busy || unknown}
+                    />
+                  </div>
+                  <div className="cg19-input-group">
+                    <label>Purpose</label>
+                    <CustomDropdown
+                      options={composerPurposeOptions}
+                      value={purpose}
+                      onChange={(val) => setPurpose(val)}
+                      disabled={busy || unknown}
+                    />
+                  </div>
+                </div>
+
+                {/* Row 4: Audience with CustomDropdown */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: audienceKind !== "ALL_ACTIVE" ? "1fr 1fr" : "1fr",
+                    gap: "1rem",
+                  }}
+                >
+                  <div className="cg19-input-group">
+                    <label>Audience Scope</label>
+                    <CustomDropdown
+                      options={composerAudienceKindOptions}
+                      value={audienceKind}
+                      onChange={(val) => setAudienceKind(val)}
+                      disabled={busy || unknown}
+                    />
+                  </div>
+
+                  {audienceKind !== "ALL_ACTIVE" && (
+                    <div className="cg19-input-group">
+                      <label>{audienceKind === "ROLE" ? "Select Role" : "Select Account"}</label>
+                      <CustomDropdown
+                        options={composerRecipientOptions}
+                        value={audienceRef}
+                        onChange={(val) => setAudienceRef(val)}
+                        placeholder="Choose actual recipient..."
+                        disabled={busy || unknown}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Row 5: Delivery Channels */}
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "8px",
+                    padding: "0.85rem",
+                  }}
+                >
+                  <strong style={{ fontSize: "0.825rem", color: "#334155", display: "block", marginBottom: "0.5rem" }}>
+                    Delivery Channels
+                  </strong>
+                  <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontSize: "0.825rem", cursor: "pointer" }}>
+                      <input type="checkbox" checked readOnly style={{ accentColor: "#4f46e5" }} />
+                      <span>In-app (always delivered)</span>
+                    </label>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontSize: "0.825rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={email}
+                        disabled={busy || unknown}
+                        onChange={(e) => setEmail(e.target.checked)}
+                        style={{ accentColor: "#4f46e5" }}
+                      />
+                      <span>Email (verified &amp; opted-in)</span>
+                    </label>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontSize: "0.825rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={sms}
+                        disabled={busy || unknown}
+                        onChange={(e) => setSms(e.target.checked)}
+                        style={{ accentColor: "#4f46e5" }}
+                      />
+                      <span>SMS (verified &amp; opted-in)</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Row 6: Schedule & Expiry */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div className="cg19-input-group">
+                    <label htmlFor="notice-schedule">Schedule (optional)</label>
+                    <input
+                      id="notice-schedule"
+                      type="datetime-local"
+                      className="cg19-input"
+                      value={schedule}
+                      disabled={busy || unknown}
+                      onChange={(e) => setSchedule(e.target.value)}
+                    />
+                  </div>
+                  <div className="cg19-input-group">
+                    <label htmlFor="notice-expiry">Expires (required)</label>
+                    <input
+                      id="notice-expiry"
+                      type="datetime-local"
+                      className="cg19-input"
+                      value={expiry}
+                      disabled={busy || unknown}
+                      onChange={(e) => setExpiry(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Row 7: Internal Action Link */}
+                <div className="cg19-input-group">
+                  <label htmlFor="notice-href">CareGanga Internal Action Link (optional)</label>
+                  <input
+                    id="notice-href"
+                    className="cg19-input"
+                    value={href}
+                    placeholder="/admin/approvals"
+                    maxLength={180}
+                    disabled={busy || unknown}
+                    onChange={(e) => setHref(e.target.value)}
+                  />
+                </div>
+
+                {unknown && (
+                  <div
+                    style={{
+                      background: "#fef2f2",
+                      border: "1px solid #fecaca",
+                      borderRadius: "8px",
+                      padding: "0.85rem",
+                      color: "#991b1b",
+                    }}
+                  >
+                    <strong style={{ fontSize: "0.85rem" }}>Draft outcome unconfirmed</strong>
+                    <p style={{ margin: "0.25rem 0 0.5rem 0", fontSize: "0.8rem" }}>
+                      Do not create another notice until the original request is checked.
+                    </p>
+                    <button
+                      type="button"
+                      className="cg19-btn-reset"
+                      disabled={busy}
+                      onClick={() => void findOriginal()}
+                    >
+                      Check original draft request
+                    </button>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.5rem" }}>
+                  <button
+                    type="button"
+                    className="cg19-btn-apply"
+                    disabled={
+                      busy ||
+                      unknown ||
+                      !expiry ||
+                      !title ||
+                      !body ||
+                      (audienceKind !== "ALL_ACTIVE" && !audienceRef)
+                    }
+                    onClick={() => void create()}
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>{busy ? "Saving..." : "Save Frozen Audience Draft"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="cg19-btn-reset"
+                    disabled={busy}
+                    onClick={() => setComposerOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>}
+          )}
+
+          {/* Main 2-Column Content Layout (Matching Screenshot 2) */}
+          <div className="cg19-content-grid">
+            {/* Left Main Column: Filters & Table Card */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {/* Advanced Filters Panel */}
+              <div className="cg19-filter-panel" aria-label="Advanced Notice Filters">
+                <div className="cg19-filter-header">
+                  <SlidersHorizontal className="w-4 h-4 text-slate-500" />
+                  <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1e293b" }}>
+                    Advanced Filters
+                  </span>
+                </div>
+
+                {/* Top Filter Row: Search & CustomDropdowns */}
+                <div className="cg19-filter-grid-top">
+                  {/* Search */}
+                  <div className="cg19-input-group">
+                    <label htmlFor="notice-search">Search</label>
+                    <div style={{ position: "relative" }}>
+                      <Search
+                        className="w-4 h-4 text-slate-400"
+                        style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)" }}
+                      />
+                      <input
+                        id="notice-search"
+                        className="cg19-input"
+                        style={{ paddingLeft: "2.25rem" }}
+                        placeholder="Search title, message, status..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleApplyFilter();
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notice Status */}
+                  <div className="cg19-input-group">
+                    <label>Status</label>
+                    <CustomDropdown
+                      options={statusOptions}
+                      value={statusFilter}
+                      onChange={(val) => setStatusFilter(val)}
+                    />
+                  </div>
+
+                  {/* Priority */}
+                  <div className="cg19-input-group">
+                    <label>Priority</label>
+                    <CustomDropdown
+                      options={priorityOptions}
+                      value={priorityFilter}
+                      onChange={(val) => setPriorityFilter(val)}
+                    />
+                  </div>
+
+                  {/* Purpose */}
+                  <div className="cg19-input-group">
+                    <label>Purpose</label>
+                    <CustomDropdown
+                      options={purposeOptions}
+                      value={purposeFilter}
+                      onChange={(val) => setPurposeFilter(val)}
+                    />
+                  </div>
+
+                  {/* Audience */}
+                  <div className="cg19-input-group">
+                    <label>Target Audience</label>
+                    <CustomDropdown
+                      options={audienceOptions}
+                      value={audienceFilter}
+                      onChange={(val) => setAudienceFilter(val)}
+                    />
+                  </div>
+                </div>
+
+                {/* Bottom Filter Row: Action Buttons */}
+                <div className="cg19-filter-row-bottom">
+                  <button type="button" className="cg19-btn-reset" onClick={handleResetFilters}>
+                    Reset
+                  </button>
+                  <button type="button" className="cg19-btn-apply" disabled={busy} onClick={handleApplyFilter}>
+                    Apply Filters
+                  </button>
+                </div>
+              </div>
+
+              {/* Table Card */}
+              <div className="cg19-table-card">
+                {/* Status Tabs Header matching Screenshot 2 */}
+                <div className="cg19-tab-header">
+                  <div className="cg19-tab-list">
+                    {(
+                      [
+                        { key: "ALL", label: "All Notifications", count: notices.length },
+                        { key: "ACTIVE", label: "Active Notices", count: activeCount },
+                        { key: "SCHEDULED", label: "Scheduled", count: scheduledCount },
+                        { key: "DRAFT", label: "Drafts", count: draftCount },
+                        { key: "EXPIRED", label: "Expired", count: expiredCount },
+                        { key: "CANCELLED", label: "Cancelled", count: cancelledCount },
+                      ] as const
+                    ).map((tabItem) => (
+                      <button
+                        key={tabItem.key}
+                        type="button"
+                        className={`cg19-tab-pill ${statusFilter === tabItem.key ? "active" : ""}`}
+                        onClick={() => setStatusFilter(tabItem.key)}
+                      >
+                        <span>{tabItem.label}</span>
+                        <span className="cg19-tab-count">{tabItem.count}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {mayManage && (
+                    <button
+                      type="button"
+                      className="cg19-btn-apply"
+                      style={{ padding: "0.35rem 0.85rem", fontSize: "0.8rem" }}
+                      onClick={() => setComposerOpen(true)}
+                    >
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      <span>Send Notification</span>
+                    </button>
+                  )}
+                </div>
+
+                {loading ? (
+                  <div style={{ padding: "3rem 1rem", textAlign: "center", color: "#64748b" }}>
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-500" />
+                    <p style={{ margin: 0, fontSize: "0.875rem" }}>Verifying notices from database...</p>
+                  </div>
+                ) : !shown.length ? (
+                  <div style={{ padding: "3.5rem 1rem", textAlign: "center", color: "#64748b" }}>
+                    <Bell className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <strong style={{ display: "block", fontSize: "0.95rem", color: "#334155" }}>
+                      No notices match the current filters.
+                    </strong>
+                    <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.825rem", color: "#94a3b8" }}>
+                      Try adjusting your search criteria or create a new notice.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table className="cg19-desk-table">
+                      <thead>
+                        <tr>
+                          <th>Notice</th>
+                          <th>Audience</th>
+                          <th>Channels</th>
+                          <th>Priority</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {shown.map((x) => (
+                          <tr key={x.noticeRef}>
+                            <td style={{ maxWidth: "260px" }}>
+                              <strong style={{ color: "#1e293b", fontSize: "0.875rem", display: "block" }}>
+                                {x.title}
+                              </strong>
+                              <p
+                                style={{
+                                  margin: "0.2rem 0 0 0",
+                                  color: "#64748b",
+                                  fontSize: "0.825rem",
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical",
+                                  overflow: "hidden",
+                                }}
+                              >
+                                {x.body}
+                              </p>
+                              <small style={{ color: "#94a3b8", display: "block", marginTop: "0.3rem", fontSize: "0.72rem" }}>
+                                {x.scheduledAt ? `Scheduled: ${new Date(x.scheduledAt).toLocaleString()} · ` : ""}
+                                Expires: {new Date(x.expiresAt).toLocaleDateString()}
+                              </small>
+                            </td>
+
+                            <td>
+                              <strong style={{ color: "#1e293b", fontSize: "0.85rem" }}>
+                                {x.audienceCount} recipients
+                              </strong>
+                              <p style={{ margin: "0.15rem 0 0 0", fontSize: "0.75rem", color: "#64748b" }}>
+                                {x.audienceKind.replaceAll("_", " ")}
+                              </p>
+                            </td>
+
+                            <td>
+                              <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+                                {x.channels.map((c) => (
+                                  <span key={c} className={channelBadgeClass(c)}>
+                                    {c}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+
+                            <td>
+                              <span className={priorityBadgeClass(x.priority)}>{x.priority}</span>
+                            </td>
+
+                            <td>
+                              <span className={stateBadgeClass(x.state)}>
+                                {x.state.replaceAll("_", " ")}
+                              </span>
+                            </td>
+
+                            <td>
+                              <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                                {mayApprove && x.state === "DRAFT" && (
+                                  <button
+                                    type="button"
+                                    className="cg19-btn-faq-publish"
+                                    disabled={busy || unknown}
+                                    title="Review & Approve Notice"
+                                    onClick={() =>
+                                      setReview({
+                                        id: x.noticeRef,
+                                        action: "APPROVE",
+                                        revision: x.revision,
+                                      })
+                                    }
+                                  >
+                                    <CheckCircle className="w-3.5 h-3.5" />
+                                    <span>Approve</span>
+                                  </button>
+                                )}
+
+                                {mayApprove && !["EXPIRED", "CANCELLED"].includes(x.state) && (
+                                  <button
+                                    type="button"
+                                    className="cg19-btn-faq-withdraw"
+                                    disabled={busy || unknown}
+                                    title="Cancel Notice"
+                                    onClick={() =>
+                                      setReview({
+                                        id: x.noticeRef,
+                                        action: "CANCEL",
+                                        revision: x.revision,
+                                      })
+                                    }
+                                  >
+                                    <XCircle className="w-3.5 h-3.5" />
+                                    <span>Cancel</span>
+                                  </button>
+                                )}
+
+                                {mayViewDelivery && (
+                                  <button
+                                    type="button"
+                                    className="cg19-btn-faq-edit"
+                                    title="View Delivery Breakdown"
+                                    onClick={() => void counts(x.noticeRef)}
+                                  >
+                                    <BarChart2 className="w-3.5 h-3.5 text-slate-500" />
+                                    <span>Delivery</span>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Delivery Counts Breakdown Dialog / Region */}
+              {delivery && (
+                <div
+                  className="cg19-drawer-card"
+                  style={{
+                    border: "1px solid #c7d2fe",
+                    background: "#fdfefe",
+                    marginTop: "0.5rem",
+                  }}
+                  role="region"
+                  aria-label="Delivery Counts Breakdown"
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "0.85rem",
+                      paddingBottom: "0.5rem",
+                      borderBottom: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <div>
+                      <h3 className="font-slab" style={{ margin: 0, fontSize: "1.05rem", color: "#1e293b" }}>
+                        Delivery Evidence: {selectedNotice?.title || deliveryRef}
+                      </h3>
+                      <p style={{ margin: "0.15rem 0 0 0", color: "#64748b", fontSize: "0.78rem" }}>
+                        Real-time transmission breakdown per communication channel
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="cg19-btn-reset"
+                      style={{ padding: "0.3rem 0.6rem" }}
+                      onClick={() => setDelivery(null)}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {delivery.counts.length ? (
+                    <div className="cg19-kpi-row" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))" }}>
+                      {delivery.counts.map((c) => (
+                        <article key={c.channel + c.status} className="cg19-kpi-card" style={{ padding: "0.65rem 0.85rem" }}>
+                          <div>
+                            <p className="cg19-kpi-label">{c.channel}</p>
+                            <h3 className="cg19-kpi-val" style={{ fontSize: "1.2rem" }}>
+                              {c.count}
+                            </h3>
+                            <span className="cg19-kpi-sub">
+                              <span className={stateBadgeClass(c.status)} style={{ fontSize: "0.68rem" }}>
+                                {c.status.replaceAll("_", " ")}
+                              </span>
+                            </span>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ margin: 0, color: "#64748b", fontSize: "0.85rem" }}>
+                      No delivery attempts recorded for this notice yet.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Approval / Cancellation Confirmation Modal */}
+              {review && (
+                <div
+                  className="cg19-drawer-card"
+                  style={{
+                    border: "1px solid #fecaca",
+                    background: "#fef2f2",
+                    marginTop: "0.5rem",
+                  }}
+                  role="alert"
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                    <ShieldCheck className="w-5 h-5 text-red-600" />
+                    <strong style={{ fontSize: "0.95rem", color: "#991b1b" }}>
+                      {review.action === "APPROVE" ? "Confirm Activation of Notice" : "Confirm Notice Cancellation"}
+                    </strong>
+                  </div>
+                  <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.825rem", color: "#7f1d1d" }}>
+                    This action requires Foundation Super Admin password confirmation for audit and data integrity.
+                  </p>
+
+                  {unknown && reviewKey && (
+                    <div
+                      style={{
+                        background: "#fff",
+                        border: "1px solid #fca5a5",
+                        borderRadius: "8px",
+                        padding: "0.65rem",
+                        marginBottom: "0.75rem",
+                        fontSize: "0.8rem",
+                      }}
+                    >
+                      <p style={{ margin: "0 0 0.5rem 0", color: "#b91c1c" }}>
+                        Previous notice approval result uncertain. Do not repeat as a new request. Check original command first.
+                      </p>
+                      <button
+                        type="button"
+                        className="cg19-btn-reset"
+                        disabled={busy}
+                        onClick={() => void checkOriginalDecision()}
+                      >
+                        Check original notice command
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="cg19-input-group" style={{ maxWidth: "340px", marginBottom: "0.85rem" }}>
+                    <label htmlFor="confirm-pass" style={{ color: "#7f1d1d" }}>
+                      Current Password
+                    </label>
+                    <input
+                      id="confirm-pass"
+                      type="password"
+                      className="cg19-input"
+                      minLength={8}
+                      maxLength={1024}
+                      autoComplete="current-password"
+                      value={currentPassword}
+                      placeholder="Enter administrator password..."
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button
+                      type="button"
+                      className="cg19-btn-faq-publish"
+                      style={{
+                        background: review.action === "APPROVE" ? "#10b981" : "#dc2626",
+                        borderColor: review.action === "APPROVE" ? "#059669" : "#b91c1c",
+                      }}
+                      disabled={busy || unknown || currentPassword.length < 8}
+                      onClick={() => void decide()}
+                    >
+                      Confirm {review.action.toLowerCase()}
+                    </button>
+                    <button
+                      type="button"
+                      className="cg19-btn-reset"
+                      disabled={busy || unknown}
+                      onClick={() => {
+                        setReview(null);
+                        setReviewKey("");
+                        setCurrentPassword("");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Side Column: Quick Actions & Delivery Summary (Matching Screenshot 2) */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {/* Quick Actions Card */}
+              <div className="cg19-recent-card">
+                <h4
+                  className="font-slab"
+                  style={{ fontSize: "0.95rem", fontWeight: 700, margin: "0 0 0.75rem 0", color: "#1e293b" }}
+                >
+                  Quick Actions
+                </h4>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "0.55rem",
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="cg19-recent-item"
+                    style={{
+                      flexDirection: "column",
+                      alignItems: "center",
+                      textAlign: "center",
+                      padding: "0.75rem 0.5rem",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                    }}
+                    onClick={() => setComposerOpen(true)}
+                  >
+                    <PlusCircle className="w-5 h-5 text-indigo-600 mb-1" />
+                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155" }}>
+                      Create Notice
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="cg19-recent-item"
+                    style={{
+                      flexDirection: "column",
+                      alignItems: "center",
+                      textAlign: "center",
+                      padding: "0.75rem 0.5rem",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                    }}
+                    onClick={() => setComposerOpen(true)}
+                  >
+                    <Send className="w-5 h-5 text-blue-600 mb-1" />
+                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155" }}>
+                      Send Notice
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="cg19-recent-item"
+                    style={{
+                      flexDirection: "column",
+                      alignItems: "center",
+                      textAlign: "center",
+                      padding: "0.75rem 0.5rem",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                    }}
+                    onClick={() => setComposerOpen(true)}
+                  >
+                    <Calendar className="w-5 h-5 text-teal-600 mb-1" />
+                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155" }}>
+                      Schedule Notice
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="cg19-recent-item"
+                    style={{
+                      flexDirection: "column",
+                      alignItems: "center",
+                      textAlign: "center",
+                      padding: "0.75rem 0.5rem",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                    }}
+                    onClick={() => {
+                      setTab("EMAIL_TEMPLATES");
+                      void loadEmailReferences();
+                    }}
+                  >
+                    <FileText className="w-5 h-5 text-purple-600 mb-1" />
+                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155" }}>
+                      Templates
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="cg19-recent-item"
+                    style={{
+                      flexDirection: "column",
+                      alignItems: "center",
+                      textAlign: "center",
+                      padding: "0.75rem 0.5rem",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                    }}
+                    onClick={() => setStatusFilter("ACTIVE")}
+                  >
+                    <Megaphone className="w-5 h-5 text-green-600 mb-1" />
+                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155" }}>
+                      Live Broadcasts
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="cg19-recent-item"
+                    style={{
+                      flexDirection: "column",
+                      alignItems: "center",
+                      textAlign: "center",
+                      padding: "0.75rem 0.5rem",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                    }}
+                    onClick={() => void reload()}
+                  >
+                    <RefreshCw className="w-5 h-5 text-slate-600 mb-1" />
+                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155" }}>
+                      Sync Data
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Delivery Summary Card */}
+              <div className="cg19-recent-card">
+                <h4
+                  className="font-slab"
+                  style={{ fontSize: "0.95rem", fontWeight: 700, margin: "0 0 0.5rem 0", color: "#1e293b" }}
+                >
+                  Delivery Summary
+                </h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem" }}>
+                    <span style={{ color: "#64748b" }}>In-App Delivery:</span>
+                    <strong style={{ color: "#16a34a" }}>Operational</strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem" }}>
+                    <span style={{ color: "#64748b" }}>Email Channel:</span>
+                    <span style={{ color: providers?.channels.find((c) => c.channel === "EMAIL")?.configured ? "#16a34a" : "#ea580c", fontSize: "0.75rem", fontWeight: 600 }}>
+                      {providers?.channels.find((c) => c.channel === "EMAIL")?.configured ? "Configured" : "Simulated / Off"}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem" }}>
+                    <span style={{ color: "#64748b" }}>SMS Channel:</span>
+                    <span style={{ color: providers?.channels.find((c) => c.channel === "SMS")?.configured ? "#16a34a" : "#ea580c", fontSize: "0.75rem", fontWeight: 600 }}>
+                      {providers?.channels.find((c) => c.channel === "SMS")?.configured ? "Configured" : "Simulated / Off"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* TAB 2: MY NOTIFICATIONS (INBOX) */}
+      {tab === "INBOX" && mayRead && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {/* Verified Phone Section */}
+          <div className="cg19-filter-panel">
+            <h3 className="font-slab" style={{ margin: "0 0 0.75rem 0", fontSize: "1.1rem", color: "#1e293b" }}>
+              My Verified Mobile Contact
+            </h3>
+            {!phoneProof ? (
+              <p style={{ margin: 0, color: "#64748b", fontSize: "0.85rem" }}>
+                Mobile verification status unavailable.
+              </p>
+            ) : phoneProof.verified ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <span className="cg19-status-pill open">
+                  Verified Mobile: {phoneProof.maskedContact}
+                </span>
+                <small style={{ color: "#64748b", fontSize: "0.75rem" }}>
+                  SMS delivery still requires purpose-specific consent.
+                </small>
+              </div>
+            ) : !phoneProof.hasNumber ? (
+              <p style={{ margin: 0, color: "#64748b", fontSize: "0.85rem" }}>
+                No mobile number is recorded in your Foundation account. The account owner must record it first.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                <p style={{ margin: 0, color: "#475569", fontSize: "0.85rem" }}>
+                  Recorded mobile: <strong>{phoneProof.maskedContact}</strong> (not verified).
+                </p>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="cg19-btn-reset"
+                    disabled={busy || !phoneProof.providerConfigured}
+                    onClick={() => void startPhoneProof()}
+                  >
+                    Request SMS Verification Code
+                  </button>
+                  <input
+                    className="cg19-input"
+                    style={{ width: "160px" }}
+                    placeholder="Enter code..."
+                    value={phoneCode}
+                    inputMode="numeric"
+                    maxLength={10}
+                    disabled={busy}
+                    onChange={(e) => setPhoneCode(e.target.value.replace(/[^0-9]/g, ""))}
+                  />
+                  <button
+                    type="button"
+                    className="cg19-btn-apply"
+                    disabled={busy || phoneCode.length < 4}
+                    onClick={() => void confirmPhoneProof()}
+                  >
+                    Verify Code
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Inbox Notifications Table Card */}
+          <div className="cg19-table-card">
+            <div className="cg19-tab-header">
+              <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1e293b" }}>
+                My Notifications ({inbox.length})
+              </span>
+            </div>
+
+            {!inbox.length ? (
+              <div style={{ padding: "3rem 1rem", textAlign: "center", color: "#64748b" }}>
+                <Inbox className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p style={{ margin: 0, fontSize: "0.875rem" }}>No notifications for your current account.</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", padding: "1rem" }}>
+                {inbox.map((item) => (
+                  <article
+                    key={item.notificationRef}
+                    style={{
+                      background: item.read ? "#ffffff" : "#f0fdf4",
+                      border: item.read ? "1px solid #e2e8f0" : "1px solid #bbf7d0",
+                      borderRadius: "10px",
+                      padding: "0.85rem 1rem",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: "1rem",
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#1e293b" }}>{item.title}</h4>
+                        {!item.read && <span className="cg19-status-pill open">New</span>}
+                      </div>
+                      <p style={{ margin: "0.3rem 0 0.5rem 0", color: "#475569", fontSize: "0.85rem", lineHeight: 1.5 }}>
+                        {item.body}
+                      </p>
+                      <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", fontSize: "0.75rem", color: "#94a3b8" }}>
+                        <span className={channelBadgeClass(item.channel)}>{item.channel}</span>
+                        <span>{item.status.replaceAll("_", " ")}</span>
+                        <span>{new Date(item.receivedAt).toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    {!item.read && (
+                      <button
+                        type="button"
+                        className="cg19-btn-reset"
+                        style={{ fontSize: "0.78rem", padding: "0.3rem 0.65rem", flexShrink: 0 }}
+                        disabled={busy}
+                        onClick={() => void markRead(item.notificationRef)}
+                      >
+                        Mark as read
+                      </button>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </section>
-    </>}
+      )}
 
-    {/* In-app recipient inbox */}
-    {tab==="INBOX"&&mayRead&&<section className="role-pane">
-      <div className="role-pane-heading"><h2>My verified mobile contact</h2></div>
-      <div className="role-detail-content">
-        {!phoneProof?<p>Mobile verification status unavailable.</p>:
-          phoneProof.verified?<p role="status">
-            <span className="cg19-badge cg19-badge-success">Verified CG-01 mobile: {phoneProof.maskedContact}</span>{" "}
-            SMS delivery still requires purpose-specific consent.
-          </p>:
-          !phoneProof.hasNumber?<p>No mobile number is recorded in your Foundation
-            account. The CG-01 account owner must record it first.</p>:
-          <div className="permission-group">
-            <p>Recorded mobile: {phoneProof.maskedContact} (not verified).</p>
-            <p>This verification uses CG-01 identity proof, not a general CG-19 message.</p>
-            <button type="button" disabled={busy||!phoneProof.providerConfigured}
-              onClick={()=>void startPhoneProof()}>Request SMS verification code</button>
-            <label className="field">Verification code
-              <input value={phoneCode} inputMode="numeric" maxLength={10}
-                disabled={busy} onChange={e=>
-                  setPhoneCode(e.target.value.replace(/[^0-9]/g,""))}/>
-            </label>
-            <button type="button" className="primary" disabled={busy||phoneCode.length<4}
-              onClick={()=>void confirmPhoneProof()}>Verify recorded mobile</button>
-          </div>}
-      </div>
-    </section>}
+      {/* TAB 3: CLIENT EMAIL REFERENCE TEMPLATES (52) */}
+      {tab === "EMAIL_TEMPLATES" && mayManage && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          <div className="cg19-filter-panel">
+            <h3 className="font-slab" style={{ margin: "0 0 0.5rem 0", fontSize: "1.1rem", color: "#1e293b" }}>
+              Client Transactional Email Templates (52)
+            </h3>
+            <p style={{ margin: "0 0 1rem 0", color: "#64748b", fontSize: "0.825rem", lineHeight: 1.5 }}>
+              These are the client-approved reference words and attachment requirements. Importing creates{" "}
+              <strong>disabled source drafts only</strong>. They do not send email or create unverified records.
+            </p>
 
-    {tab==="INBOX"&&mayRead&&<section className="role-pane">
-      <div className="role-pane-heading"><h2>My verified notifications ({inbox.length})</h2></div>
-      <div className="role-detail-content">
-        {!inbox.length?<p className="cg-module-empty">No notifications for your current account.</p>:
-          inbox.map(item=><article className="permission-group" key={item.notificationRef}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-              <div>
-                <h3 style={{margin:"0 0 0.25rem 0"}}>{item.title}</h3>
-                <p style={{margin:"0 0 0.5rem 0"}}>{item.body}</p>
-              </div>
-              <div>
-                {!item.read&&<span className="cg19-badge cg19-badge-warning">Unread</span>}
+            <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+              <button
+                type="button"
+                className="cg19-btn-apply"
+                disabled={busy || emailLoading}
+                onClick={() => void importClientDrafts()}
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Import Missing References as Disabled Drafts</span>
+              </button>
+              <button
+                type="button"
+                className="cg19-btn-reset"
+                disabled={busy || emailLoading}
+                onClick={() => void loadEmailReferences()}
+              >
+                <RefreshCw className={`w-4 h-4 ${emailLoading ? "animate-spin" : ""}`} />
+                <span>Refresh References</span>
+              </button>
+            </div>
+
+            <div className="cg19-input-group" style={{ maxWidth: "480px" }}>
+              <label htmlFor="email-search">Find a Template</label>
+              <div style={{ position: "relative" }}>
+                <Search
+                  className="w-4 h-4 text-slate-400"
+                  style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)" }}
+                />
+                <input
+                  id="email-search"
+                  className="cg19-input"
+                  style={{ paddingLeft: "2.25rem" }}
+                  value={emailSearch}
+                  maxLength={80}
+                  onChange={(e) => setEmailSearch(e.target.value)}
+                  placeholder="Template ID, name or module (e.g. CG-MEM, CG-DON, CG-SUP)"
+                />
               </div>
             </div>
-            <div className="toolbar" style={{fontSize:"0.8rem",color:"var(--cg-muted)"}}>
-              <span className={channelBadgeClass(item.channel)}>{item.channel}</span>
-              <span>{item.status.replaceAll("_"," ")}</span>
-              <span>{new Date(item.receivedAt).toLocaleString()}</span>
-              {!item.read&&<button type="button" disabled={busy}
-                onClick={()=>void markRead(item.notificationRef)}>Mark as read</button>}
+          </div>
+
+          <div className="cg19-table-card" style={{ padding: "1rem" }}>
+            {emailLoading && (
+              <div style={{ padding: "2rem", textAlign: "center", color: "#64748b" }}>
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-500" />
+                <p style={{ margin: 0, fontSize: "0.85rem" }}>Checking current template catalog...</p>
+              </div>
+            )}
+
+            {!emailLoading && emailReferences.length === 0 && (
+              <div style={{ padding: "2.5rem 1rem", textAlign: "center", color: "#64748b" }}>
+                <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p style={{ margin: 0, fontSize: "0.85rem" }}>
+                  Select &quot;Refresh References&quot; or &quot;Import&quot; to view the 52 client email templates.
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              {emailReferences
+                .filter((t) =>
+                  (t.code + " " + t.title + " " + t.owner).toLowerCase().includes(emailSearch.trim().toLowerCase())
+                )
+                .map((t) => (
+                  <details
+                    key={t.code}
+                    style={{
+                      background: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "10px",
+                      padding: "0.85rem",
+                    }}
+                  >
+                    <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: "0.875rem", color: "#1e293b" }}>
+                      <strong>{t.code}</strong> · {t.title} ·{" "}
+                      <span className="cg19-status-pill waiting" style={{ fontSize: "0.7rem" }}>
+                        {t.state.replaceAll("_", " ")}
+                      </span>
+                    </summary>
+                    <div style={{ marginTop: "0.75rem", fontSize: "0.825rem", color: "#334155", lineHeight: 1.6 }}>
+                      <p style={{ margin: "0.25rem 0" }}>
+                        <strong>Source trigger:</strong> {t.trigger}
+                      </p>
+                      <p style={{ margin: "0.25rem 0" }}>
+                        <strong>Recipient:</strong> {t.recipient || "Verify the recipient from the owning source"}
+                      </p>
+                      <p style={{ margin: "0.25rem 0" }}>
+                        <strong>Approved document requirement:</strong> {t.attachmentRule}
+                      </p>
+                      <p style={{ margin: "0.25rem 0" }}>
+                        <strong>Required fields:</strong> {t.placeholders.join(", ") || "None"}
+                      </p>
+                      <p style={{ margin: "0.5rem 0 0.2rem 0", fontWeight: 700 }}>
+                        Subject preview (placeholders only):
+                      </p>
+                      <pre
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          overflowWrap: "anywhere",
+                          background: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                          padding: "0.5rem",
+                          borderRadius: "6px",
+                          fontSize: "0.8rem",
+                        }}
+                      >
+                        {t.subject}
+                      </pre>
+                      <p style={{ margin: "0.5rem 0 0.2rem 0", fontWeight: 700 }}>
+                        Email body preview (placeholders only):
+                      </p>
+                      <pre
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          overflowWrap: "anywhere",
+                          background: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                          padding: "0.5rem",
+                          borderRadius: "6px",
+                          fontSize: "0.8rem",
+                        }}
+                      >
+                        {t.body}
+                      </pre>
+                    </div>
+                  </details>
+                ))}
             </div>
-          </article>)}
-      </div></section>}
-  </section>;
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
