@@ -753,3 +753,21 @@
 .cg-site-project-section .cg-site-project-copy .cg-site-eyebrow{display:inline-flex;max-width:100%;padding:.2rem .65rem;border-radius:999px;color:#226448;background:#e8f5eb;letter-spacing:.04em}
 .cg-site-project-section .cg-site-project-copy h3{overflow-wrap:anywhere}
 .cg-site-project-section .cg-site-project-copy p:last-child:not(:first-child){margin-bottom:0}
+
+/* Footer reference: legible brand, balanced columns and clear floating actions. */
+.cg-site-footer .cg-site-footer-brand{color:#fff;max-width:100%;gap:.65rem}
+.cg-site-footer-brand img{flex:0 0 auto;object-fit:contain}
+.cg-site-footer-brand strong{font-size:clamp(1.45rem,2.3vw,2rem);overflow-wrap:normal}
+.cg-site-footer h3{display:inline-block;border-bottom:1px solid #263041;padding-bottom:.55rem;margin-bottom:.7rem}
+.cg-site-footer-grid>div>a:not(.cg-site-footer-brand),.cg-site-footer address a{display:flex;align-items:center;min-height:44px;margin:.1rem 0;overflow-wrap:anywhere}
+.cg-site-footer .cg-site-unavailable{line-height:1.45}
+.cg-site-footer [aria-disabled="true"]{opacity:1;color:#94a5ba}
+.cg-site-floating{gap:.75rem}
+.cg-site .cg-site-float-donate{display:inline-flex;align-items:center;justify-content:center;min-height:44px;color:#14243b;text-align:center;overflow-wrap:anywhere}
+.cg-site .cg-site-float-whatsapp{background:#197d47;flex-shrink:0;min-width:48px;min-height:48px}
+.cg-site-float-whatsapp svg{width:1.7rem;height:1.7rem}
+.cg-site-floating a:focus-visible{outline:3px solid #194a3a;outline-offset:3px;box-shadow:0 0 0 3px #fff}
+.cg-site-footer :is(a,button,input){scroll-margin-bottom:6rem}
+@media(max-width:1000px){.cg-site-footer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){.cg-site-footer-grid{grid-template-columns:1fr}.cg-site-footer{padding-inline:1.25rem;padding-bottom:6rem}}
+@media(max-width:760px){.cg-site-footer-bottom{display:grid;gap:.5rem}.cg-site-floating{position:static;padding:.75rem 1.25rem max(.75rem,env(safe-area-inset-bottom));background:#080d14;align-items:center}.cg-site-footer{padding-bottom:2rem}.cg-site-float-whatsapp{margin-left:auto}}
