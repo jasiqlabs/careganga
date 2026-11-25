@@ -161,21 +161,25 @@ export function CmsGallery({section,assets,mediaScope="PHOTO",embedded=false}:{
 }
 export function CmsArticle({section,assets}:{
  section:PublicCmsSection;assets:Asset[]}){
- const f=section.fields,event=f.event&&typeof f.event==="object"?f.event as Record<string,unknown>:null;
- const cover=event&&/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(event.coverSrc))?{role:"ARTICLE",order:0,altText:text(f.heading),src:text(event.coverSrc)}:assets.find(a=>a.role==="ARTICLE"&&a.order===0);
+ const f=section.fields,event=f.event&&typeof f.event==="object"&&!Array.isArray(f.event)?f.event as Record<string,unknown>:null;
+ const safeMedia=(v:unknown)=>/^\/api\/public\/content\/media\/[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(text(v));
+ const cover=event?(safeMedia(event.coverSrc)?{role:"ARTICLE",order:0,altText:text(f.heading),src:text(event.coverSrc)}:undefined):assets.find(a=>a.role==="ARTICLE"&&a.order===0&&safeMedia(a.src));
  const stamp=(v:unknown)=>typeof v==="string"&&Number.isFinite(Date.parse(v))?new Date(v).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"}):"";
- return <article className="cg-site-content cg-site-article-body">
+ const eventStatus=event?({SCHEDULED:"Scheduled",ONGOING:"Ongoing",COMPLETED:"Completed"} as Record<string,string>)[text(event.status)]:undefined;
+ const start=stamp(event?.scheduledStart),end=stamp(event?.scheduledEnd);
+ const tags=Array.isArray(f.tags)?f.tags.map(text).filter(t=>t.trim()):[];
+ return <article className="cg-site-content cg-site-article-body cg-site-editorial-detail">
+  <Link className="cg-site-editorial-back" href={event?"/events":"/blog"}>{event?"Back to events":"Back to news"}</Link>
   <p className="cg-site-eyebrow">{text(f.category)}</p>
   <h1>{text(f.heading)}</h1>
-  <p className="cg-site-article-lead">{text(f.excerpt)}</p>
-  {event&&<div className="cg-site-article-lead"><p>{text(event.status)==="SCHEDULED"?"Scheduled":text(event.status)==="ONGOING"?"Ongoing":"Completed"} · {text(event.area)}</p><p>{stamp(event.scheduledStart)} – {stamp(event.scheduledEnd)} IST</p></div>}
-  {label(f.source,f.asOfDate)}
-  <p className="cg-site-provenance">Editorial credit: {text(f.authorLabel)}</p>
+  {!!text(f.excerpt)&&<p className="cg-site-article-lead">{text(f.excerpt)}</p>}
+  {event&&<div className="cg-site-event-facts"><p>{eventStatus||"Current event status unavailable"}{text(event.area)?" · "+text(event.area):""}</p>{start&&end&&<p>{start} – {end} IST</p>}</div>}
+  {(text(f.source)||text(f.asOfDate)||text(f.authorLabel))&&<div className="cg-site-editorial-meta">{text(f.source)&&<span>Source: {text(f.source)}</span>}{text(f.asOfDate)&&<span>As of {text(f.asOfDate)}</span>}{text(f.authorLabel)&&<span>Editorial credit: {text(f.authorLabel)}</span>}</div>}
   {photo(cover,"cg-site-article-cover")}
   {text(f.body).split(/\n{2,}/).filter(Boolean).map((paragraph,i)=>
    <p key={i}>{paragraph}</p>)}
-  <div className="cg-site-tags">{Array.isArray(f.tags)&&f.tags.map((tag,i)=>
-   <span key={i}>{text(tag)}</span>)}</div>
+  {tags.length>0&&<div className="cg-site-tags">{tags.map((tag,i)=>
+   <span key={i}>{tag}</span>)}</div>}
  </article>;
 }
 export function CmsHealthcare({section,assets}:{
