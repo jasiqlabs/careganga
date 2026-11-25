@@ -40,7 +40,6 @@ export function CmsSiteHeader({navigation,contact}:{
   "/volunteer":undefined;
  const routes=navigation?.publishedRoutes??[];
  const isPublished=(path:string)=>routes.some(x=>x.path===path);
- const anyArticles=routes.some(x=>x.kind==="ARTICLE"&&/^\/blog\/[a-z0-9-]+$/.test(x.path));
  return <header ref={header} className="cg-site-header" onKeyDown={event=>{
   if(event.key!=="Escape")return;
   const open=header.current?.querySelector<HTMLDetailsElement>("details[open]");
@@ -79,9 +78,10 @@ export function CmsSiteHeader({navigation,contact}:{
      className={pathname==="/ngo-information"?"cg-site-active":undefined}>NGO Information</Link>:
      <span className="cg-site-unavailable" aria-disabled="true">NGO Information<small>Not available yet</small></span>}
     {isPublished("/donate")&&<Link href="/donate">Donate Now</Link>}
-    {isPublished("/campaigns")?<Link href="/campaigns"
-     className={pathname.startsWith("/campaigns")?"cg-site-active":undefined}>Campaigns</Link>:
-     <span className="cg-site-unavailable" aria-disabled="true">Campaigns<small>Not available yet</small></span>}
+    {/* The catalogue is a safe public information route even when no campaigns are published.
+        The catalogue and payment owner still enforce actual publication and merchant readiness. */}
+    <Link href="/campaigns" className={pathname.startsWith("/campaigns")?"cg-site-active":undefined}
+     aria-current={pathname==="/campaigns"?"page":undefined}>Campaigns</Link>
     {isPublished("/upcoming-projects")?<Link href="/upcoming-projects" className={pathname==="/upcoming-projects"?"cg-site-active":undefined}>Upcoming Projects</Link>:<span className="cg-site-unavailable" aria-disabled="true">Upcoming Projects<small>Not available yet</small></span>}
     <Link href="/collaboration" className={pathname.startsWith("/collaboration")?"cg-site-active":undefined}>Partnerships</Link>
     <Link href="/events" className={pathname==="/events"?"cg-site-active":undefined}>Events</Link>
@@ -91,7 +91,7 @@ export function CmsSiteHeader({navigation,contact}:{
       text==="Publications / Reports"&&isPublished("/gallery")?
        "/publications":
       text==="News & Updates"?"/notices":
-      text==="Blog"&&anyArticles?"/blog":undefined}))}/>
+      text==="Blog"?"/blog":undefined}))}/>
     <Menu pathname={pathname} label="Join Now" items={[{text:"Become a Member",href:member},
      {text:"Become a Volunteer",href:volunteer}]}/>
     <Link href={isPublished("/healthcare")?"/healthcare":"/health-network"}
