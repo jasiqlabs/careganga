@@ -122,6 +122,7 @@ export async function publicPartnerOffers(centerSlug:string):
    "serviceKind" in x&&["PHARMACY","NURSING","OT"].includes(String(x.serviceKind))&&
    "name" in x&&typeof x.name==="string"&&
    "description" in x&&typeof x.description==="string"&&
+   "currency" in x&&x.currency==="INR"&&
    "indicativePriceMinor" in x&&
    (x.indicativePriceMinor===null||typeof x.indicativePriceMinor==="string"&&
     /^[1-9][0-9]{0,10}$/.test(x.indicativePriceMinor)));
