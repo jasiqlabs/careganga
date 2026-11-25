@@ -460,82 +460,82 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
           </View>
         </View>
 
-        {/* 6 KPI Metric Cards matching Web Screenshot 1 & 2 */}
+        {/* 6 KPI Metric Cards matching Web - 2 columns, Top Row with Icon & Value, 100% full visible labels, NO ELLIPSIS */}
         <View style={styles.kpiGrid}>
           {/* 1. Total Notifications */}
           <View style={styles.kpiCard}>
-            <View style={[styles.kpiIconWrap, { backgroundColor: "#DBEAFE" }]}>
-              <IconSend size={16} color="#2563EB" />
-            </View>
-            <View style={styles.kpiInfo}>
-              <Text style={styles.kpiLabel} numberOfLines={1}>Total Notifications</Text>
+            <View style={styles.kpiTopRow}>
+              <View style={[styles.kpiIconWrap, { backgroundColor: "#DBEAFE" }]}>
+                <IconSend size={18} color="#2563EB" />
+              </View>
               <Text style={styles.kpiValue}>{totalNotifications}</Text>
-              <Text style={styles.kpiSub} numberOfLines={1}>All time</Text>
             </View>
+            <Text style={styles.kpiLabel}>Total Notifications</Text>
+            <Text style={styles.kpiSub}>All time</Text>
           </View>
 
           {/* 2. Active Notices */}
           <View style={styles.kpiCard}>
-            <View style={[styles.kpiIconWrap, { backgroundColor: "#DCFCE7" }]}>
-              <IconMegaphone size={16} color="#16A34A" />
-            </View>
-            <View style={styles.kpiInfo}>
-              <Text style={styles.kpiLabel} numberOfLines={1}>Active Notices</Text>
+            <View style={styles.kpiTopRow}>
+              <View style={[styles.kpiIconWrap, { backgroundColor: "#DCFCE7" }]}>
+                <IconMegaphone size={18} color="#16A34A" />
+              </View>
               <Text style={[styles.kpiValue, { color: "#16A34A" }]}>{activeNotices}</Text>
-              <Text style={styles.kpiSub} numberOfLines={1}>Currently live</Text>
             </View>
+            <Text style={styles.kpiLabel}>Active Notices</Text>
+            <Text style={styles.kpiSub}>Currently live</Text>
           </View>
 
           {/* 3. Recipients Reached */}
           <View style={styles.kpiCard}>
-            <View style={[styles.kpiIconWrap, { backgroundColor: "#FEF3C7" }]}>
-              <IconUsers size={16} color="#D97706" />
-            </View>
-            <View style={styles.kpiInfo}>
-              <Text style={styles.kpiLabel} numberOfLines={1}>Recipients Reached</Text>
+            <View style={styles.kpiTopRow}>
+              <View style={[styles.kpiIconWrap, { backgroundColor: "#FEF3C7" }]}>
+                <IconUsers size={18} color="#D97706" />
+              </View>
               <Text style={[styles.kpiValue, { color: "#D97706" }]}>{recipientsReached}</Text>
-              <Text style={styles.kpiSub} numberOfLines={1}>Across channels</Text>
             </View>
+            <Text style={styles.kpiLabel}>Recipients Reached</Text>
+            <Text style={styles.kpiSub}>Across channels</Text>
           </View>
 
           {/* 4. In-App Delivered */}
           <View style={styles.kpiCard}>
-            <View style={[styles.kpiIconWrap, { backgroundColor: "#F3E8FF" }]}>
-              <IconMail size={16} color="#9333EA" />
-            </View>
-            <View style={styles.kpiInfo}>
-              <Text style={styles.kpiLabel} numberOfLines={1}>In-App Delivered</Text>
+            <View style={styles.kpiTopRow}>
+              <View style={[styles.kpiIconWrap, { backgroundColor: "#F3E8FF" }]}>
+                <IconMail size={18} color="#9333EA" />
+              </View>
               <Text style={[styles.kpiValue, { color: "#9333EA" }]}>{inAppDelivered}</Text>
-              <Text style={styles.kpiSub} numberOfLines={1}>Personal inbox</Text>
             </View>
+            <Text style={styles.kpiLabel}>In-App Delivered</Text>
+            <Text style={styles.kpiSub}>Personal inbox</Text>
           </View>
 
           {/* 5. Draft Notices */}
           <View style={styles.kpiCard}>
-            <View style={[styles.kpiIconWrap, { backgroundColor: "#FEE2E2" }]}>
-              <IconFileText size={16} color="#DC2626" />
-            </View>
-            <View style={styles.kpiInfo}>
-              <Text style={styles.kpiLabel} numberOfLines={1}>Draft Notices</Text>
+            <View style={styles.kpiTopRow}>
+              <View style={[styles.kpiIconWrap, { backgroundColor: "#FEE2E2" }]}>
+                <IconFileText size={18} color="#DC2626" />
+              </View>
               <Text style={[styles.kpiValue, { color: "#DC2626" }]}>{draftNotices}</Text>
-              <Text style={styles.kpiSub} numberOfLines={1}>Pending review</Text>
             </View>
+            <Text style={styles.kpiLabel}>Draft Notices</Text>
+            <Text style={styles.kpiSub}>Pending review</Text>
           </View>
 
           {/* 6. Scheduled */}
           <View style={styles.kpiCard}>
-            <View style={[styles.kpiIconWrap, { backgroundColor: "#CCFBF1" }]}>
-              <IconCalendar size={16} color="#0D9488" />
-            </View>
-            <View style={styles.kpiInfo}>
-              <Text style={styles.kpiLabel} numberOfLines={1}>Scheduled</Text>
+            <View style={styles.kpiTopRow}>
+              <View style={[styles.kpiIconWrap, { backgroundColor: "#CCFBF1" }]}>
+                <IconCalendar size={18} color="#0D9488" />
+              </View>
               <Text style={[styles.kpiValue, { color: "#0D9488" }]}>{scheduledNotices}</Text>
-              <Text style={styles.kpiSub} numberOfLines={1}>Queued to go out</Text>
             </View>
+            <Text style={styles.kpiLabel}>Scheduled Notices</Text>
+            <Text style={styles.kpiSub}>Queued to go out</Text>
           </View>
         </View>
 
-        {/* Main Workspace Navigation Tabs with Lucide Icons (NO EMOJIS! STRICT SINGLE LINE) */}
+        {/* Main Workspace Navigation Tabs - Smooth Horizontal Scroll, Full Labels Visible, Zero Truncation */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -548,10 +548,7 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
             style={[styles.tabButton, activeTab === "NOTICES" && styles.tabButtonActive]}
           >
             <IconMegaphone size={16} color={activeTab === "NOTICES" ? "#4F46E5" : "#64748B"} />
-            <Text
-              numberOfLines={1}
-              style={[styles.tabButtonText, activeTab === "NOTICES" && styles.tabButtonTextActive]}
-            >
+            <Text style={[styles.tabButtonText, activeTab === "NOTICES" && styles.tabButtonTextActive]}>
               Notices & Broadcasts
             </Text>
           </Pressable>
@@ -562,10 +559,7 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
             style={[styles.tabButton, activeTab === "INBOX" && styles.tabButtonActive]}
           >
             <IconInbox size={16} color={activeTab === "INBOX" ? "#4F46E5" : "#64748B"} />
-            <Text
-              numberOfLines={1}
-              style={[styles.tabButtonText, activeTab === "INBOX" && styles.tabButtonTextActive]}
-            >
+            <Text style={[styles.tabButtonText, activeTab === "INBOX" && styles.tabButtonTextActive]}>
               My Notifications ({unreadInboxCount > 0 ? unreadInboxCount : inbox.length})
             </Text>
           </Pressable>
@@ -580,7 +574,6 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
           >
             <IconMail size={16} color={activeTab === "EMAIL_TEMPLATES" ? "#4F46E5" : "#64748B"} />
             <Text
-              numberOfLines={1}
               style={[
                 styles.tabButtonText,
                 activeTab === "EMAIL_TEMPLATES" && styles.tabButtonTextActive
@@ -954,7 +947,7 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
                   </View>
 
                   {/* Notice Body */}
-                  <Text style={styles.noticeTableBody} numberOfLines={2}>
+                  <Text style={styles.noticeTableBody}>
                     {n.body}
                   </Text>
 
@@ -1602,56 +1595,57 @@ const styles = StyleSheet.create({
   kpiGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "space-between",
     gap: 10
   },
   kpiCard: {
     width: "48%",
-    flexGrow: 1,
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    padding: 12,
+    padding: 14,
+    gap: 6,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2
+  },
+  kpiTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1
+    justifyContent: "space-between",
+    marginBottom: 4
   },
   kpiIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0
-  },
-  kpiInfo: {
-    flex: 1,
     justifyContent: "center"
   },
   kpiValue: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: "900",
     color: "#0F172A",
-    lineHeight: 22
+    letterSpacing: -0.5
   },
   kpiLabel: {
-    fontSize: 11,
+    fontSize: 12.5,
     fontWeight: "700",
-    color: "#475569"
+    color: "#334155",
+    lineHeight: 17
   },
   kpiSub: {
-    fontSize: 10,
-    color: "#94A3B8",
+    fontSize: 11,
+    color: "#64748B",
     marginTop: 1
   },
   tabBarScroll: {
     flexGrow: 0,
-    marginBottom: 6
+    width: "100%",
+    marginBottom: 8
   },
   tabScrollContainer: {
     flexDirection: "row",
@@ -1659,15 +1653,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     borderRadius: 12,
     padding: 4,
-    gap: 4
+    gap: 6
   },
   tabButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 9,
-    gap: 6,
+    gap: 7,
     flexShrink: 0
   },
   tabButtonActive: {
@@ -1679,10 +1673,9 @@ const styles = StyleSheet.create({
     elevation: 2
   },
   tabButtonText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#64748B",
-    flexShrink: 0
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#64748B"
   },
   tabButtonTextActive: {
     color: "#4F46E5",
