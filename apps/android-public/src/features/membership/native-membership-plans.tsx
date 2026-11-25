@@ -4,11 +4,11 @@ import {ActivityIndicator,AppState,Pressable,StyleSheet,Text,TextInput,View} fro
 import type {CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 const categories={ALL:"All tiers",ANNUAL:"Annual plans",LIFETIME:"Lifetime",HONORARY:"Honorary / Free",STUDENT:"Student plans",OTHER:"Other plans"} as const;
-const colors:Record<string,string>={BLUE:"#285acb",GREEN:"#287b50",AMBER:"#ad7104",PURPLE:"#6840c9",TEAL:"#0c7b78",ROSE:"#be3866",SLATE:"#52657a"};
+const colors:Record<string,string>={BLUE:"#285acb",GREEN:"#287b50",AMBER:"#865600",PURPLE:"#6840c9",TEAL:"#0c7b78",ROSE:"#be3866",SLATE:"#52657a"};
 const icons:Record<string,string>={CARD:"▣",STAR:"★",HEART:"♥",CROWN:"♛",GRADUATION:"◆",SHIELD:"⬟",USERS:"♟"};
 function amount(v:string){if(!/^\d{1,15}$/.test(v))return "Price unavailable";const n=BigInt(v),whole=n/100n,f=String(n%100n).padStart(2,"0");return "₹"+whole.toLocaleString("en-IN")+(f==="00"?"":"."+f);}
 function duration(v:CG04PublicTier){return v.durationUnit==="LIFETIME"?"Lifetime":v.durationCount+" "+v.durationUnit.toLowerCase()+(v.durationCount===1?"":"s");}
-function Button({title,onPress,selected=false,disabled=false}:{title:string;onPress:()=>void;selected?:boolean;disabled?:boolean}){return <Pressable accessibilityRole="button" accessibilityState={{selected,disabled}} disabled={disabled} onPress={onPress} style={[s.button,selected&&s.selected,disabled&&{opacity:.5}]}><Text style={{color:selected?"#fff":"#174632",fontWeight:"600"}}>{title}</Text></Pressable>;}
+function Button({title,onPress,selected=false,disabled=false,tab=false}:{title:string;onPress:()=>void;selected?:boolean;disabled?:boolean;tab?:boolean}){return <Pressable accessibilityRole="button" accessibilityState={{selected,disabled}} disabled={disabled} onPress={onPress} style={[s.button,tab&&s.tabButton,selected&&s.selected,disabled&&{opacity:.5}]}><Text style={{color:selected?"#fff":"#174632",fontWeight:"600",textAlign:"center",flexShrink:1}}>{title}</Text></Pressable>;}
 function isPage(v:unknown):v is CG04PublicTierPage{if(!v||typeof v!=="object")return false;const p=v as CG04PublicTierPage;return Array.isArray(p.items)&&p.items.length<=50&&(p.nextCursor===null||typeof p.nextCursor==="string")&&p.items.every(x=>x&&typeof x.planCode==="string"&&Number.isSafeInteger(x.offerRevision)&&x.offerRevision>0&&typeof x.name==="string"&&typeof x.description==="string"&&typeof x.feeMinor==="string"&&/^\d{1,15}$/.test(x.feeMinor)&&x.currency==="INR"&&["DAY","MONTH","YEAR","LIFETIME"].includes(x.durationUnit)&&Number.isInteger(x.durationCount)&&Array.isArray(x.benefits)&&x.benefits.length<=20&&x.benefits.every(b=>b&&typeof b.title==="string"&&typeof b.description==="string"));}
 export function NativeMembershipPlans({onApply}:{onApply:(planCode:string)=>void}){
  const intro=usePublicIntro("MEMBERSHIP");
@@ -40,8 +40,8 @@ export function NativeMembershipPlans({onApply}:{onApply:(planCode:string)=>void
  return <View style={s.section}>
  <View style={s.hero}>{!!intro?.eyebrow&&<Text style={{color:"#9de0b8",fontWeight:"700",letterSpacing:2}}>{intro.eyebrow}</Text>}<Text accessibilityRole="header" style={s.heroTitle}>{intro?.heading??"Membership"}</Text>{!!intro?.body&&<Text style={{color:"#fff",lineHeight:22}}>{intro.body}</Text>}{intro?.highlights.map((line,i)=><Text key={i} style={{color:"#fff"}}>{line}</Text>)}</View>
  <View style={s.row}>
-  <Button title="Membership Cards" selected={tab==="CARDS"} onPress={()=>{setTab("CARDS");verifySeq.current++;setVerifyCode("");setVerifyState("IDLE");}}/>
-  <Button title="Verify Membership" selected={tab==="VERIFY"} onPress={()=>setTab("VERIFY")}/>
+  <Button tab title="Membership Cards" selected={tab==="CARDS"} onPress={()=>{setTab("CARDS");verifySeq.current++;setVerifyCode("");setVerifyState("IDLE");}}/>
+  <Button tab title="Verify Membership" selected={tab==="VERIFY"} onPress={()=>setTab("VERIFY")}/>
  </View>
  {tab==="VERIFY"?<View style={s.panel}>
   <Text accessibilityRole="header" style={s.heading}>Verify Membership</Text>
@@ -62,4 +62,4 @@ export function NativeMembershipPlans({onApply}:{onApply:(planCode:string)=>void
  {!!data?.nextCursor&&!error&&<Button title="More plans" disabled={loading} onPress={()=>{setPrevious(plans);setCursor(data.nextCursor??"");}}/>}</>}
  </View>;
 }
-const s=StyleSheet.create({section:{gap:14},hero:{backgroundColor:"#174632",padding:24,borderRadius:12,gap:10},heroTitle:{fontSize:32,fontWeight:"800",color:"white"},heading:{fontSize:19,fontWeight:"700",color:t.text},muted:{color:"#66788c",lineHeight:21},panel:{backgroundColor:"white",borderColor:"#dae4df",borderWidth:1,borderRadius:12,padding:14,gap:9},input:{borderWidth:1,borderColor:"#d5dfda",borderRadius:9,padding:12,color:t.text,minHeight:44},row:{flexDirection:"row",flexWrap:"wrap",gap:8},button:{borderColor:"#b6cfc2",borderWidth:1,borderRadius:8,paddingHorizontal:12,paddingVertical:10,minHeight:44,justifyContent:"center"},selected:{backgroundColor:"#174632",borderColor:"#174632"},art:{borderRadius:9,padding:20,alignItems:"center",gap:6}});
+const s=StyleSheet.create({section:{gap:14},hero:{backgroundColor:"#174632",padding:20,borderRadius:12,gap:10},heroTitle:{fontSize:32,fontWeight:"800",color:"white"},heading:{fontSize:20,fontWeight:"700",color:t.text},muted:{color:"#4D6072",lineHeight:21},panel:{backgroundColor:"white",borderColor:"#dae4df",borderWidth:1,borderRadius:12,padding:14,gap:9},input:{borderWidth:1,borderColor:"#d5dfda",borderRadius:9,padding:12,color:t.text,minHeight:48},row:{flexDirection:"row",flexWrap:"wrap",gap:8},button:{borderColor:"#b6cfc2",borderWidth:1,borderRadius:8,paddingHorizontal:12,paddingVertical:10,minHeight:48,justifyContent:"center",maxWidth:"100%"},tabButton:{flexGrow:1,flexBasis:0,minWidth:120},selected:{backgroundColor:"#174632",borderColor:"#174632"},art:{borderRadius:9,padding:20,alignItems:"center",gap:6}});
