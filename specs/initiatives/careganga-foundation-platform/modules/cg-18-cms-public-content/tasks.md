@@ -456,7 +456,7 @@ Branch `feature/careganga-public-website-live-uiux-hardening-20261125`, base mai
 | PUB-08 Media/resources | US003, Batch02 | gallery/video/publication distinct routes, filters/reset, approved assets, rights/expiry, news/blog/event states, accessible viewer/download | IN_PROGRESS — filtering parity source fix |
 | PUB-09 Membership/volunteer | US001, Batch02 | real plan filter/verify and application steps, error/consent/submit/recovery, no fake plans or fees | OPEN |
 | PUB-10 Healthcare journey | US004, latest healthcare reference + approved replacement | categories, center/doctor/lab links, loading/empty, booking continuity, confirmed prices/benefits, Android parity | OPEN |
-| PUB-11 Contact | US003, Batch03 | hero, contact blocks, two-column form, FAQ, validation, real receipt/anti-spam, small screen | OPEN |
+| PUB-11 Contact | US003, Batch03 | hero, contact blocks, two-column form, FAQ, validation, real receipt/anti-spam, small screen | IN_PROGRESS — enquiry layout source candidate |
 | PUB-12 Footer/floating | US001/003, original footer | policies visible only if approved, no fake social or donation, newsletter consent/error, CTA not obscuring content | OPEN |
 | PUB-13 Responsive Web/native parity | all four stories | 320/390/768/1280/1440/1920 Web, Android phone/tablet, text scaling, contrast, accessibility, motion reduced, screenshots before/after | OPEN |
 | PUB-14 CMS lifecycle | US001–004 | fresh init vs existing edited content, draft/approval/revoke, assets protected, no marker reset, only safe forward migration if genuinely needed | OPEN |
@@ -484,3 +484,6 @@ Original Batch01 contact sheet re-opened. Web team hero/search and honest empty 
 
 #### PUB-06/08 checkpoint
 NGO sidebar 7cf56ce makes Campaigns and contact enquiry actionable without publishing unverified legal sections; clear unavailable status for pending documents. Native media 83e758a counts only current cleared assets, narrows category to actual media type, adds year/reset and approved empty copy; Web 3799ce6 distinguishes filtered vs unpublished. US002/003 original QA retained. Financial report dedicated native receiving surface, legal proof, actual links and visual/device checks remain open; no fabricated financial records. No production writes.
+
+#### PUB-11 contact checkpoint
+Batch03 original contact capture sheet inspected. Form now inside first effective CONTACT_INFO before FAQ/photos (400d190/f958c5b/ba356a0), uses published Home contact info and clears stale receipt status (bc24186), two-column layout 50cfb73, native enquiry entry before FAQ and missing image guard 7513fca. CG19 original request/receipt contract and idempotency unchanged; no new provider or fabricated live chat. US003 original contact QA and native parity source trace; full runtime, real provider receipt and visual tests pending. No production write.
