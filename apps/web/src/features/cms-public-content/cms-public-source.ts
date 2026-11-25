@@ -75,6 +75,11 @@ export async function publishedCmsArticles(category="",cursor="",eventsOnly=fals
   if(!data||typeof data!=="object"||Array.isArray(data)||
     !("posts" in data)||!Array.isArray(data.posts))throw Error();
   const x=data as {schemaVersion?:unknown;posts:unknown[];nextCursor?:unknown};
+  const validDate=(value:unknown)=>{
+   if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+   const parsed=new Date(value+"T00:00:00.000Z");
+   return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value;
+  };
   const valid=(raw:unknown):raw is CmsArticleSummary=>{
    if(!raw||typeof raw!=="object"||Array.isArray(raw))return false;
    const p=raw as Record<string,unknown>;
@@ -82,11 +87,11 @@ export async function publishedCmsArticles(category="",cursor="",eventsOnly=fals
     p.path==="/blog/"+p.slug&&typeof p.title==="string"&&
     typeof p.category==="string"&&p.category.length<=80&&
     typeof p.excerpt==="string"&&p.excerpt.length<=400&&
-    typeof p.asOfDate==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(p.asOfDate);
+    validDate(p.asOfDate);
   };
   if(x.schemaVersion!==1||x.posts.length>20||!x.posts.every(valid)||
     new Set(x.posts.map(p=>p.slug)).size!==x.posts.length||
-    (x.nextCursor!==null&&(typeof x.nextCursor!=="string"||!/^[a-z0-9][a-z0-9-]{0,69}$/.test(x.nextCursor))))throw Error();
+    (x.nextCursor!==null&&(typeof x.nextCursor!=="string"||!/^[a-z0-9][a-z0-9-]{0,69}$/.test(x.nextCursor)||x.nextCursor===cursor)))throw Error();
   return {posts:x.posts,nextCursor:x.nextCursor,available:true};
  }catch{return {posts:[],nextCursor:null,available:false};}
 }
