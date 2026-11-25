@@ -674,3 +674,16 @@
 .cg-site-slide-controls button:focus-visible,.cg-site-hero-cta:focus-visible{outline:2px solid white;outline-offset:2px;box-shadow:0 0 0 4px #194a3a}
 .cg-site-slide-controls>button{flex-shrink:0}
 @media(max-width:760px){.cg-site-hero:has(.cg-site-slide-controls){align-content:center}.cg-site-slide-controls{margin-inline:auto}}
+
+/* Newsletter controls share the public footer's palette and accessible target size. */
+.cg-site-footer-grid>div{min-width:0;overflow-wrap:anywhere}
+.cg-site-newsletter-field input{min-width:0}
+.cg-site-newsletter-button{min-height:44px;padding:.65rem .85rem;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
+.cg-site-newsletter-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem}
+.cg-site-newsletter-actions button,.cg-site-newsletter-secondary{min-height:44px;max-width:100%;padding:.55rem .8rem;border:1px solid #62718b;border-radius:.55rem;background:transparent;color:#e8edfc;font:inherit;font-size:.85rem;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
+.cg-site-newsletter-actions button[aria-pressed="true"]{background:#f3c744;color:#0e1b31;border-color:#f3c744;font-weight:700}
+.cg-site-newsletter-secondary{display:block;margin-top:.6rem;text-align:left}
+.cg-site-newsletter-consent{display:flex;align-items:center;gap:.65rem;min-height:44px;margin:.65rem 0;font-size:.8rem;color:#cbd6e8;cursor:pointer}
+.cg-site-newsletter-consent input{flex:none;width:1.25rem;height:1.25rem;accent-color:#f3c744}
+.cg-site-footer :is(button,input,a):focus-visible{outline:2px solid #f3c744;outline-offset:3px}
+.cg-site-newsletter-actions button:disabled,.cg-site-newsletter-secondary:disabled{opacity:.7;cursor:not-allowed}
