@@ -81,12 +81,11 @@ export function Cg19PublicContactForm({contact:publishedContact={}}:{contact?:Re
   }
   return <section className="cg-site-contact-layout cg-site-content"
     aria-label="Foundation Contact and private support">
-     <div className="cg-site-contact-intro">
-      <h2>Send a private message</h2>
-      <p>Ask CareGanga Foundation a question. Your message is handled privately
-       by the original Foundation support system; no account is needed.</p>
-     </div>
-      <div className="cg-site-contact-panel" style={{padding:"1.4rem"}}>
+      <div className="cg-site-contact-panel cg-site-contact-message">
+        <div className="cg-site-contact-intro">
+          <h2>Send us a message</h2>
+          <p>Your message is handled privately by the Foundation support system; no account is needed.</p>
+        </div>
         {receipt?<section aria-live="polite">
           <h2>Request received</h2>
           <p><strong>Ticket number: {receipt.ticketNumber}</strong></p>
