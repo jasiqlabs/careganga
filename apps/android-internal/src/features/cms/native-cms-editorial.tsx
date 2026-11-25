@@ -514,6 +514,11 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     {draft.sections.map((section,i)=>["PROJECT_TEASER","CAMPAIGN_TEASER","TEAM"].includes(section.kind)?null:<View key={section.kind+"-"+section.order}
      style={styles.panel}>
       <Text style={styles.heading}>{title(section.kind)} · Section {i+1}</Text>
+      {canManage&&selected.kind==="HOME"&&section.kind==="RICH_TEXT"&&section.order>20&&section.order<30&&section.fields.variant==="STANDARD"&&!section.fields.placement&&
+       !draft.assets.some(a=>a.role==="ABOUT"&&a.order===section.order)&&!selected.bundledAssets?.some(a=>a.role==="ABOUT"&&a.order===section.order)&&
+       [35,31,32,33,34,36,37,38,39].some(n=>!draft.sections.some(x=>x.order===n))&&
+       button("Move after volunteer banner",()=>{const order=[35,31,32,33,34,36,37,38,39].find(n=>!draft.sections.some(x=>x.order===n));if(order!==undefined)change("sections",draft.sections.map((x,j)=>j===i?{...x,order}:x));},locked)}
+
       {section.kind==="IMPACT_GROUP"&&section.fields.group==="STATS"&&canManage&&button("Use verified beneficiary impact",()=>void api<{fields:Record<string,unknown>|null}>(token,"beneficiary-impact-source").then(v=>{if(!v.fields){setError("No publishable beneficiary aggregate for the last completed year.");return;}replaceSection(i,v.fields);}).catch(()=>setError("Current role or source cannot provide beneficiary impact.")),locked)}
       {typeof section.fields.sourceEventRef==="string"?<><Text>{String(section.fields.heading)} · {String(section.fields.category)}</Text><Text>{String(section.fields.body)}</Text></>:<EditField name="Original section fields" value={section.fields}
        sectionKind={section.kind}
