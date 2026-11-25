@@ -15612,3 +15612,14 @@ button:disabled {
 .cg04-enroll-form button:disabled{opacity:.65;cursor:not-allowed}
 .cg04-enroll-retry{padding:1rem;background:#fff8e5;border:1px solid #d8b56a;border-radius:.7rem;display:flex;flex-wrap:wrap;gap:.6rem}
 .cg04-enroll-retry p{flex:1 1 100%;margin:0}
+
+/* Private appointment detail reading and action layout. */
+.cg-health-appointment-detail>.cg-health-patient-layout{margin-top:1rem}
+.cg-health-appointment-detail .cg-health-document-panel{min-width:0;overflow-wrap:anywhere;background:#fff;border-radius:.9rem}
+.cg-health-public-chrome .cg-health-appointment-detail .cg-health-document-panel h3{background:#194a3a;color:white;padding:.75rem;border-radius:.6rem;font-size:1.1rem}
+.cg-health-appointment-detail .cg-health-document-panel h2{font-size:1.2rem;color:#194a3a;overflow-wrap:anywhere}
+.cg-health-public-chrome .cg-health-appointment-detail button{min-height:48px;white-space:normal;max-width:100%;overflow-wrap:anywhere}
+.cg-health-appointment-detail .cg-health-document-panel a{display:inline-flex;align-items:center;min-height:44px;color:#194a3a;font-weight:650;overflow-wrap:anywhere;max-width:100%}
+.cg-health-appointment-detail .cg-health-document-panel iframe{max-width:100%}
+.cg-health-appointment-detail :is(a,button):focus-visible{outline:3px solid #194a3a;outline-offset:2px}
+@media(max-width:600px){.cg-health-appointment-detail .cg-health-document-panel button{width:100%}}
