@@ -189,10 +189,10 @@ export function CmsPublicShell({children,navigation,siteFooter}:{children:ReactN
  * Only vetted CG-18 published DTO reaches this view; no private author data.
  * Admin blue design tokens are intentionally not used for public appearance.
  */
-export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,sidebar}:{
+export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,sidebar,contactForm}:{
  page:PublicCmsPage;navigation?:PublicCmsNavigation|null;
  siteFooter?:Record<string,unknown>|null;children?:ReactNode;
- mediaScope?:CmsMediaType;sidebar?:ReactNode}){
+ mediaScope?:CmsMediaType;sidebar?:ReactNode;contactForm?:ReactNode}){
  const sections=[...page.sections].sort((a,b)=>a.order-b.order);
  const assets=page.assets??[];
  const ownFooter=sections.find(x=>x.kind==="SITE_FOOTER")?.fields;
@@ -257,7 +257,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
         </div>}
       </section>;
      }
-     if(section.kind==="CONTACT_INFO")return <CmsContactInfo key={key} section={section} assets={assets}/>;
+     if(section.kind==="CONTACT_INFO")return <CmsContactInfo key={key} section={section} assets={assets} form={section===sections.find(s=>s.kind==="CONTACT_INFO")?contactForm:undefined}/>;
      if(section.kind==="CAMPAIGN_TEASER"){
       const cards=Array.isArray(section.fields.cards)?
        section.fields.cards.filter(x=>x&&typeof x==="object"&&
