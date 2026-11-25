@@ -656,7 +656,7 @@ export function FoundationSupportWorkspace({
                   <CustomDropdown
                     label="Status"
                     value={statusFilter}
-                    onChange={(value) => { setStatusFilter(value); setActiveTabFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
+                    onChange={(value) => { if (statusFilter === value && activeTabFilter === "ALL" && !cursor) return; setStatusFilter(value); setActiveTabFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
                     options={[
                       { value: "ALL", label: "All Statuses" },
                       { value: "OPEN", label: "Open" },
@@ -782,21 +782,21 @@ export function FoundationSupportWorkspace({
                   <button
                     type="button"
                     className={`cg19-nav-tab ${activeTabFilter === "ALL" ? "is-active" : ""}`}
-                    onClick={() => { setActiveTabFilter("ALL"); setStatusFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
+                    onClick={() => { if (activeTabFilter === "ALL" && statusFilter === "ALL" && !cursor) return; setActiveTabFilter("ALL"); setStatusFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
                   >
                     All Chats
                   </button>
                   <button
                     type="button"
                     className={`cg19-nav-tab ${activeTabFilter === "OPEN" ? "is-active" : ""}`}
-                    onClick={() => { setActiveTabFilter("OPEN"); setStatusFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
+                    onClick={() => { if (activeTabFilter === "OPEN" && statusFilter === "ALL" && !cursor) return; setActiveTabFilter("OPEN"); setStatusFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
                   >
                     Open
                   </button>
                   <button
                     type="button"
                     className={`cg19-nav-tab ${activeTabFilter === "CLOSED" ? "is-active" : ""}`}
-                    onClick={() => { setActiveTabFilter("CLOSED"); setStatusFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
+                    onClick={() => { if (activeTabFilter === "CLOSED" && statusFilter === "ALL" && !cursor) return; setActiveTabFilter("CLOSED"); setStatusFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
                   >
                     Closed
                   </button>
@@ -1038,7 +1038,7 @@ export function FoundationSupportWorkspace({
                     style={{ padding: "0.25rem 1.8rem 0.25rem 0.5rem", fontSize: "0.78rem" }}
                     aria-label="Records per page"
                     value={pageSize}
-                    onChange={(e) => { setPageSize(Number(e.target.value)); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
+                    onChange={(e) => { const size = Number(e.target.value); if (size === pageSize && !cursor) return; setPageSize(size); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
                   >
                     <option value="10">10 / page</option>
                     <option value="25">25 / page</option>
