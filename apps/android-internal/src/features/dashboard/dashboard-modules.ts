@@ -91,6 +91,7 @@ export interface ModuleActionHandlers {
   openReports: () => void;
   openMis: () => void;
   openFinance: () => void;
+  openFoundation?: () => void;
   openBranches: () => void;
   openHr: () => void;
   openPayroll: () => void;
@@ -267,6 +268,21 @@ export function getAuthorizedModules(
       iconBg:"#DCFCE7",
       iconColor:"#166534",
       onOpen:handlers.openHr
+    });
+  }
+
+  // Foundation Structure (Legal profile, geography, departments & committees)
+  if (["foundation.profile.view", "foundation.geography.view", "foundation.departments.view"].some(k => roleActions.includes(k))) {
+    list.push({
+      key: "foundation",
+      title: "Foundation Structure",
+      shortLabel: "Structure",
+      description: "Official profile, geography, departments and committees.",
+      category: "ORGANIZATION MANAGEMENT",
+      iconName: "building",
+      iconBg: "#EFF6FF",
+      iconColor: "#2563EB",
+      onOpen: handlers.openFoundation ?? handlers.openBranches
     });
   }
 

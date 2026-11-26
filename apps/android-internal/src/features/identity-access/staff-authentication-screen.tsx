@@ -52,6 +52,7 @@ import { NotificationsScreen } from "../communications/notifications-screen";
 import { FoundationNoticeAdminScreen } from "../communications/foundation-notice-admin-screen";
 import { FoundationSupportScreen } from "../support/foundation-support-screen";
 const BranchRegistrationScreen = lazy(() => import("../foundation-structure/branch-registration-screen").then(m => ({ default: m.BranchRegistrationScreen })));
+const FoundationStructureScreen = lazy(() => import("../foundation-structure/foundation-structure-screen").then(m => ({ default: m.FoundationStructureScreen })));
 const RecipientNotifications = lazy(() => import("../../../../../packages/native-communications/src/recipient-notifications").then(m => ({ default: m.RecipientNotifications })));
 
 const FinanceAccountsScreen = lazy(() => import("../finance-accounting/finance-accounts-screen").then(m => ({ default: m.FinanceAccountsScreen })));
@@ -187,6 +188,7 @@ export function StaffAuthenticationScreen() {
   const [patientBookingOpen, setPatientBookingOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [branchesOpen, setBranchesOpen] = useState(false);
+  const [foundationOpen, setFoundationOpen] = useState(false);
   const [financeOpen, setFinanceOpen] = useState(false);
   const [voucherOnlyOpen, setVoucherOnlyOpen] = useState(false);
   const [financeReviewOpen, setFinanceReviewOpen] = useState(false);
@@ -311,6 +313,7 @@ export function StaffAuthenticationScreen() {
       hrOpen || payrollOpen ||
       financeOpen ||
       branchesOpen ||
+      foundationOpen ||
       changePasswordOpen;
 
     if (!isAnySubScreenOpen) return;
@@ -341,6 +344,7 @@ export function StaffAuthenticationScreen() {
       setReportsOpen(false); setMisOpen(false); setHrOpen(false); setPayrollOpen(false); setInventoryOpen(false); setRewardsOpen(false); setMembershipOpen(false); setProjectsOpen(false); setBeneficiariesOpen(false); setCampaignsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
       setFinanceOpen(false);
       setBranchesOpen(false);
+      setFoundationOpen(false);
       setChangePasswordOpen(false);
       return true;
     };
@@ -674,6 +678,7 @@ export function StaffAuthenticationScreen() {
         setReportsOpen(false); setMisOpen(false); setHrOpen(false); setPayrollOpen(false); setInventoryOpen(false); setMembershipOpen(false); setVolunteersOpen(false); setProjectsOpen(false); setBeneficiariesOpen(false); setCampaignsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
         setFinanceOpen(false);
         setBranchesOpen(false);
+        setFoundationOpen(false);
         setChangePasswordOpen(false);
   }, []);
   const openOnly = useCallback((show: (value: boolean) => void) => {
@@ -740,6 +745,7 @@ export function StaffAuthenticationScreen() {
       openVolunteers: () => openOnly(setVolunteersOpen),
       openFinance: () => openOnly(setFinanceOpen),
       openBranches: () => openOnly(setBranchesOpen),
+      openFoundation: () => openOnly(setFoundationOpen),
       openChangePassword: () => openOnly(setChangePasswordOpen)
     }),
     [closeModuleViews, openOnly]
@@ -1475,6 +1481,24 @@ export function StaffAuthenticationScreen() {
             onExit={() => setBranchesOpen(false)} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>, "branches", () => setBranchesOpen(false))
+    );
+  }
+  if (foundationOpen && token && actor) {
+    if (!["foundation.profile.view", "foundation.geography.view", "foundation.departments.view"].some(k => roleActions.includes(k)))
+      return (
+        <AccessDeniedScreen
+          reason="Foundation structure is restricted to your authorized Foundation role."
+          onMyAccount={() => setFoundationOpen(false)}
+        />
+      );
+    return (
+      renderInShell(<ScreenErrorBoundary onExit={() => setFoundationOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
+          <FoundationStructureScreen token={token}
+            roleActions={roleActions}
+            onExit={() => setFoundationOpen(false)} onExpired={expireSession} />
+        </Suspense>
+      </ScreenErrorBoundary>, "foundation", () => setFoundationOpen(false))
     );
   }
   if (communicationsOpen && token && actor &&
