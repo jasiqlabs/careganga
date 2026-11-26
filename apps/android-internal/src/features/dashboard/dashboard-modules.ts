@@ -286,11 +286,11 @@ export function getAuthorizedModules(
     });
   }
 
-  // 7. Branches & registration
+  // 7. Branches / Locations
   if (roleActions.includes("foundation.branches.view")) {
     list.push({
       key: "branches",
-      title: "Branches & registration",
+      title: "Branches / Locations",
       shortLabel: "Branches",
       description: "Manage foundation physical offices, centers and facilities.",
       category: "ORGANIZATION MANAGEMENT",
