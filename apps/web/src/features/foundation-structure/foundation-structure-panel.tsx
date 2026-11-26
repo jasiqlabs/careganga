@@ -1153,28 +1153,30 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
                 />
               </div>
 
-              <div style={{ width: 170 }}>
-                <CustomDropdown
-                  value={departmentKindFilter}
-                  onChange={(val) => setDepartmentKindFilter(val)}
-                  options={[
-                    { value: "ALL", label: "All types" },
-                    { value: "DEPARTMENT", label: "Departments" },
-                    { value: "COMMITTEE", label: "Committees" },
-                  ]}
-                />
-              </div>
+              <div className="cg-filter-dropdown-group">
+                <div className="cg-filter-dropdown-wrap">
+                  <CustomDropdown
+                    value={departmentKindFilter}
+                    onChange={(val) => setDepartmentKindFilter(val)}
+                    options={[
+                      { value: "ALL", label: "All types" },
+                      { value: "DEPARTMENT", label: "Departments" },
+                      { value: "COMMITTEE", label: "Committees" },
+                    ]}
+                  />
+                </div>
 
-              <div style={{ width: 170 }}>
-                <CustomDropdown
-                  value={departmentStatusFilter}
-                  onChange={(val) => setDepartmentStatusFilter(val)}
-                  options={[
-                    { value: "ALL", label: "All statuses" },
-                    { value: "ACTIVE", label: "Active" },
-                    { value: "INACTIVE", label: "Inactive" },
-                  ]}
-                />
+                <div className="cg-filter-dropdown-wrap">
+                  <CustomDropdown
+                    value={departmentStatusFilter}
+                    onChange={(val) => setDepartmentStatusFilter(val)}
+                    options={[
+                      { value: "ALL", label: "All statuses" },
+                      { value: "ACTIVE", label: "Active" },
+                      { value: "INACTIVE", label: "Inactive" },
+                    ]}
+                  />
+                </div>
               </div>
             </div>
 
