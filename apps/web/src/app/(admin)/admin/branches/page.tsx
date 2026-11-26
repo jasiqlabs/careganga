@@ -1,1 +1,2 @@
-export { default, dynamic } from "../foundation/branches/page";
+export const dynamic = "force-dynamic";
+export { default } from "../foundation/branches/page";
