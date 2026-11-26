@@ -39,7 +39,31 @@ async function bootstrap(): Promise<void> {
   app.use(correlateRequest);
   const pool = app.get<Pool>(DATABASE);
   app.useGlobalFilters(new SafeErrorsFilter(pool));
-  app.enableCors({ origin: cfg.webOrigin, credentials: false, methods: ["GET","POST","PATCH","DELETE"] });
+  const allowedOrigins = new Set(
+    cfg.webOrigin
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean)
+  );
+  if (process.env.NODE_ENV !== "production") {
+    allowedOrigins.add("http://localhost:3000");
+    allowedOrigins.add("http://127.0.0.1:3000");
+    allowedOrigins.add("http://localhost:8081");
+    allowedOrigins.add("http://127.0.0.1:8081");
+    allowedOrigins.add("http://localhost:8082");
+    allowedOrigins.add("http://127.0.0.1:8082");
+  }
+  app.enableCors({
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
+    credentials: false,
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"]
+  });
 
   // Verify database readiness before accepting incoming network traffic
   let dbReady = false;
