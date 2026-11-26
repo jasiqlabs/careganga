@@ -311,6 +311,16 @@ Applied strict CG-19 UI/UX standards to all four CG-02 mobile screens:
     5. Test "Add Foundation department" button on top right to create a new committee or department.
     6. Click "Download verified departments" to test CSV export.
 
-**3. Test Results:**
-- Backend contract test suite: `npm run test:cg02-all-25-qa -w apps/backend` -> **25/25 PASSED (100%)**.
-- Android internal build: `npx tsc --noEmit -p apps/android-internal/tsconfig.json` -> **0 errors**.
+**3. Test Results & Live Manual Verification:**
+- **Backend Contract Test Suite**: `npm run test:cg02-all-25-qa -w apps/backend` -> **25/25 PASSED (100%)**.
+- **Android Internal Build**: `npx tsc --noEmit -p apps/android-internal/tsconfig.json` -> **0 errors**.
+- **Live Manual Web Verification (Step 1 - Profile)**: Verified legal identity fields, CAS version increment on save, and change history modal with dark blur backdrop.
+- **Live Manual Web Verification (Step 2 - Geography Hierarchy)**:
+  - **4-Level Hierarchy Successfully Created in Real PostgreSQL**:
+    - `STATE`: Uttar Pradesh, Madhya Pradesh (Parent: Foundation)
+    - `DISTRICT`: Varanasi (Parent: Uttar Pradesh), Bhopal (Parent: Madhya Pradesh)
+    - `SUBDIVISION`: Varanasi Sadar (Parent: Varanasi)
+    - `BLOCK`: Kashi Vidyapeeth (Parent: Varanasi Sadar)
+  - **Color-Coded Badges Verified**: `STATE` (Purple), `DISTRICT` (Blue), `SUBDIVISION` (Teal), `BLOCK` (Amber), `ACTIVE` (Green).
+  - **Dynamic Client Search**: Real-time filtering verified without page reload (`ma`, `bhopal`).
+  - **Icon & Typography Parity**: Verified search bar zero icon-text overlap, `"Roboto Slab"` headings, and `#4F46E5` indigo primary button.
