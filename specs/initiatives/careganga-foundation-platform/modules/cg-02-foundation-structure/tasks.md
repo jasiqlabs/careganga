@@ -269,3 +269,48 @@ Applied strict CG-19 UI/UX standards to all four CG-02 mobile screens:
 - **Mobile Navigation**:
   - Open Internal Android App -> Dashboard -> Tap **"Foundation Structure"** to test US-001 (Profile, Geography, Departments).
   - Tap **"Branches & Locations"** to test US-002 (KPIs, Filters, Analytics, Branch Details, 8 Tabs, 9-Button Workflow, 5 Sub-Cards, 7-Stage Wizard).
+
+### 2026-11-26 — UI/UX Typography Harmonization & Business Domain Manual Testing Checkpoint
+
+**Commits:** `e1a63ac26`, `8703cecfe` on branch `feature/careganga-cg02-qa-uiux-verification-20261125`
+
+**1. Visual & Typography Improvements (Gold Standard Parity with `/admin/communications`):**
+- **Headings & KPI Metrics Typography**: Upgraded all titles (`.cg-foundation-title-group h1`, `.cg-f-card-title`, `.cg-branches-title-group h1`) and KPI values (`.cg-dept-kpi-value`, `.cg-kpi-value`) to `"Roboto Slab", Georgia, serif !important` with `font-weight: 800`.
+- **Body & Inputs Typography**: Clean `"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` applied to all body text, subtitles, tables, inputs, and dropdowns.
+- **Search Icon Overlap Fix**: Removed conflicting `.search-row` global class overrides from `foundation-structure-panel.tsx`. Enforced `padding: 0 1rem 0 2.85rem !important` on `.cg-filter-search-input` and absolute centering for `.cg-filter-search-icon` (`left: 0.95rem; top: 50%; transform: translateY(-50%)`), completely eliminating placeholder overlap.
+- **Accents & Buttons**: Active tab background and `.cg-btn-primary` set to `#4F46E5` (Indigo) with border `1px solid #4338CA`, hover `#4338CA`, and text `#FFFFFF`.
+- **History Modal Backdrop**: Dark blur backdrop `rgba(15, 23, 42, 0.65)` with `backdrop-filter: blur(4px)` and `z-index: 9999` replacing solid white background.
+
+**2. Detailed Business Logic & Manual Testing Guide for CG-02 US-001:**
+- **Tab 1: Foundation Legal Profile**:
+  - *Business Function*: Stores the authoritative, legally registered identity of CareGanga Foundation (Legal name, registered phone number, registered postal address, government registration reference, registration authority, registration date).
+  - *Data Integrity & Security*: Protected by optimistic concurrency / CAS (Compare-And-Swap) `expected_version` checking. Prevents concurrent overwrite conflicts. Every save creates an immutable audit event accessible via "View change history".
+  - *Manual Test Steps*:
+    1. Click "Foundation Structure" in sidebar (or search `found`).
+    2. Click "Foundation Profile" tab. Verify prefilled legal details (e.g., `CareGanga Health`, contact `9876543210`, address `Bhopal`, registration reference `rtcf-123`).
+    3. Modify any field (e.g. address) and click "Save official profile". Verify success feedback.
+    4. Click "View change history" button. Verify the modal opens with a dark blur overlay displaying the version number, action type (`Profile Save`), and timestamp.
+- **Tab 2: Geography (Real Operational Hierarchy)**:
+  - *Business Function*: Defines the strict real-world administrative hierarchy for Foundation operations: `STATE` -> `DISTRICT` -> `SUBDIVISION` -> `BLOCK`. No mock or imaginary geographies allowed.
+  - *Data Integrity*: Backend enforces hierarchy cycle prevention (an area cannot be its own ancestor), unique area names per root/parent, and prevents deletion/reparenting of active branch-linked areas.
+  - *Manual Test Steps*:
+    1. Click "Geography" tab.
+    2. Verify search bar: text `Search areas by name...` has generous spacing from the search icon.
+    3. Type an area name (e.g. `Bhopal` or `Madhya Pradesh`) to test instant client filtering.
+    4. Test the "Register operational area" form on the right: select Level (`STATE`), enter Area name, select status (`ACTIVE`), and submit.
+    5. Test adding a `DISTRICT` with the previously created `STATE` as parent.
+    6. Click "Download verified areas" CSV button to verify data export.
+- **Tab 3: Departments & Committees**:
+  - *Business Function*: Manages Foundation-wide internal governance units across 4 categories: `GOVERNING_BODY`, `CENTRAL_COMMITTEE`, `DEPT`, and `STANDING_COMMITTEE`.
+  - *Staff Assignment*: Allows assigning authorized CG-01 staff members as officeholders (e.g., Committee Head, Participant) without granting root administrative rights.
+  - *Manual Test Steps*:
+    1. Click "Departments & Committees" tab.
+    2. Verify 4 top KPI cards (Total records, Active, Inactive, Committees) render numbers in bold `"Roboto Slab"`.
+    3. Test search bar (`Search loaded departments...`) and `CustomDropdown` filters (Filter by Type and Status).
+    4. Click "Officeholders" button on any committee card to view assigned staff members.
+    5. Test "Add Foundation department" button on top right to create a new committee or department.
+    6. Click "Download verified departments" to test CSV export.
+
+**3. Test Results:**
+- Backend contract test suite: `npm run test:cg02-all-25-qa -w apps/backend` -> **25/25 PASSED (100%)**.
+- Android internal build: `npx tsc --noEmit -p apps/android-internal/tsconfig.json` -> **0 errors**.
