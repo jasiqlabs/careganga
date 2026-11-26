@@ -25,17 +25,14 @@ function Button({label,href,secondary=false,navigation}:{label:unknown;href:unkn
 export function CmsHeroCarousel({slides,navigation}:{slides:Slide[];navigation?:PublicCmsNavigation|null}){
  const [active,setActive]=useState(0);
  const [isPaused,setIsPaused]=useState(false);
- const timerRef=useRef<NodeJS.Timeout|null>(null);
 
  useEffect(()=>{
   if(slides.length<=1||isPaused)return;
-  timerRef.current=setInterval(()=>{
+  const timer=setInterval(()=>{
    setActive(prev=>(prev+1)%slides.length);
-  },6000);
-  return ()=>{
-   if(timerRef.current)clearInterval(timerRef.current);
-  };
- },[slides.length,isPaused]);
+  },5000);
+  return ()=>clearInterval(timer);
+ },[slides.length,isPaused,active]);
 
  if(slides.length===0)return null;
  const index=Math.min(active,slides.length-1);
@@ -46,13 +43,13 @@ export function CmsHeroCarousel({slides,navigation}:{slides:Slide[];navigation?:
  return <section className="cg-site-hero" aria-label="Foundation featured initiatives"
   onMouseEnter={()=>setIsPaused(true)}
   onMouseLeave={()=>setIsPaused(false)}>
-  {(slide.hero||slide.mobile)&&<picture className="cg-site-hero-media">
+  {(slide.hero||slide.mobile)&&<picture className="cg-site-hero-media" key={"hero-media-"+index}>
    {slide.mobile&&<source media="(max-width: 48rem)" srcSet={slide.mobile.src}/>}
    <img src={(slide.hero||slide.mobile)!.src}
     alt={(slide.hero||slide.mobile)!.altText} loading={index===0?"eager":"lazy"}/>
   </picture>}
   <div className="cg-site-hero-gradient" aria-hidden="true"/>
-  <div className="cg-site-hero-content" key={slide.section.order} aria-live="polite">
+  <div className="cg-site-hero-content" key={"hero-content-"+index} aria-live="polite">
    {!!text(v.eyebrow)&&<p className="cg-site-hero-eyebrow">{text(v.eyebrow)}</p>}
    <h1 style={{
     fontFamily:v.headingFont==="SANS"?"Arial, Helvetica, sans-serif":"Georgia, serif",
