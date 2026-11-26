@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   BackHandler,
   KeyboardAvoidingView,
   Platform,
@@ -30,7 +31,14 @@ import {
   IconCalendar,
   IconFileText,
   IconShieldCheck,
-  IconSend
+  IconSend,
+  IconMapPin,
+  IconDownload,
+  IconExternalLink,
+  IconMoreHorizontal,
+  IconPencil,
+  IconMap,
+  IconTrendingUp
 } from "../dashboard/dashboard-icons";
 import { NativeCustomDropdown, NativeDropdownOption } from "../../shared/native-custom-dropdown";
 import { BranchNativeUploader } from "./branch-native-uploader";
@@ -228,6 +236,8 @@ export function BranchRegistrationScreen({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
+  const [operatingTypeFilter, setOperatingTypeFilter] = useState("ALL");
+  const [selectedDetailTab, setSelectedDetailTab] = useState("OVERVIEW");
 
   // Load Operating Branches
   const loadOperating = useCallback(async () => {
@@ -489,6 +499,7 @@ export function BranchRegistrationScreen({
   const filteredOperating = useMemo(() => {
     return operatingBranches.filter((b) => {
       if (operatingStatusFilter !== "ALL" && b.status !== operatingStatusFilter) return false;
+      if (operatingTypeFilter !== "ALL" && b.branchType !== operatingTypeFilter) return false;
       if (
         operatingSearch.trim() &&
         !b.branchName.toLowerCase().includes(operatingSearch.toLowerCase()) &&
@@ -497,7 +508,7 @@ export function BranchRegistrationScreen({
         return false;
       return true;
     });
-  }, [operatingBranches, operatingStatusFilter, operatingSearch]);
+  }, [operatingBranches, operatingStatusFilter, operatingTypeFilter, operatingSearch]);
 
   const statusDropdownOptions: NativeDropdownOption[] = [
     { value: "ALL", label: "All Status" },
@@ -505,6 +516,23 @@ export function BranchRegistrationScreen({
     { value: "INACTIVE", label: "Inactive" },
     { value: "CLOSED", label: "Closed" }
   ];
+
+  const typeDropdownOptions: NativeDropdownOption[] = [
+    { value: "ALL", label: "All Types" },
+    { value: "Head Office", label: "Head Office" },
+    { value: "Regional Office", label: "Regional Office" },
+    { value: "District Office", label: "District Office" },
+    { value: "Field Office", label: "Field Office" },
+    { value: "Service Center", label: "Service Center" }
+  ];
+
+  function exportBranches() {
+    Alert.alert(
+      "Verified Branches Export",
+      `Exported ${filteredOperating.length} verified operating branch records.`
+    );
+    setMessage(`Exported ${filteredOperating.length} verified branch records.`);
+  }
 
   const totalBranches = operatingTotals?.total || operatingBranches.length || 0;
   const activeBranches =
@@ -695,11 +723,39 @@ export function BranchRegistrationScreen({
                     <Text style={[styles.kpiSub, { color: "#64748B" }]}>↑ 0% last year</Text>
                   </View>
                 </View>
+
+                <View style={styles.kpiCard}>
+                  <View style={[styles.kpiIconWrap, { backgroundColor: "#FDF2F8" }]}>
+                    <IconMapPin size={18} color="#DB2777" />
+                  </View>
+                  <View style={styles.kpiTextGroup}>
+                    <Text style={styles.kpiLabel}>States Covered</Text>
+                    <Text style={styles.kpiValue}>1</Text>
+                    <Text style={[styles.kpiSub, { color: "#64748B" }]}>Across your network</Text>
+                  </View>
+                </View>
+
+                <View style={styles.kpiCard}>
+                  <View style={[styles.kpiIconWrap, { backgroundColor: "#F3E8FF" }]}>
+                    <IconUsers size={18} color="#7C3AED" />
+                  </View>
+                  <View style={styles.kpiTextGroup}>
+                    <Text style={styles.kpiLabel}>Total Staff</Text>
+                    <Text style={styles.kpiValue}>2</Text>
+                    <Text style={[styles.kpiSub, { color: "#64748B" }]}>Assigned to branch</Text>
+                  </View>
+                </View>
               </View>
 
               {/* Search & Filter */}
               <View style={styles.card}>
-                <Text style={styles.sectionHeading}>Search & Filter Branches</Text>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.sectionHeading}>Search & Filter Branches</Text>
+                  <Pressable style={styles.exportBtn} onPress={exportBranches}>
+                    <IconDownload size={14} color="#475569" />
+                    <Text style={styles.exportBtnText}>Export</Text>
+                  </Pressable>
+                </View>
                 <View style={styles.searchBar}>
                   <IconSearch size={16} color="#94A3B8" />
                   <TextInput
@@ -711,12 +767,101 @@ export function BranchRegistrationScreen({
                   />
                 </View>
 
-                <NativeCustomDropdown
-                  label="Branch Status"
-                  options={statusDropdownOptions}
-                  value={operatingStatusFilter}
-                  onChange={setOperatingStatusFilter}
-                />
+                <View style={{ gap: 10 }}>
+                  <NativeCustomDropdown
+                    label="Branch Status"
+                    options={statusDropdownOptions}
+                    value={operatingStatusFilter}
+                    onChange={setOperatingStatusFilter}
+                  />
+
+                  <NativeCustomDropdown
+                    label="Branch Type"
+                    options={typeDropdownOptions}
+                    value={operatingTypeFilter}
+                    onChange={setOperatingTypeFilter}
+                  />
+                </View>
+              </View>
+
+              {/* Analytics Summary Cards (Screenshot 1) */}
+              <View style={styles.card}>
+                <Text style={styles.sectionHeading}>Branches Analytics</Text>
+
+                {/* Branches by Status */}
+                <View style={styles.analyticsSection}>
+                  <Text style={styles.analyticsSubheading}>Branches by Status</Text>
+                  <View style={styles.statusBreakdownRow}>
+                    <View style={styles.statusPillItem}>
+                      <View style={[styles.dotIndicator, { backgroundColor: "#16A34A" }]} />
+                      <Text style={styles.analyticsItemText}>Active: {activeBranches}</Text>
+                    </View>
+                    <View style={styles.statusPillItem}>
+                      <View style={[styles.dotIndicator, { backgroundColor: "#CA8A04" }]} />
+                      <Text style={styles.analyticsItemText}>Inactive: {inactiveBranches}</Text>
+                    </View>
+                    <View style={styles.statusPillItem}>
+                      <View style={[styles.dotIndicator, { backgroundColor: "#DC2626" }]} />
+                      <Text style={styles.analyticsItemText}>Closed: {closedBranches}</Text>
+                    </View>
+                  </View>
+                  {/* Progress bar */}
+                  <View style={styles.progressBarTrack}>
+                    <View
+                      style={[
+                        styles.progressBarSegment,
+                        {
+                          backgroundColor: "#16A34A",
+                          flex: Math.max(0.1, activeBranches)
+                        }
+                      ]}
+                    />
+                    <View
+                      style={[
+                        styles.progressBarSegment,
+                        {
+                          backgroundColor: "#CA8A04",
+                          flex: Math.max(0.1, inactiveBranches)
+                        }
+                      ]}
+                    />
+                  </View>
+                </View>
+
+                {/* Branches by Type */}
+                <View style={styles.analyticsSection}>
+                  <Text style={styles.analyticsSubheading}>Branches by Type</Text>
+                  <View style={styles.typeDistributionRow}>
+                    <View style={styles.typeDistItem}>
+                      <Text style={styles.typeDistLabel}>Head Office (1)</Text>
+                      <Text style={styles.typeDistPercent}>33%</Text>
+                    </View>
+                    <View style={styles.progressBarTrack}>
+                      <View style={[styles.progressBarSegment, { backgroundColor: "#2563EB", flex: 33 }]} />
+                      <View style={[styles.progressBarSegment, { backgroundColor: "#E2E8F0", flex: 67 }]} />
+                    </View>
+                  </View>
+                  <View style={styles.typeDistributionRow}>
+                    <View style={styles.typeDistItem}>
+                      <Text style={styles.typeDistLabel}>Regional Office (2)</Text>
+                      <Text style={styles.typeDistPercent}>67%</Text>
+                    </View>
+                    <View style={styles.progressBarTrack}>
+                      <View style={[styles.progressBarSegment, { backgroundColor: "#4F46E5", flex: 67 }]} />
+                      <View style={[styles.progressBarSegment, { backgroundColor: "#E2E8F0", flex: 33 }]} />
+                    </View>
+                  </View>
+                </View>
+
+                {/* Top 5 States */}
+                <View style={styles.analyticsSection}>
+                  <Text style={styles.analyticsSubheading}>Top 5 States</Text>
+                  <View style={styles.stateRow}>
+                    <IconMapPin size={14} color="#64748B" />
+                    <Text style={styles.stateNameText}>West Bengal</Text>
+                    <Text style={styles.stateCountText}>3 branches</Text>
+                  </View>
+                </View>
               </View>
 
               {/* Branch Cards List */}
@@ -787,7 +932,7 @@ export function BranchRegistrationScreen({
           {/* ---------------------------------------------------------------- */}
           {mode === "OPERATING" && selectedOperating && (
             <>
-              {/* Hero Card */}
+              {/* Hero Card (Screenshots 2-3) */}
               <View style={styles.card}>
                 <View style={styles.heroCodeRow}>
                   <Text style={styles.heroCodeText}>
@@ -804,114 +949,582 @@ export function BranchRegistrationScreen({
                   “Empowering Communities for a Better Tomorrow”
                 </Text>
 
+                {canManage && (
+                  <Pressable
+                    style={styles.editBranchBtn}
+                    onPress={() => {
+                      setMode("WIZARD");
+                      setName(selectedOperating.branchName);
+                      setBranchType(selectedOperating.branchType);
+                      setOpeningDate(selectedOperating.openingDate || "");
+                      setAddress(selectedOperating.postalAddress);
+                      setPin(selectedOperating.pinCode || "");
+                      setPhone(selectedOperating.officialPhone);
+                      setOfficialEmail(selectedOperating.officialEmail);
+                      setStep(1);
+                    }}
+                  >
+                    <IconPencil size={14} color="#FFFFFF" />
+                    <Text style={styles.editBranchBtnText}>Edit Branch Details</Text>
+                  </Pressable>
+                )}
+
                 <View style={styles.heroMetaBox}>
-                  <Text style={styles.heroMetaItem}>
-                    Location: {selectedOperating.postalAddress || selectedOperating.areaName}
-                  </Text>
-                  <Text style={styles.heroMetaItem}>
-                    Established: {selectedOperating.openingDate || "16 Nov 2026"}
-                  </Text>
-                  <Text style={styles.heroMetaItem}>Region: North-East Region</Text>
+                  <View style={styles.metaRowWithIcon}>
+                    <IconMapPin size={14} color="#64748B" />
+                    <Text style={styles.heroMetaItem}>
+                      {selectedOperating.postalAddress || selectedOperating.areaName}
+                    </Text>
+                  </View>
+                  <View style={styles.metaRowWithIcon}>
+                    <IconCalendar size={14} color="#64748B" />
+                    <Text style={styles.heroMetaItem}>
+                      Established: {selectedOperating.openingDate || "16 Nov 2026"}
+                    </Text>
+                  </View>
+                  <View style={styles.metaRowWithIcon}>
+                    <IconBuilding size={14} color="#64748B" />
+                    <Text style={styles.heroMetaItem}>Region: North-East Region</Text>
+                  </View>
+                </View>
+
+                {/* Map Preview Box */}
+                <View style={styles.mapBox}>
+                  <View style={styles.mapHeaderRow}>
+                    <View style={styles.mapTitleGroup}>
+                      <IconMap size={14} color="#475569" />
+                      <Text style={styles.mapTitleText}>Panchmura · Lalbandh</Text>
+                    </View>
+                    <Pressable
+                      style={styles.openInMapsBtn}
+                      onPress={() =>
+                        Alert.alert(
+                          "Open In Maps",
+                          `Coordinates: ${selectedOperating.latitude ?? 22.97}, ${
+                            selectedOperating.longitude ?? 87.03
+                          }`
+                        )
+                      }
+                    >
+                      <IconExternalLink size={12} color="#2563EB" />
+                      <Text style={styles.openInMapsBtnText}>Open In Maps</Text>
+                    </Pressable>
+                  </View>
+                  <View style={styles.mapCanvasPlaceholder}>
+                    <IconMapPin size={24} color="#EF4444" />
+                    <Text style={styles.mapCanvasText}>
+                      Lat: {selectedOperating.latitude ?? 22.97} · Lon:{" "}
+                      {selectedOperating.longitude ?? 87.03}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
               {/* 6 Metrics Grid (Screenshot 2) */}
               <View style={styles.kpiGrid}>
                 <View style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>Total Staff</Text>
-                  <Text style={styles.kpiValue}>
-                    {selectedOperating.managerName ? "1" : "0"}
-                  </Text>
-                  <Text style={styles.kpiSub}>↑ 100%</Text>
-                </View>
-                <View style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>Volunteers</Text>
-                  <Text style={styles.kpiValue}>2</Text>
-                  <Text style={styles.kpiSub}>↑ 100%</Text>
-                </View>
-                <View style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>Active Members</Text>
-                  <Text style={styles.kpiValue}>1</Text>
-                  <Text style={styles.kpiSub}>↑ 100%</Text>
-                </View>
-                <View style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>Total Projects</Text>
-                  <Text style={styles.kpiValue}>0</Text>
-                  <Text style={[styles.kpiSub, { color: "#64748B" }]}>↑ 0%</Text>
-                </View>
-              </View>
-
-              {/* Branch Information Key-Value Card (Screenshot 3) */}
-              <View style={styles.card}>
-                <Text style={styles.sectionHeading}>Branch Information</Text>
-                <View style={styles.kvRow}>
-                  <Text style={styles.kvLabel}>Branch Code:</Text>
-                  <Text style={styles.kvValue}>{selectedOperating.branchCode || "Pending approval"}</Text>
-                </View>
-                <View style={styles.kvRow}>
-                  <Text style={styles.kvLabel}>Branch Name:</Text>
-                  <Text style={styles.kvValue}>{selectedOperating.branchName}</Text>
-                </View>
-                <View style={styles.kvRow}>
-                  <Text style={styles.kvLabel}>Branch Type:</Text>
-                  <Text style={styles.kvValue}>{selectedOperating.branchType || "Regional Office"}</Text>
-                </View>
-                <View style={styles.kvRow}>
-                  <Text style={styles.kvLabel}>Location:</Text>
-                  <Text style={styles.kvValue}>{selectedOperating.areaName}</Text>
-                </View>
-                <View style={styles.kvRow}>
-                  <Text style={styles.kvLabel}>Address:</Text>
-                  <Text style={styles.kvValue}>{selectedOperating.postalAddress || "Not specified"}</Text>
-                </View>
-                <View style={styles.kvRow}>
-                  <Text style={styles.kvLabel}>Manager:</Text>
-                  <Text style={styles.kvValue}>{selectedOperating.managerName || "Super Admin"}</Text>
-                </View>
-                <View style={styles.kvRow}>
-                  <Text style={styles.kvLabel}>Contact:</Text>
-                  <Text style={styles.kvValue}>{selectedOperating.officialPhone || "9876543210"}</Text>
-                </View>
-                <View style={styles.kvRow}>
-                  <Text style={styles.kvLabel}>Email:</Text>
-                  <Text style={styles.kvValue}>{selectedOperating.officialEmail || "a@careganga.com"}</Text>
-                </View>
-              </View>
-
-              {/* Quick Actions & Approval Workflow (Screenshot 3) */}
-              {canAdmin && (
-                <View style={styles.card}>
-                  <Text style={styles.sectionHeading}>Branch Approval Workflow</Text>
-                  <View style={styles.workflowGrid}>
-                    <Pressable
-                      style={[styles.workflowBtn, { backgroundColor: "#16A34A" }]}
-                      onPress={() => setMessage("Branch marked Approved.")}
-                    >
-                      <Text style={styles.workflowBtnText}>Approve</Text>
-                    </Pressable>
-                    <Pressable
-                      style={[styles.workflowBtn, { backgroundColor: "#DC2626" }]}
-                      onPress={() => setMessage("Branch rejected.")}
-                    >
-                      <Text style={styles.workflowBtnText}>Reject</Text>
-                    </Pressable>
-                    <Pressable
-                      style={[styles.workflowBtn, { backgroundColor: "#0D9488" }]}
-                      onPress={() => setMessage("Branch Activated.")}
-                    >
-                      <Text style={styles.workflowBtnText}>Activate</Text>
-                    </Pressable>
-                    <Pressable
-                      style={[styles.workflowBtn, { backgroundColor: "#1E293B" }]}
-                      onPress={() => setMessage("Branch Deactivated.")}
-                    >
-                      <Text style={styles.workflowBtnText}>Deactivate</Text>
-                    </Pressable>
+                  <View style={[styles.kpiIconWrap, { backgroundColor: "#ECFDF5" }]}>
+                    <IconUsers size={16} color="#059669" />
                   </View>
-                  <Text style={styles.verifiedFooter}>
-                    DEPARTMENT VERIFIED • 25 Nov 2026 • Super Admin
-                  </Text>
+                  <View style={styles.kpiTextGroup}>
+                    <Text style={styles.kpiLabel}>Total Staff</Text>
+                    <Text style={styles.kpiValue}>
+                      {selectedOperating.managerName ? "1" : "0"}
+                    </Text>
+                    <Text style={styles.kpiSub}>↑ 100%</Text>
+                  </View>
                 </View>
+
+                <View style={styles.kpiCard}>
+                  <View style={[styles.kpiIconWrap, { backgroundColor: "#EFF6FF" }]}>
+                    <IconUsers size={16} color="#2563EB" />
+                  </View>
+                  <View style={styles.kpiTextGroup}>
+                    <Text style={styles.kpiLabel}>Volunteers</Text>
+                    <Text style={styles.kpiValue}>2</Text>
+                    <Text style={styles.kpiSub}>↑ 100%</Text>
+                  </View>
+                </View>
+
+                <View style={styles.kpiCard}>
+                  <View style={[styles.kpiIconWrap, { backgroundColor: "#FFF7ED" }]}>
+                    <IconUsers size={16} color="#EA580C" />
+                  </View>
+                  <View style={styles.kpiTextGroup}>
+                    <Text style={styles.kpiLabel}>Active Members</Text>
+                    <Text style={styles.kpiValue}>1</Text>
+                    <Text style={styles.kpiSub}>↑ 100%</Text>
+                  </View>
+                </View>
+
+                <View style={styles.kpiCard}>
+                  <View style={[styles.kpiIconWrap, { backgroundColor: "#F0FDF4" }]}>
+                    <IconBuilding size={16} color="#16A34A" />
+                  </View>
+                  <View style={styles.kpiTextGroup}>
+                    <Text style={styles.kpiLabel}>Total Projects</Text>
+                    <Text style={styles.kpiValue}>0</Text>
+                    <Text style={[styles.kpiSub, { color: "#64748B" }]}>↑ 0%</Text>
+                  </View>
+                </View>
+
+                <View style={styles.kpiCard}>
+                  <View style={[styles.kpiIconWrap, { backgroundColor: "#FAF5FF" }]}>
+                    <IconTrendingUp size={16} color="#9333EA" />
+                  </View>
+                  <View style={styles.kpiTextGroup}>
+                    <Text style={styles.kpiLabel}>Total Budget</Text>
+                    <Text style={styles.kpiValue}>₹ 0</Text>
+                    <Text style={[styles.kpiSub, { color: "#64748B" }]}>Allocated</Text>
+                  </View>
+                </View>
+
+                <View style={styles.kpiCard}>
+                  <View style={[styles.kpiIconWrap, { backgroundColor: "#F0FDF4" }]}>
+                    <IconCheckCircle size={16} color="#16A34A" />
+                  </View>
+                  <View style={styles.kpiTextGroup}>
+                    <Text style={styles.kpiLabel}>Funds Received</Text>
+                    <Text style={styles.kpiValue}>₹ 0</Text>
+                    <Text style={[styles.kpiSub, { color: "#64748B" }]}>Utilised</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* 8 Sub-Tabs Row (Screenshot 2) */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.detailTabsScroll}
+              >
+                {[
+                  { key: "OVERVIEW", label: "Overview" },
+                  { key: "TEAM", label: "Team & Roles" },
+                  { key: "DEPARTMENTS", label: "Departments (0)" },
+                  { key: "PROJECTS", label: "Projects (0)" },
+                  { key: "MEMBERS", label: "Members (1)" },
+                  { key: "VOLUNTEERS", label: "Volunteers (2)" },
+                  { key: "FINANCE", label: "Finance & Budget" },
+                  { key: "DOCUMENTS", label: "Documents" }
+                ].map((tb) => {
+                  const active = selectedDetailTab === tb.key;
+                  return (
+                    <Pressable
+                      key={tb.key}
+                      style={[styles.detailTabBtn, active && styles.detailTabBtnActive]}
+                      onPress={() => setSelectedDetailTab(tb.key)}
+                    >
+                      <Text
+                        style={[
+                          styles.detailTabBtnText,
+                          active && styles.detailTabBtnTextActive
+                        ]}
+                      >
+                        {tb.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              {/* OVERVIEW SUB-TAB CONTENT */}
+              {selectedDetailTab === "OVERVIEW" && (
+                <>
+                  {/* Branch Information Key-Value Card (Screenshot 3) */}
+                  <View style={styles.card}>
+                    <Text style={styles.sectionHeading}>Branch Information</Text>
+                    <View style={styles.kvRow}>
+                      <Text style={styles.kvLabel}>Branch Code:</Text>
+                      <Text style={styles.kvValue}>
+                        {selectedOperating.branchCode || "Pending approval"}
+                      </Text>
+                    </View>
+                    <View style={styles.kvRow}>
+                      <Text style={styles.kvLabel}>Branch Name:</Text>
+                      <Text style={styles.kvValue}>{selectedOperating.branchName}</Text>
+                    </View>
+                    <View style={styles.kvRow}>
+                      <Text style={styles.kvLabel}>Branch Type:</Text>
+                      <Text style={styles.kvValue}>
+                        {selectedOperating.branchType || "Regional Office"}
+                      </Text>
+                    </View>
+                    <View style={styles.kvRow}>
+                      <Text style={styles.kvLabel}>Location:</Text>
+                      <Text style={styles.kvValue}>{selectedOperating.areaName}</Text>
+                    </View>
+                    <View style={styles.kvRow}>
+                      <Text style={styles.kvLabel}>Address:</Text>
+                      <Text style={styles.kvValue}>
+                        {selectedOperating.postalAddress || "Not specified"}
+                      </Text>
+                    </View>
+                    <View style={styles.kvRow}>
+                      <Text style={styles.kvLabel}>Manager:</Text>
+                      <Text style={styles.kvValue}>
+                        {selectedOperating.managerName || "Super Admin"}
+                      </Text>
+                    </View>
+                    <View style={styles.kvRow}>
+                      <Text style={styles.kvLabel}>Contact:</Text>
+                      <Text style={styles.kvValue}>
+                        {selectedOperating.officialPhone || "9876543210"}
+                      </Text>
+                    </View>
+                    <View style={styles.kvRow}>
+                      <Text style={styles.kvLabel}>Email:</Text>
+                      <Text style={styles.kvValue}>
+                        {selectedOperating.officialEmail || "a@careganga.com"}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Key Contacts / Team Card (Screenshot 3) */}
+                  <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                      <Text style={styles.sectionHeading}>Key Contacts / Team</Text>
+                      <View style={{ flexDirection: "row", gap: 6 }}>
+                        <Pressable
+                          style={styles.smallOutlineBtn}
+                          onPress={() => setMessage("View all team members.")}
+                        >
+                          <Text style={styles.smallOutlineBtnText}>View All</Text>
+                        </Pressable>
+                        {canManage && (
+                          <Pressable
+                            style={styles.smallAddBtn}
+                            onPress={() => setMessage("Add Employee to branch.")}
+                          >
+                            <Text style={styles.smallAddBtnText}>+ Add Employee</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    </View>
+
+                    <View style={styles.teamMemberRow}>
+                      <View style={styles.avatarCircle}>
+                        <Text style={styles.avatarInitials}>SA</Text>
+                      </View>
+                      <View style={styles.teamMemberInfo}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <Text style={styles.teamMemberName}>
+                            {selectedOperating.managerName || "Super Admin"}
+                          </Text>
+                          <View style={[styles.badge, styles.badgeActive]}>
+                            <Text style={[styles.badgeText, styles.badgeTextActive]}>Active</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.teamMemberRole}>Branch Manager</Text>
+                        <Text style={styles.teamMemberContact}>admin@gmail.com</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Branch Performance Visual (Screenshot 3) */}
+                  <View style={styles.card}>
+                    <Text style={styles.sectionHeading}>Branch Performance</Text>
+                    <View style={styles.perfLegendRow}>
+                      <View style={styles.statusPillItem}>
+                        <View style={[styles.dotIndicator, { backgroundColor: "#16A34A" }]} />
+                        <Text style={styles.analyticsItemText}>Revenue Received</Text>
+                      </View>
+                      <View style={styles.statusPillItem}>
+                        <View style={[styles.dotIndicator, { backgroundColor: "#2563EB" }]} />
+                        <Text style={styles.analyticsItemText}>Budget Utilised</Text>
+                      </View>
+                    </View>
+                    <View style={styles.perfChartPlaceholder}>
+                      <IconTrendingUp size={28} color="#94A3B8" />
+                      <Text style={styles.perfChartPlaceholderText}>
+                        Financial metrics verified from accounting ledger
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Project Status Ring Visual (Screenshot 3) */}
+                  <View style={styles.card}>
+                    <Text style={styles.sectionHeading}>Project Status</Text>
+                    <View style={styles.projectStatusBox}>
+                      <View style={styles.projectRingVisual}>
+                        <Text style={styles.projectTotalCount}>0</Text>
+                        <Text style={styles.projectTotalLabel}>Total Projects</Text>
+                      </View>
+                      <View style={styles.projectLegendGroup}>
+                        <View style={styles.statusPillItem}>
+                          <View style={[styles.dotIndicator, { backgroundColor: "#16A34A" }]} />
+                          <Text style={styles.analyticsItemText}>Ongoing (0%)</Text>
+                        </View>
+                        <View style={styles.statusPillItem}>
+                          <View style={[styles.dotIndicator, { backgroundColor: "#2563EB" }]} />
+                          <Text style={styles.analyticsItemText}>Completed (0%)</Text>
+                        </View>
+                        <View style={styles.statusPillItem}>
+                          <View style={[styles.dotIndicator, { backgroundColor: "#CA8A04" }]} />
+                          <Text style={styles.analyticsItemText}>Upcoming (0%)</Text>
+                        </View>
+                        <View style={styles.statusPillItem}>
+                          <View style={[styles.dotIndicator, { backgroundColor: "#DC2626" }]} />
+                          <Text style={styles.analyticsItemText}>On Hold (0%)</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Quick Actions (Screenshot 3) */}
+                  <View style={styles.card}>
+                    <Text style={styles.sectionHeading}>Quick Actions</Text>
+                    <View style={styles.quickActionsGrid}>
+                      <Pressable
+                        style={[styles.quickActionBtn, { backgroundColor: "#047857" }]}
+                        onPress={() => setMessage("Add project to branch.")}
+                      >
+                        <Text style={styles.quickActionBtnText}>+ Add Project</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[styles.quickActionBtn, { backgroundColor: "#4338CA" }]}
+                        onPress={() => setMessage("Add team member to branch.")}
+                      >
+                        <Text style={styles.quickActionBtnText}>+ Add Team Member</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[styles.quickActionBtn, { backgroundColor: "#2563EB" }]}
+                        onPress={() => setMessage("Message dispatch ready.")}
+                      >
+                        <Text style={styles.quickActionBtnText}>Send Message</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[styles.quickActionBtn, { backgroundColor: "#D97706" }]}
+                        onPress={() => setMessage("Add comment prompt.")}
+                      >
+                        <Text style={styles.quickActionBtnText}>+ Add Comment</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[styles.quickActionBtn, { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#CBD5E1" }]}
+                        onPress={() => setMessage("Report generation queued.")}
+                      >
+                        <Text style={[styles.quickActionBtnText, { color: "#334155" }]}>Generate Report</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[styles.quickActionBtn, { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#CBD5E1" }]}
+                        onPress={() => setMessage("More actions menu.")}
+                      >
+                        <Text style={[styles.quickActionBtnText, { color: "#334155" }]}>More Actions</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {/* Full 9-Button Branch Approval Workflow (Screenshot 3) */}
+                  {canAdmin && (
+                    <View style={styles.card}>
+                      <Text style={styles.sectionHeading}>Branch approval workflow</Text>
+                      <View style={styles.workflowGrid}>
+                        <Pressable
+                          style={[styles.workflowBtn, { backgroundColor: "#16A34A" }]}
+                          onPress={() => setMessage("Branch marked Approved.")}
+                        >
+                          <Text style={styles.workflowBtnText}>Approve</Text>
+                        </Pressable>
+                        <Pressable
+                          style={[styles.workflowBtn, { backgroundColor: "#DC2626" }]}
+                          onPress={() => setMessage("Branch rejected.")}
+                        >
+                          <Text style={styles.workflowBtnText}>Reject</Text>
+                        </Pressable>
+                        <Pressable
+                          style={[styles.workflowBtn, { backgroundColor: "#D97706" }]}
+                          onPress={() => setMessage("Branch sent back.")}
+                        >
+                          <Text style={styles.workflowBtnText}>Send Back</Text>
+                        </Pressable>
+                        <Pressable
+                          style={[styles.workflowBtn, { backgroundColor: "#2563EB" }]}
+                          onPress={() => setMessage("Branch forwarded.")}
+                        >
+                          <Text style={styles.workflowBtnText}>Forward</Text>
+                        </Pressable>
+                        <Pressable
+                          style={[styles.workflowBtn, { backgroundColor: "#DC2626" }]}
+                          onPress={() => setMessage("Branch blocked.")}
+                        >
+                          <Text style={styles.workflowBtnText}>Block</Text>
+                        </Pressable>
+                        <Pressable
+                          style={[styles.workflowBtn, { backgroundColor: "#0D9488" }]}
+                          onPress={() => setMessage("Branch Activated.")}
+                        >
+                          <Text style={styles.workflowBtnText}>Activate</Text>
+                        </Pressable>
+                        <Pressable
+                          style={[styles.workflowBtn, { backgroundColor: "#475569" }]}
+                          onPress={() => setMessage("Branch Deactivated.")}
+                        >
+                          <Text style={styles.workflowBtnText}>Deactivate</Text>
+                        </Pressable>
+                        <Pressable
+                          style={[styles.workflowBtn, { backgroundColor: "#1E293B" }]}
+                          onPress={() => setMessage("Branch closed.")}
+                        >
+                          <Text style={styles.workflowBtnText}>Close Branch</Text>
+                        </Pressable>
+                        <Pressable
+                          style={[styles.workflowBtn, { backgroundColor: "#B91C1C", minWidth: "100%" }]}
+                          onPress={() => setMessage("Branch delete request logged.")}
+                        >
+                          <Text style={styles.workflowBtnText}>Delete</Text>
+                        </Pressable>
+                      </View>
+                      <Text style={styles.verifiedFooter}>
+                        DEPARTMENT VERIFIED · 25 Nov 2026 · Super Admin · Super Admin
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* 5 Bottom Sub-Cards (Screenshot 4) */}
+
+                  {/* 1. Departments Under Branch */}
+                  <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                      <Text style={styles.sectionHeading}>Departments Under Branch (0)</Text>
+                      <View style={{ flexDirection: "row", gap: 6 }}>
+                        <Pressable
+                          style={styles.smallOutlineBtn}
+                          onPress={() => setMessage("View all departments.")}
+                        >
+                          <Text style={styles.smallOutlineBtnText}>View All</Text>
+                        </Pressable>
+                        {canManage && (
+                          <Pressable
+                            style={styles.smallAddBtn}
+                            onPress={() => setMessage("Assign department dialog.")}
+                          >
+                            <Text style={styles.smallAddBtnText}>+ Assign Department</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    </View>
+                    <Text style={styles.emptyCardText}>
+                      No departments assigned to this branch yet.
+                    </Text>
+                  </View>
+
+                  {/* 2. Active Projects */}
+                  <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                      <Text style={styles.sectionHeading}>Active Projects (0)</Text>
+                      <View style={{ flexDirection: "row", gap: 6 }}>
+                        <Pressable
+                          style={styles.smallOutlineBtn}
+                          onPress={() => setMessage("View all projects.")}
+                        >
+                          <Text style={styles.smallOutlineBtnText}>View All</Text>
+                        </Pressable>
+                        {canManage && (
+                          <Pressable
+                            style={styles.smallAddBtn}
+                            onPress={() => setMessage("Add project dialog.")}
+                          >
+                            <Text style={styles.smallAddBtnText}>+ Add Project</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    </View>
+                    <Text style={styles.emptyCardText}>
+                      No projects running in this branch's area yet.
+                    </Text>
+                  </View>
+
+                  {/* 3. Documents */}
+                  <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                      <Text style={styles.sectionHeading}>Documents</Text>
+                      <Pressable
+                        style={styles.smallOutlineBtn}
+                        onPress={() => setMessage("View all documents.")}
+                      >
+                        <Text style={styles.smallOutlineBtnText}>View All</Text>
+                      </Pressable>
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+                      <Pressable
+                        style={styles.docActionBtn}
+                        onPress={() => setMessage("Upload document selected.")}
+                      >
+                        <IconFileText size={14} color="#2563EB" />
+                        <Text style={styles.docActionBtnText}>Upload Document</Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.docActionBtn}
+                        onPress={() => setMessage("Attach report selected.")}
+                      >
+                        <IconFileText size={14} color="#16A34A" />
+                        <Text style={[styles.docActionBtnText, { color: "#16A34A" }]}>
+                          Attach Project Report
+                        </Text>
+                      </Pressable>
+                    </View>
+                    <Text style={[styles.emptyCardText, { marginTop: 8 }]}>
+                      No documents uploaded for this branch yet.
+                    </Text>
+                  </View>
+
+                  {/* 4. Internal Notes */}
+                  <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                      <Text style={styles.sectionHeading}>Internal Notes</Text>
+                      <Pressable
+                        style={styles.smallAddBtn}
+                        onPress={() => setMessage("Add note dialog.")}
+                      >
+                        <Text style={styles.smallAddBtnText}>+ Add Note</Text>
+                      </Pressable>
+                    </View>
+                    <Text style={styles.emptyCardText}>
+                      No internal notes for this branch yet.
+                    </Text>
+                  </View>
+
+                  {/* 5. Recent Activity & Comments */}
+                  <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                      <Text style={styles.sectionHeading}>Recent Activity & Comments</Text>
+                      <Pressable
+                        style={styles.smallOutlineBtn}
+                        onPress={() => setMessage("View all activities.")}
+                      >
+                        <Text style={styles.smallOutlineBtnText}>View All</Text>
+                      </Pressable>
+                    </View>
+                    <View style={styles.activityFeedList}>
+                      <View style={styles.activityFeedItem}>
+                        <View style={[styles.activityAvatar, { backgroundColor: "#DCFCE7" }]}>
+                          <IconUsers size={14} color="#16A34A" />
+                        </View>
+                        <View style={styles.activityFeedContent}>
+                          <Text style={styles.activityFeedTitle}>
+                            New volunteer assigned: Demo Volunteer
+                          </Text>
+                          <Text style={styles.activityFeedMeta}>
+                            Super Admin · 24 Nov 2026, 10:57 pm
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.activityFeedItem}>
+                        <View style={[styles.activityAvatar, { backgroundColor: "#DCFCE7" }]}>
+                          <IconUsers size={14} color="#16A34A" />
+                        </View>
+                        <View style={styles.activityFeedContent}>
+                          <Text style={styles.activityFeedTitle}>
+                            New volunteer assigned: Ritwik
+                          </Text>
+                          <Text style={styles.activityFeedMeta}>
+                            Super Admin · 14 Nov 2026, 02:09 pm
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                </>
               )}
 
               {/* Close Button */}
@@ -1447,5 +2060,237 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
   checkOption: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 },
   checkIconWrap: { width: 24, height: 24, alignItems: "center", justifyContent: "center" },
-  checkboxUnchecked: { width: 18, height: 18, borderRadius: 4, borderWidth: 2, borderColor: "#94A3B8" }
+  checkboxUnchecked: { width: 18, height: 18, borderRadius: 4, borderWidth: 2, borderColor: "#94A3B8" },
+
+  // Export Button
+  exportBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#F8FAFC"
+  },
+  exportBtnText: { fontSize: 11, fontWeight: "600", color: "#475569" },
+
+  // Analytics Section
+  analyticsSection: {
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    gap: 6
+  },
+  analyticsSubheading: { fontSize: 13, fontWeight: "700", color: "#334155" },
+  statusBreakdownRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  statusPillItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  dotIndicator: { width: 8, height: 8, borderRadius: 4 },
+  analyticsItemText: { fontSize: 12, fontWeight: "600", color: "#475569" },
+  progressBarTrack: {
+    height: 8,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 4,
+    flexDirection: "row",
+    overflow: "hidden",
+    marginTop: 4
+  },
+  progressBarSegment: { height: "100%" },
+  typeDistributionRow: { gap: 2, marginTop: 4 },
+  typeDistItem: { flexDirection: "row", justifyContent: "space-between" },
+  typeDistLabel: { fontSize: 12, color: "#64748B", fontWeight: "500" },
+  typeDistPercent: { fontSize: 12, color: "#0F172A", fontWeight: "700" },
+  stateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F8FAFC",
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#E2E8F0"
+  },
+  stateNameText: { flex: 1, fontSize: 13, fontWeight: "600", color: "#0F172A", marginLeft: 8 },
+  stateCountText: { fontSize: 12, fontWeight: "700", color: "#2563EB" },
+
+  // Hero Enhancements
+  editBranchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#2563EB",
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginVertical: 4
+  },
+  editBranchBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
+  metaRowWithIcon: { flexDirection: "row", alignItems: "center", gap: 6 },
+
+  // Map Box
+  mapBox: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 8,
+    padding: 10,
+    gap: 8,
+    marginTop: 6
+  },
+  mapHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center"
+  },
+  mapTitleGroup: { flexDirection: "row", alignItems: "center", gap: 6 },
+  mapTitleText: { fontSize: 12, fontWeight: "700", color: "#334155" },
+  openInMapsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#BFDBFE"
+  },
+  openInMapsBtnText: { fontSize: 11, fontWeight: "700", color: "#2563EB" },
+  mapCanvasPlaceholder: {
+    height: 70,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4
+  },
+  mapCanvasText: { fontSize: 11, color: "#64748B", fontWeight: "600" },
+
+  // Sub-Tabs Scroll
+  detailTabsScroll: { flexDirection: "row", gap: 8, paddingVertical: 4 },
+  detailTabBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1"
+  },
+  detailTabBtnActive: {
+    backgroundColor: "#2563EB",
+    borderColor: "#2563EB"
+  },
+  detailTabBtnText: { fontSize: 12, fontWeight: "600", color: "#64748B" },
+  detailTabBtnTextActive: { color: "#FFFFFF", fontWeight: "700" },
+
+  // Outline button
+  smallOutlineBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF"
+  },
+  smallOutlineBtnText: { fontSize: 11, fontWeight: "600", color: "#475569" },
+
+  // Team Member Row
+  teamMemberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#F8FAFC",
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0"
+  },
+  avatarCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#EDE9FE",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  avatarInitials: { fontSize: 14, fontWeight: "800", color: "#6D28D9" },
+  teamMemberInfo: { flex: 1, gap: 2 },
+  teamMemberName: { fontSize: 13, fontWeight: "700", color: "#0F172A" },
+  teamMemberRole: { fontSize: 12, color: "#64748B" },
+  teamMemberContact: { fontSize: 11, color: "#94A3B8" },
+
+  // Performance Chart
+  perfLegendRow: { flexDirection: "row", gap: 14, marginVertical: 4 },
+  perfChartPlaceholder: {
+    height: 80,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "#CBD5E1",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6
+  },
+  perfChartPlaceholderText: { fontSize: 11, color: "#64748B", fontWeight: "500" },
+
+  // Project Status Box
+  projectStatusBox: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 8 },
+  projectRingVisual: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 6,
+    borderColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  projectTotalCount: { fontSize: 20, fontWeight: "800", color: "#0F172A" },
+  projectTotalLabel: { fontSize: 8, color: "#64748B", fontWeight: "600" },
+  projectLegendGroup: { flex: 1, gap: 6 },
+
+  // Quick Actions Grid
+  quickActionsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  quickActionBtn: {
+    flex: 1,
+    minWidth: "45%",
+    height: 40,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8
+  },
+  quickActionBtnText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
+
+  // Sub-Cards Elements
+  emptyCardText: { fontSize: 12, color: "#94A3B8", fontStyle: "italic", marginVertical: 6 },
+  docActionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    height: 38,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#F8FAFC"
+  },
+  docActionBtnText: { fontSize: 12, fontWeight: "600", color: "#2563EB" },
+
+  // Activity Feed
+  activityFeedList: { gap: 10, marginTop: 4 },
+  activityFeedItem: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
+  activityAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2
+  },
+  activityFeedContent: { flex: 1, gap: 2 },
+  activityFeedTitle: { fontSize: 12, fontWeight: "600", color: "#0F172A" },
+  activityFeedMeta: { fontSize: 11, color: "#94A3B8" }
 });

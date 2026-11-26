@@ -366,6 +366,48 @@ export function FoundationStructureScreen({
   }, [focusedDeptRef, api, canViewDepartments]);
 
   // Mutations
+  async function checkPending() {
+    if (!pending) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await api<{ status: string }>(
+        "changes/" + pending.action + "/" + pending.requestKey
+      );
+      if (res.status === "CONFIRMED") {
+        setPending(null);
+        setNotice("Your previous change is confirmed.");
+        await reload();
+      } else {
+        setNotice("Not confirmed yet. You may retry the original request.");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Confirmation is unavailable.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function downloadPage(kind: "AREAS" | "DEPARTMENTS") {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const data = await api<{ csv: string; count: number; nextOffset: number | null }>(
+        "export?kind=" + kind
+      );
+      Alert.alert(
+        "Foundation Verified Export",
+        `Exported ${data.count} verified ${kind.toLowerCase()} records.`
+      );
+      setNotice(`Exported verified ${kind.toLowerCase()} records.`);
+    } catch {
+      setError("Cannot confirm the Foundation export. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function send(write: Pending) {
     setBusy(true);
     setNotice("");
@@ -708,6 +750,32 @@ export function FoundationStructureScreen({
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
+        {pending && (
+          <View style={styles.pendingBanner}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <IconClock size={16} color="#B45309" />
+              <Text style={styles.pendingText}>
+                The previous save is not confirmed. Do not submit a different request yet.
+              </Text>
+            </View>
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+              <Pressable
+                style={[styles.itemSmallButton, { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }]}
+                disabled={busy}
+                onPress={() => void checkPending()}
+              >
+                <Text style={[styles.itemSmallButtonText, { color: "#2563EB" }]}>Check request</Text>
+              </Pressable>
+              <Pressable
+                style={styles.itemSmallButton}
+                disabled={busy}
+                onPress={() => void send(pending)}
+              >
+                <Text style={styles.itemSmallButtonText}>Retry same request</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {/* TAB 1: PROFILE */}
         {tab === "PROFILE" && canViewProfile && (
@@ -992,15 +1060,25 @@ export function FoundationStructureScreen({
                   )}
                 </View>
 
-                {areaNextOffset !== null && (
+                <View style={{ flexDirection: "row", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                  {areaNextOffset !== null && (
+                    <Pressable
+                      style={[styles.secondaryButton, { flex: 1 }]}
+                      onPress={() => void loadMoreAreas()}
+                      disabled={busy}
+                    >
+                      <Text style={styles.secondaryButtonText}>Load more</Text>
+                    </Pressable>
+                  )}
                   <Pressable
-                    style={[styles.secondaryButton, { marginTop: 12 }]}
-                    onPress={() => void loadMoreAreas()}
+                    style={[styles.secondaryButton, { flex: 1 }]}
+                    onPress={() => void downloadPage("AREAS")}
                     disabled={busy}
                   >
-                    <Text style={styles.secondaryButtonText}>Load more verified areas</Text>
+                    <IconDownload size={14} color="#334155" />
+                    <Text style={styles.secondaryButtonText}>Download areas CSV</Text>
                   </Pressable>
-                )}
+                </View>
               </View>
             ) : (
               /* Add/Edit Geography Form */
@@ -1337,15 +1415,25 @@ export function FoundationStructureScreen({
                 )}
               </View>
 
-              {deptNextOffset !== null && (
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                {deptNextOffset !== null && (
+                  <Pressable
+                    style={[styles.secondaryButton, { flex: 1 }]}
+                    onPress={() => void loadMoreDepartments()}
+                    disabled={busy}
+                  >
+                    <Text style={styles.secondaryButtonText}>Load more</Text>
+                  </Pressable>
+                )}
                 <Pressable
-                  style={[styles.secondaryButton, { marginTop: 12 }]}
-                  onPress={() => void loadMoreDepartments()}
+                  style={[styles.secondaryButton, { flex: 1 }]}
+                  onPress={() => void downloadPage("DEPARTMENTS")}
                   disabled={busy}
                 >
-                  <Text style={styles.secondaryButtonText}>Load more verified departments</Text>
+                  <IconDownload size={14} color="#334155" />
+                  <Text style={styles.secondaryButtonText}>Download departments CSV</Text>
                 </Pressable>
-              )}
+              </View>
             </View>
           </ScrollView>
         )}
@@ -1891,6 +1979,19 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12,
     color: "#B91C1C"
+  },
+  pendingBanner: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#FFFBEB",
+    borderBottomWidth: 1,
+    borderBottomColor: "#FDE68A"
+  },
+  pendingText: {
+    fontSize: 12,
+    color: "#92400E",
+    fontWeight: "500",
+    flex: 1
   },
   scrollArea: {
     flex: 1

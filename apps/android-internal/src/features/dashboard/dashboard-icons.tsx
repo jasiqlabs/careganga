@@ -1036,6 +1036,53 @@ export function IconMapPin({ size = 20, color = "#64748B" }: IconProps) {
   );
 }
 
+export function IconMap({ size = 20, color = "#64748B" }: IconProps) {
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View
+        style={{
+          width: Math.round(size * 0.8),
+          height: Math.round(size * 0.65),
+          borderWidth: 1.8,
+          borderColor: color,
+          borderRadius: 2
+        }}
+      />
+    </View>
+  );
+}
+
+export function IconTrendingUp({ size = 20, color = "#64748B" }: IconProps) {
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View
+        style={{
+          width: Math.round(size * 0.7),
+          height: 2,
+          backgroundColor: color,
+          transform: [{ rotate: "-35deg" }]
+        }}
+      />
+    </View>
+  );
+}
+
+export function IconMessageSquare({ size = 20, color = "#64748B" }: IconProps) {
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      <View
+        style={{
+          width: Math.round(size * 0.75),
+          height: Math.round(size * 0.6),
+          borderWidth: 1.8,
+          borderColor: color,
+          borderRadius: 3
+        }}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   iconBox: {
     alignItems: "center",
