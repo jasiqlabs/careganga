@@ -26,9 +26,10 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1E293B;
+  font-family: "Roboto Slab", Georgia, serif !important;
+  font-size: 1.625rem;
+  font-weight: 800;
+  color: #0F172A;
   margin: 0;
 }
 
@@ -104,8 +105,9 @@
 }
 
 .cg-kpi-value {
+  font-family: "Roboto Slab", Georgia, serif !important;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #0F172A;
   line-height: 1.2;
 }
@@ -869,9 +871,10 @@
 }
 
 .cg-detail-tab-btn.active {
-  background: #2563EB;
-  color: #FFFFFF;
-  border-color: #2563EB;
+  background: #4F46E5 !important;
+  color: #FFFFFF !important;
+  border-color: #4F46E5 !important;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.3);
 }
 
 /* 4-Column Grid Layout (Screenshot 3) */

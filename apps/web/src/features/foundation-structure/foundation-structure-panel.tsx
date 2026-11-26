@@ -846,7 +846,7 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
             </div>
 
             {/* Search Input */}
-            <div className="cg-filter-search-wrap search-row">
+            <div className="cg-filter-search-wrap">
               <Search size={16} className="cg-filter-search-icon" />
               <input
                 className="cg-filter-search-input"
@@ -1142,7 +1142,7 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
             )}
 
             {/* Search and Filters Bar */}
-            <div className="cg-filter-bar search-row">
+            <div className="cg-filter-bar">
               <div className="cg-filter-search-wrap">
                 <Search size={16} className="cg-filter-search-icon" />
                 <input
@@ -1425,7 +1425,7 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
 
                   {can("foundation.departments.assign") && (
                     <>
-                      <div className="cg-field-group search-row">
+                      <div className="cg-field-group">
                         <label className="cg-field-label field">Find eligible staff by name</label>
                         <div style={{ display: "flex", gap: "0.5rem" }}>
                           <input
@@ -1625,7 +1625,7 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
                     Assign new officeholder
                   </h3>
 
-                  <div className="cg-field-group search-row">
+                  <div className="cg-field-group">
                     <label className="cg-field-label field">Find eligible staff by name</label>
                     <div style={{ display: "flex", gap: "0.5rem" }}>
                       <input
