@@ -859,6 +859,7 @@ export function FoundationAdminNav({
     financeReviews: "Finance Voucher Reviews",
     campaigns: "Campaigns",
     csr: "CSR & Partnerships",
+    referrals: "Referral Programme & Rewards",
     projects: "Projects",
     payroll: "Payroll & Salary",
     beneficiaries: "Beneficiaries",

@@ -74,7 +74,7 @@ async function api<T>(path:string,cmd?:Command):Promise<T>{
    response.status===403?"Your current Foundation permissions do not allow this action.":
    response.status===400?"Check the programme, rank or product fields.":
    "The result is uncertain. Refresh this record before retrying the same request.";
-  throw Object.assign(Error(message),{status:response.status||503});
+  throw Object.assign(new Error(typeof message==="string"?message:"The result is uncertain."),{status:response.status||503});
  }
  return body as T;
 }

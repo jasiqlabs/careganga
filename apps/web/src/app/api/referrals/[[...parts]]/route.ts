@@ -151,23 +151,23 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
     ...(body?{"Content-Type":"application/json"}:{})}});
   const decoded:unknown=await result.json().catch(()=>null);
   if(result.ok&&decoded!==null)return response(decoded,result.status);
-  const status=[400,401,403,404,409,429].includes(result.status)?result.status:503;
+  const httpStatus=[400,401,403,404,409,429].includes(result.status)?result.status:503;
   const parsed=decoded&&typeof decoded==="object"&&!Array.isArray(decoded)?
    decoded as Record<string,unknown>:{};
   const safeCode=typeof parsed.code==="string"&&Object.hasOwn(safeCodes,parsed.code)?
    parsed.code:null;
   const label=typeof parsed.field==="string"?safeFields[parsed.field]:undefined;
-  if((status===400||status===409)&&safeCode){
+  if((httpStatus===400||httpStatus===409)&&safeCode){
    return response({message:(label?label+": ":"")+safeCodes[safeCode],
-    code:safeCode,...(label?{field:parsed.field}:{})},status);
+    code:safeCode,...(label?{field:parsed.field}:{})},httpStatus);
   }
-  return response({message:status===401?"Sign in again.":status===403?
-   "Your current role or membership cannot access that reward source.":status===404?
-   "Original programme or reward unavailable.":status===409?
+  return response({message:httpStatus===401?"Sign in again.":httpStatus===403?
+   "Your current role or membership cannot access that reward source.":httpStatus===404?
+   "Original programme or reward unavailable.":httpStatus===409?
    "This source was changed or already recorded. Refresh and retry the same request.":
-   status===429?"Too many referral checks. Try again later.":
-   status===400?"Check the original referral code or programme fields.":
-   "Result uncertain. Refresh original records before submitting again."},status);
+   httpStatus===429?"Too many referral checks. Try again later.":
+   httpStatus===400?"Check the original referral code or programme fields.":
+   "Result uncertain. Refresh original records before submitting again."},httpStatus);
  }catch{return response({message:"Result uncertain. Refresh original records before submitting again."},503);}
 }
 export const GET=(r:NextRequest,c:Context)=>proxy(r,c,"GET");
