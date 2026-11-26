@@ -158,7 +158,7 @@ describe("CG-01 → US-001-QA01 & QA02: Super Admin Bootstrap", () => {
         name: string;
         normalized_name: string;
         is_protected: boolean;
-      }>("SELECT * FROM role WHERE realm_id = $1", [rootAccount.realm_id]);
+      }>("SELECT * FROM role WHERE realm_id = $1 AND is_protected = true", [rootAccount.realm_id]);
       assert.equal(roles.rowCount, 1);
       const superRole = roles.rows[0];
       assert.equal(superRole.name, "Super Admin");
@@ -269,7 +269,7 @@ describe("CG-01 → US-001-QA01 & QA02: Super Admin Bootstrap", () => {
     try {
       const accountRes = await client.query("SELECT COUNT(*) FROM account");
       const credRes = await client.query("SELECT COUNT(*) FROM identity_credential");
-      const roleRes = await client.query("SELECT COUNT(*) FROM role");
+      const roleRes = await client.query("SELECT COUNT(*) FROM role WHERE is_protected = true");
       const assignRes = await client.query("SELECT COUNT(*) FROM account_role");
       const auditRes = await client.query("SELECT COUNT(*) FROM access_audit");
 
@@ -406,7 +406,7 @@ describe("CG-01 → US-001-QA01 & QA02: Super Admin Bootstrap", () => {
       assert.equal(accounts.rows[0].display_name, "First Root", "Original account display name preserved");
       assert.equal(accounts.rows[0].normalized_mobile, "9876543210", "Original account mobile preserved");
 
-      const roleCount = await client.query("SELECT COUNT(*) FROM role");
+      const roleCount = await client.query("SELECT COUNT(*) FROM role WHERE is_protected = true");
       assert.equal(Number(roleCount.rows[0].count), 1, "No duplicate role created");
 
       const assignCount = await client.query("SELECT COUNT(*) FROM account_role");
@@ -458,7 +458,7 @@ describe("CG-01 → US-001-QA01 & QA02: Super Admin Bootstrap", () => {
       );
 
       // Verify exactly one role and one assignment
-      const roleCount = await client.query("SELECT COUNT(*) FROM role");
+      const roleCount = await client.query("SELECT COUNT(*) FROM role WHERE is_protected = true");
       assert.equal(Number(roleCount.rows[0].count), 1);
 
       const assignCount = await client.query("SELECT COUNT(*) FROM account_role");

@@ -69,8 +69,9 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
     return fail(403,"Submit from the original CareGanga page.");
   const token=access==="STAFF"?(await cookies()).get("cg_staff_session")?.value:undefined;
   if(access==="STAFF"&&!token)return fail(401,"Sign in to Foundation support.");
-  const rawBackend = process.env.BACKEND_URL || "http://127.0.0.1:4000";
-  const backend = rawBackend.replace("localhost", "127.0.0.1");
+  const configuredBackend=process.env.BACKEND_URL;
+  const backend=process.env.NODE_ENV==="production"?configuredBackend:
+    (configuredBackend||"http://127.0.0.1:4000").replace(/^http:\/\/localhost(?=[:/]|$)/,"http://127.0.0.1");
   if(!backend)return fail(503,"Foundation support is unavailable.");
   let body:string|undefined;
   if(method!=="GET"){
@@ -157,7 +158,9 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
     return NextResponse.json(data,{headers:{"Cache-Control":"no-store",
       "Referrer-Policy":"no-referrer"}});
   }catch(err){
-    console.error("CG19 support proxy fetch exception:", err);
+    console.error("CG19 support proxy fetch exception",{
+      failureName:err instanceof Error&&/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(err.name)?err.name:"ProxyError"
+    });
     return fail(503,"The action could not be confirmed. Check original status before retrying.");
   }
 }

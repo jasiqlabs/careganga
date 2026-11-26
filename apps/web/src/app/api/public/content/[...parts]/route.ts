@@ -6,7 +6,7 @@ export async function GET(_req:NextRequest,ctx:Ctx){
  const parts=(await ctx.params).parts;
  const page=parts.length===2&&parts[0]==="pages"&&
   /^[a-z0-9-]{1,70}$/.test(parts[1]);
- const media=parts.length===2&&parts[0]==="media"&&UUID.test(parts[1]);
+ const media=parts.length===2&&((parts[0]==="media"&&UUID.test(parts[1]))||(parts[0]==="release-media"&&/^[a-z-]{1,45}$/.test(parts[1])));
  if(!page&&!media)return new NextResponse(null,{status:404});
  const backend=process.env.BACKEND_URL;
  if(!backend)return new NextResponse(null,{status:503});

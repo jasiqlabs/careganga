@@ -64,10 +64,14 @@ export async function publicLabOffers(query:URLSearchParams):Promise<PublicLabOf
    signal:AbortSignal.timeout(9000)});
   if(!response.ok)throw Error("Current lab prices unavailable");
   const data:unknown=await response.json();
+  const now=Date.now(),center=query.get("center");
   if(!data||typeof data!=="object"||Array.isArray(data)||
    !("state" in data)||data.state!=="READY"||
    !("items" in data)||!Array.isArray(data.items)||
-   data.items.length>50||!data.items.every(valid)||
+   data.items.length>50||!data.items.every(x=>valid(x)&&
+    Date.parse(x.validFromUtc)<=now&&
+    (x.validUntilUtc===null||Date.parse(x.validUntilUtc)>now)&&
+    (!center||x.centerSlug===center))||
    !("next" in data)||!(data.next===null||
      typeof data.next==="string"&&/^(?:[1-9]|10)$/.test(data.next))||
    !("notice" in data)||typeof data.notice!=="string"||data.notice.length>300)

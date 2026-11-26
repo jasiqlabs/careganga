@@ -40,7 +40,7 @@ const centerTime=(iso:string,zone:string)=>{
   }).format(when)+" ("+zone+")";
  }catch{return "Original center local time unavailable";}
 };
-export function FoundationPatientBookings(){
+export function FoundationPatientBookings({canOverride=false}:{canOverride?:boolean}){
  const [query,setQuery]=useState<Query>({status:"",centerRef:"",after:"",day:"",fromDay:"",untilDay:"",
  stateRef:"",districtRef:"",centerType:"",search:"",centerSearch:""});
  const [searchDraft,setSearchDraft]=useState("");
@@ -138,7 +138,8 @@ export function FoundationPatientBookings(){
  // Never show an old patient's async audit history in another patient's card.
  const currentHistory=selectedBooking&&history?.bookingId===selectedBooking.bookingId?
   history:null;
- const update=(change:Partial<Query>)=>setQuery(q=>({...q,...change,after:""}));
+ const blocked=overrideBusy||overrideUncertain||printBusy;
+ const update=(change:Partial<Query>)=>{if(!blocked)setQuery(q=>({...q,...change,after:""}));};
  const metrics=result?.metrics;
  const districts=result?.districts.filter(d=>!query.stateRef||d.stateRef===query.stateRef)??[];
  const centerChoices=result?.centerChoices.filter(c=>
@@ -149,7 +150,7 @@ export function FoundationPatientBookings(){
   const booking=result?.items.find(x=>x.bookingRef===selected);
   const events=history;
   if(printBusy||historyBusy||!booking||!events||
-   events.bookingId!==booking.bookingId||events.next){
+   events.bookingId!==booking.bookingId||events.next||overrideBusy||overrideUncertain){
    setPrintMessage("Load the complete original selected booking history before printing.");
    return;
   }
@@ -201,7 +202,7 @@ export function FoundationPatientBookings(){
  }
  async function applyFoundationOverride(){
   const item=selectedBooking;
-  if(!item||item.bookingStatus!=="CONFIRMED"||
+  if(!canOverride||!item||item.bookingStatus!=="CONFIRMED"||
    new Date(item.startAt).getTime()<=Date.now()||
    !Number.isSafeInteger(item.bookingVersion)||item.bookingVersion<1||
    overrideBusy||overrideUncertain||!overrideAcknowledged||
@@ -286,7 +287,7 @@ export function FoundationPatientBookings(){
     <p>{label}</p><strong>{n===undefined?"—":n.toLocaleString("en-IN")}</strong>
    </article>)}
   </div>
-  <section className="form-section" aria-label="Source-backed booking filters">
+  <fieldset className="form-section" aria-label="Source-backed booking filters" disabled={blocked} style={{minWidth:0}}>
    {!result?.geographyComplete&&result&&
     <p role="status">The original location categories exceed the safe single-response limit.
      Narrow by a specific center name to find an existing booking.</p>}
@@ -369,20 +370,20 @@ export function FoundationPatientBookings(){
       stateRef:"",districtRef:"",centerType:"",search:"",centerSearch:""});}}>
      Reset filters</button>
    </div>
-  </section>
+  </fieldset>
   {loading&&<p role="status" className="cg-module-loading">Checking current protected source records…</p>}
   {!loading&&result&&<div className="cg-health-record-layout">
    <section className="cg-health-records" aria-label="Protected consultations">
     <h2>Consultation records</h2>
     {result.items.length===0&&<p>No consultations match these filters.</p>}
     {result.items.map(item=><button key={item.bookingRef} type="button" className="cg-health-record"
-     aria-pressed={selected===item.bookingRef} disabled={overrideBusy}
+     aria-pressed={selected===item.bookingRef} disabled={blocked}
      onClick={()=>setSelected(item.bookingRef)}>
      <strong>{item.bookingId}</strong><span> — {statusName(item.bookingStatus)}</span>
      <p>{item.patientName} · {item.centerName}</p>
      <p>{centerTime(item.startAt,item.timeZone)}</p>
     </button>)}
-    {result.next&&<button type="button" onClick={()=>
+    {result.next&&<button type="button" disabled={blocked} onClick={()=>
      setQuery(q=>({...q,after:result.next!}))}>Next results</button>}
    </section>
    <section className="cg15-print-scope cg-health-patient-detail" aria-label="Selected patient and appointment details">
@@ -405,7 +406,7 @@ export function FoundationPatientBookings(){
       <p><strong>Status:</strong> {statusName(selectedBooking.bookingStatus)}</p>
       <p><strong>Consultation:</strong> {money(selectedBooking.consultationFeeMinor)}
        · {statusName(selectedBooking.collectionStatus)}</p>
-      {selectedBooking.bookingStatus==="CONFIRMED"&&
+      {canOverride&&selectedBooking.bookingStatus==="CONFIRMED"&&
        new Date(selectedBooking.startAt).getTime()>Date.now()&&
        <section className="form-section"
         aria-label="Protected Foundation appointment cancellation override">
@@ -440,7 +441,7 @@ export function FoundationPatientBookings(){
       </button>}
       <p>Original CareGanga appointment record — not a receipt, prescription,
        government Health ID or evidence of financial assistance.</p>
-      <button type="button" disabled={printBusy||historyBusy||
+      <button type="button" disabled={blocked||historyBusy||
        !currentHistory||!!currentHistory.next}
        onClick={()=>void printSelectedBooking()}>
        {printBusy?"Checking protected report…":"Print selected booking report"}</button>

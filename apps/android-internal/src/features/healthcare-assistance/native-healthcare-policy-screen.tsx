@@ -105,7 +105,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
  const [percent,setPercent]=useState("50"),[fixed,setFixed]=useState("");
  const [cap,setCap]=useState("500");
  const [from,setFrom]=useState(""),[until,setUntil]=useState("");
- const last=useRef<Attempt|null>(null),seq=useRef(0);
+ const last=useRef<Attempt|null>(null),seq=useRef(0),centerSeq=useRef(0);
  useEffect(()=>{setEstimate(null)},[center,doctor]);
  useEffect(()=>{setServiceEstimate(null)},[center,service,quotedGross]);
  const error=useCallback((e:unknown)=>{
@@ -130,18 +130,19 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
    setCenters(v.centers);
    if(v.centers.length===1)setCenter(v.centers[0].centerRef);
   }).catch(e=>{if(active)error(e)}).finally(()=>{if(active)setLoading(false)});
-  return()=>{active=false;++seq.current};
+  return()=>{active=false;++seq.current;++centerSeq.current};
  },[token,error,canView]);
  useEffect(()=>{
-  ++seq.current;setPolicies([]);setDoctors([]);setDoctor("");
+  const scope=++centerSeq.current;++seq.current;setPolicies([]);setDoctors([]);setDoctor("");
   setRevision(null);setUncertain(false);last.current=null;setMessage("");
-  if(!center)return;
+  if(!center){setLoading(false);return;}
   setLoading(true);
   void Promise.all([
    refresh(center),
    api<{doctors:Doctor[]}>(token,"centers/"+center+"/doctors")
-    .then(x=>setDoctors(x.doctors))
-  ]).catch(error).finally(()=>setLoading(false));
+    .then(x=>{if(scope===centerSeq.current)setDoctors(x.doctors);})
+  ]).catch(e=>{if(scope===centerSeq.current)error(e);}).finally(()=>{if(scope===centerSeq.current)setLoading(false);});
+  return()=>{++centerSeq.current;++seq.current;};
  },[center,token,refresh,error]);
  const button=(label:string,press:()=>void,disabled=false,active=false)=>
   <Pressable accessibilityRole="button" accessibilityState={{disabled,selected:active}}
@@ -240,7 +241,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.container}>
    {button("Back to Foundation home",onExit,busy||uncertain)}
    <Text accessibilityRole="header" style={s.title}>Foundation Contribution Policies</Text>
-   <Text style={s.note}>Only current CG14 verified centers and doctors. The 50%
+   <Text style={s.note}>Only currently verified centers and doctors. The 50%
     standard is eligible-policy dependent, not an unconditional patient discount.
     No funds are collected here.</Text>
    {!!message&&<Text accessibilityRole="alert" style={s.notice}>{message}</Text>}
@@ -257,8 +258,9 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
     },busy||!last.current)}
     {button("Check existing policy history",()=>void refresh(center).catch(error),busy||!center)}
    </View>}
-   {canManage&&canView&&!!center&&!uncertain&&<View style={s.panel}>
+   {canManage&&canView&&!!center&&!uncertain&&!loading&&<View style={s.panel}>
     <Text style={s.heading}>{revision?"Revise approved support":"Configure support"}</Text>
+    <Text accessibilityRole="header" style={s.heading}>1. Service &amp; eligibility scope</Text>
     <Text style={s.note}>Service type</Text>
     {KINDS.map(k=><View key={k}>{button(k,()=>{
        setService(k);if(k!=="CONSULTATION")setDoctor("");},
@@ -271,8 +273,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
       busy||!!revision,doctor===d.doctorRef)}</View>)}
     {!!doctor&&<View style={s.panel}>
      <Text style={s.heading}>Current approved fee estimate</Text>
-     <Text style={s.note}>Read-only amount from original CG14 approved
-      consultation fee plus current effective policy. Not a patient award
+     <Text style={s.note}>Estimate based on the approved consultation fee and current policy. Not a patient award
       or accepted payment.</Text>
      {button("Check real fee and capped support",
       ()=>void preview(),busy||uncertain)}
@@ -309,26 +310,27 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
       {" "}{serviceEstimate.caution}
      </Text>}
     </View>}
+    <Text accessibilityRole="header" style={s.heading}>2. Contribution &amp; maximum support</Text>
     <Text style={s.note}>Assistance type</Text>
     {button("Percentage",()=>setMode("PERCENT"),busy,mode==="PERCENT")}
     {button("Fixed rupee support",()=>setMode("FIXED"),busy,mode==="FIXED")}
     {mode==="PERCENT"?input("Foundation support percentage (e.g. 50.00)",
      percent,setPercent):input("Foundation fixed support in rupees",fixed,setFixed)}
     {input("Support cap in rupees",cap,setCap)}
+    <Text accessibilityRole="header" style={s.heading}>3. Effective dates</Text>
     <Text style={s.note}>Dates in your local time (YYYY-MM-DDTHH:mm), end exclusive.</Text>
     {input("Valid from (local)",from,setFrom)}
     {input("Valid until (local)",until,setUntil)}
-    <Text style={s.note}>Patient-care consent/identity are checked by CG15
-     when a service is accepted. All pharmacy, nursing, OT and 100% consultation policies need a
-     genuine independent CG03 review and Foundation finalization.
+    <Text style={s.note}>Patient identity and care consent are checked when a service is accepted. All pharmacy, nursing, OT and 100% consultation policies need a
+     independent review and Foundation approval.
      No unverified service discount
      becomes active from this screen.</Text>
-    {button(busy?"Checking original…":"Save policy revision",submit,busy)}
+    {button(busy?"Checking original…":revision?"Save policy revision":"Create policy",submit,busy)}
     {revision&&button("Cancel revision",reset,busy)}
    </View>}
    {canView&&!!center&&<View style={s.panel}>
     <Text style={s.heading}>Actual policy revisions</Text>
-    {button("Refresh history",()=>void refresh(center).catch(error),busy||uncertain)}
+    {button("Refresh history",()=>void refresh(center).catch(error),busy||uncertain||loading)}
     {policies.length===0&&!loading&&<Text style={s.note}>
      No assistance policy is configured for this center.</Text>}
     {policies.map(p=><View key={p.revisionRef} style={s.row}>

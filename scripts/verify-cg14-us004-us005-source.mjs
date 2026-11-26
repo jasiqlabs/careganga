@@ -94,8 +94,12 @@ const checks=[
   s.native.includes("void show(previous,false)")],
  ["US004 native app entry and published sitemap",s.nativeEntry.includes("PublicHealthcareDirectory")&&
   s.sitemap.includes("approvedHealthSitemap")],
- ["US004 no fabricated clinic booking or appointment availability",s.web.includes("Online appointments")&&
-  s.native.includes("cannot confirm appointments")],
+ ["US004 no fabricated clinic booking or appointment availability",
+  s.web.includes("Check available consultation times before booking")&&
+  s.web.includes("Check appointment times")&&
+  s.native.includes("Check appointment times before booking")&&
+  s.native.includes("Assistance is confirmed separately")&&
+  s.native.includes("<DoctorSchedulePreview")],
  ["US005 original center content frozen source and publication",s.sql12.includes("health_center_content_revision")&&
   s.sql14.includes("health_center_content_publication")&&
   s.content.includes("source_snapshot")],

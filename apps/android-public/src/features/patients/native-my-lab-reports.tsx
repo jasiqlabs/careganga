@@ -2,7 +2,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,View} from "react-native";
 import {File,Paths} from "expo-file-system";
 import {fetch as expoFetch} from "expo/fetch";
-import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Report={releaseRef:string;orderLabel:string;reportVersion:number;
  releasedAt:string;superseded?:boolean};
 type Props={token:string;onExpired:()=>void};

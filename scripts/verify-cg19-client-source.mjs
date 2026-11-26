@@ -124,9 +124,9 @@ assert.match(centerAttachments,/await this\.own\(tx,actor,center,ref,input\.vers
 assert.match(centerAttachments,/row\.health_source_version,true/);
 assert.match(support,/new ConflictException\("Assign an eligible operator/);
 assert.doesNotMatch(support,/sha\(explanation\)/);
-assert.match(staffWeb,/statusNote\.trim\(\)\.length<8/);
+assert.match(staffWeb,/statusNote\.trim\(\)\.length\s*<\s*8/);
 assert.match(staffAndroid,/statusNote\.trim\(\)\.length<8/);
-assert.match(staffWeb,/\(selected\.statusNotes\?\?\[\]\)\.map/);
+assert.match(staffWeb,/\(selected\.statusNotes\s*\?\?\s*\[\]\)\.map/);
 assert.match(staffAndroid,/\(selected\.statusNotes\?\?\[\]\)\.map/);
 assert.match(support,/ticketNumber:old\.rows\[0\]\.ticket_number/);
 assert.match(support,/ticketNumber:created\.rows\[0\]\.ticket_number/);
@@ -211,3 +211,24 @@ for(const path of ["apps/web/src/features/cms-public-content/cg19-newsletter-for
  const ui=read(path);for(const x of ['consent:true','/api/support/public/newsletter/','"CHECK_EMAIL"','"SUBSCRIBED":"WITHDRAWN"','Use private withdrawal key'])assert.ok(ui.includes(x),path+": "+x);
 }
 console.log("CG19 newsletter source: explicit consent, verified email, bounded attempts, encrypted contact, revision/withdrawal and shared public ingress; runtime/provider NOT_RUN.");
+
+// CG19 functional remediation: original native actions + truthful web UI.
+assert.match(staffWeb,/limit:\s*pageSize/);
+assert.match(staffWeb,/\.\.\.appliedDates/);
+assert.match(staffWeb,/priorCursors\.length\s*\+\s*1/);
+assert.doesNotMatch(staffWeb,/totalMessagesCount|uniqueGuestsCount/);
+assert.match(support,/lastActivity,startedFrom\|\|null,startedTo\|\|null/);
+assert.match(support,/dateScope\?"\|"\+dateScope/);
+assert.match(support,/OPEN_GROUP/);
+assert.match(support,/CLOSED_GROUP/);
+assert.match(ui,/Loaded Notices/);
+assert.match(ui,/not deliveries/);
+assert.match(ui,/sourceAvailable/);
+assert.doesNotMatch(letterWeb,/window\.print\(/);
+assert.match(letterWeb,/DRAFT PREVIEW — NOT AN OFFICIAL DOCUMENT/);
+assert.match(nativeEvidence,/sha256:digest/);
+assert.match(nativeEvidence,/result\.cleanVerified/);
+const nativeInbox=read("apps/android-internal/src/features/communications/notifications-screen.tsx");
+assert.match(nativeInbox,/"preferences","POST"/);
+assert.match(nativeInbox,/result\.status==="VERIFIED"/);
+console.log("CG19 remediation source checks: API contracts, scope, pagination, actual data labels and issued document boundary.");

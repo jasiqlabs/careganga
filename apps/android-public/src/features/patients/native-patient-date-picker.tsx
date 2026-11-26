@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View}
  from "react-native";
-import {careGangaTheme as theme}
+import {careGangaPublicTheme as theme}
  from "../../../../../packages/design-tokens/src/index";
 
 const MONTHS=["January","February","March","April","May","June",

@@ -29,13 +29,17 @@ async function call<T>(path:string,body:object){
   }
   return await response.json() as T;
 }
-export function Cg19PublicContactForm(){
+export function Cg19PublicContactForm({contact:publishedContact={}}:{contact?:Record<string,unknown>}={}){
+ const publicText=(v:unknown)=>typeof v==="string"?v:"";
+ const phone=publicText(publishedContact.phone),email=publicText(publishedContact.email),address=publicText(publishedContact.address);
   const [name,setName]=useState(""),[contact,setContact]=useState("");
   const [subject,setSubject]=useState(""),[message,setMessage]=useState("");
   const [requestKey,setRequestKey]=useState("");
   const [receipt,setReceipt]=useState<Receipt|null>(null);
   const [proof,setProof]=useState(""),[proofState,setProofState]=useState("");
   const [busy,setBusy]=useState(false),[error,setError]=useState("");
+  const [errorArea,setErrorArea]=useState<"message"|"receipt">("message");
+  const [copyState,setCopyState]=useState("");
   const [faqs,setFaqs]=useState<Faq[]>([]);
   useEffect(()=>{
     const controller=new AbortController();
@@ -50,7 +54,7 @@ export function Cg19PublicContactForm(){
   },[]);
   async function send(event:React.FormEvent<HTMLFormElement>){
     event.preventDefault();if(busy||receipt)return;
-    setError("");setBusy(true);
+    setErrorArea("message");setError("");setBusy(true);
     const key=requestKey||crypto.randomUUID();
     setRequestKey(key);
     try{
@@ -60,13 +64,14 @@ export function Cg19PublicContactForm(){
       setReceipt(response);setProof(response.receipt);setRequestKey("");
       setMessage("");setError("");
     }catch(e){
+      if(!requestKey&&e instanceof SupportActionError&&e.category==="INVALID")setRequestKey("");
       setError(e instanceof SupportActionError?e.message:
         "Submission could not be confirmed. Retry the same message to recover its original receipt without creating another request.");
     }finally{setBusy(false)}
   }
   async function check(){
-    if(busy||!proof)return;
-    setBusy(true);setError("");
+    if(busy||!/^[A-Za-z0-9_-]{43}$/.test(proof.trim()))return;
+    setErrorArea("receipt");setBusy(true);setError("");setProofState("");
     try{
       const result=await call<{status:string;ticketNumber:string}>("receipt/status",{receipt:proof.trim()});
       setProofState(`${result.ticketNumber} · ${result.status.replaceAll("_"," ")}`);
@@ -77,12 +82,11 @@ export function Cg19PublicContactForm(){
   }
   return <section className="cg-site-contact-layout cg-site-content"
     aria-label="Foundation Contact and private support">
-     <div className="cg-site-contact-intro">
-      <h2>Send a private message</h2>
-      <p>Ask CareGanga Foundation a question. Your message is handled privately
-       by the original Foundation support system; no account is needed.</p>
-     </div>
-      <div className="cg-site-contact-panel" style={{padding:"1.4rem"}}>
+      <div className="cg-site-contact-panel cg-site-contact-message">
+        <div className="cg-site-contact-intro">
+          <h2>Send us a message</h2>
+          <p>Your message is handled privately by the Foundation support system; no account is needed.</p>
+        </div>
         {receipt?<section aria-live="polite">
           <h2>Request received</h2>
           <p><strong>Ticket number: {receipt.ticketNumber}</strong></p>
@@ -90,44 +94,49 @@ export function Cg19PublicContactForm(){
           <p>Keep this private receipt. It expires on {new Date(receipt.expiresAt).toLocaleDateString()}.</p>
           <code style={{display:"block",overflowWrap:"anywhere"}}>{receipt.receipt}</code>
           <div className="toolbar"><button className="cg-site-contact-button" type="button"
-            onClick={()=>void navigator.clipboard.writeText(receipt.receipt)}>
+            onClick={()=>{setCopyState("");void (async()=>{try{await navigator.clipboard.writeText(receipt.receipt);setCopyState("Private receipt copied.");}catch{setCopyState("Copy unavailable. Select and save the private code shown above.");}})();}}>
             Copy private receipt
           </button></div>
+          {copyState&&<p role="status">{copyState}</p>}
         </section>:<form className="cg-site-contact-fields" onSubmit={send}>
           <div className="cg-site-contact-field"><label htmlFor="c-name">Your name</label>
-            <input id="c-name" required minLength={2} maxLength={90}
+            <input id="c-name" disabled={busy} readOnly={!!requestKey} required minLength={2} maxLength={90}
               autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/></div>
           <div className="cg-site-contact-field"><label htmlFor="c-contact">Email or phone</label>
-            <input id="c-contact" required minLength={5} maxLength={120}
+            <input id="c-contact" disabled={busy} readOnly={!!requestKey} required minLength={5} maxLength={120}
               autoComplete="email" value={contact} onChange={e=>setContact(e.target.value)}/></div>
           <div className="cg-site-contact-field"><label htmlFor="c-subject">Subject</label>
-            <input id="c-subject" required minLength={5} maxLength={140}
+            <input id="c-subject" disabled={busy} readOnly={!!requestKey} required minLength={5} maxLength={140}
               value={subject} onChange={e=>setSubject(e.target.value)}/></div>
           <div className="cg-site-contact-field"><label htmlFor="c-message">How can we help?</label>
-            <textarea id="c-message" required minLength={10} maxLength={2000}
+            <textarea id="c-message" disabled={busy} readOnly={!!requestKey} required minLength={10} maxLength={2000}
               rows={5} value={message} onChange={e=>setMessage(e.target.value)}/></div>
           <p>Your details are visible only to authorized Foundation support staff.</p>
+          {requestKey&&!busy&&<p role="status">Retry the original request without changing its details to avoid a duplicate submission.</p>}
           <button className="cg-site-contact-button" disabled={busy} type="submit">
-            {busy?"Checking original request…":"Send private request"}
+            {busy&&errorArea==="message"?"Sending private request…":requestKey?"Retry private request":"Send private request"}
           </button>
         </form>}
+        {error&&errorArea==="message"&&<p className="cg-cms-error" role="alert">{error}</p>}
       </div>
+      <aside className="cg-site-contact-side">
+       {(phone||email||address)&&<section className="cg-site-contact-panel"><h2>Contact information</h2><address>{address&&<p>{address}</p>}{phone&&<p><a href={"tel:"+phone.replace(/[^+0-9]/g,"")}>{phone}</a></p>}{email&&<p><a href={"mailto:"+email}>{email}</a></p>}</address></section>}
       <div className="cg-site-contact-panel" style={{padding:"1.4rem"}}>
         <h2>Check a private receipt</h2>
         <p>Enter the receipt supplied when you submitted. Only the current status is shown; private messages are never exposed here.</p>
         <div className="cg-site-contact-field"><label htmlFor="c-receipt">Private receipt code</label>
-          <input id="c-receipt" value={proof} onChange={e=>setProof(e.target.value)}
-            maxLength={43} autoComplete="off" spellCheck={false}/></div>
-        <button type="button" className="cg-site-contact-button" disabled={busy||!proof}
-          onClick={()=>void check()}>Check request status</button>
+          <input id="c-receipt" disabled={busy} value={proof} onChange={e=>{setProof(e.target.value.trim());setProofState("");if(errorArea==="receipt")setError("");}}
+            maxLength={64} autoComplete="off" spellCheck={false}/></div>
+        <button type="button" className="cg-site-contact-button" disabled={busy||!/^[A-Za-z0-9_-]{43}$/.test(proof.trim())}
+          onClick={()=>void check()}>{busy&&errorArea==="receipt"?"Checking request status…":"Check request status"}</button>
         {proofState&&<p role="status">Current status: {proofState}</p>}
-      </div>
-      {faqs.length>0&&<section className="cg-site-contact-panel" style={{padding:"1.4rem"}}>
+        {error&&errorArea==="receipt"&&<p className="cg-cms-error" role="alert">{error}</p>}
+      </div></aside>
+      {faqs.length>0&&<section className="cg-site-contact-panel cg-site-contact-support-faq" style={{padding:"1.4rem"}}>
         <h2>Frequently asked questions</h2>
         {faqs.map(f=><details key={f.faqRef}>
           <summary>{f.question}</summary><p>{f.answer}</p>
         </details>)}
       </section>}
-      {error&&<p className="cg-cms-error" role="alert">{error}</p>}
   </section>;
 }

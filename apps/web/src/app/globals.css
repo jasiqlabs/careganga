@@ -14605,7 +14605,7 @@ button:disabled {
   background: #FFFFFF;
 }
 
-.cg-health-public-chrome :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+.cg-health-public-chrome :where(.cg-public-shell) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
   min-height: 2.8rem;
   max-width: 100%;
   padding: .65rem .75rem;
@@ -14617,39 +14617,39 @@ button:disabled {
   font-size: .9rem;
 }
 
-.cg-health-public-chrome :is(input, select, textarea):focus-visible {
+.cg-health-public-chrome :where(.cg-public-shell) :is(input, select, textarea):focus-visible {
   outline: 2px solid #167763;
   border-color: #167763;
   outline-offset: 2px;
 }
 
-.cg-health-public-chrome :is(button, .cg-health-link-action) {
+.cg-health-public-chrome :where(.cg-public-shell) :is(button, .cg-health-link-action) {
   min-height: 2.8rem;
   border-radius: .7rem;
   font-family: inherit;
   font-weight: 700;
 }
 
-.cg-health-public-chrome button {
+.cg-health-public-chrome :where(.cg-public-shell) button {
   border: 1px solid #B8CFC5;
   background: #F9FDF9;
   color: #184A3A;
   padding: .65rem 1rem;
 }
 
-.cg-health-public-chrome button.primary,
-.cg-health-public-chrome .primary {
+.cg-health-public-chrome :where(.cg-public-shell) button.primary,
+.cg-health-public-chrome :where(.cg-public-shell) .primary {
   background: #194A3A;
   color: #FFFFFF;
   border-color: #194A3A;
 }
 
-.cg-health-public-chrome :is(button, a):focus-visible {
+.cg-health-public-chrome :where(.cg-public-shell) :is(button, a):focus-visible {
   outline: 2px solid #167763;
   outline-offset: 3px;
 }
 
-.cg-health-public-chrome button:disabled {
+.cg-health-public-chrome :where(.cg-public-shell) button:disabled {
   opacity: .6;
   cursor: not-allowed;
 }
@@ -15362,7 +15362,7 @@ button:disabled {
 .cg04-hero>div{max-width:640px}.cg04-hero h1{font-size:clamp(40px,6vw,74px);line-height:1.06;margin:12px 0;color:white;font-weight:850}.cg04-hero small{letter-spacing:.14em;color:#79d7a3;font-weight:800}.cg04-hero p{max-width:440px;font-size:18px}.cg04-hero-cta{display:inline-block;margin-top:14px;background:#edae44;color:#202216;padding:14px 23px;border-radius:30px;font-weight:700;text-decoration:none}
 .cg04-public{background:#f5f7f9;padding:24px max(18px,calc((100% - 1200px)/2)) 48px;display:grid;gap:22px;color:#12324d}
 .cg04-public-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.cg04-public-tabs>button,.cg04-verify-pending{padding:18px;border:1px solid #d9e3e9;border-radius:14px;text-align:left;display:grid;gap:4px;background:#fff}
-.cg04-public-tabs>button[aria-current]{color:white;background:#1c5039}.cg04-public-tabs small{font-size:13px}
+.cg04-public-tabs>button[aria-selected=true]{color:white;background:#1c5039;border-color:#1c5039}.cg04-public-tabs small{font-size:13px}
 .cg04-search-card{display:grid;gap:10px}.cg04-search-card h2{font-size:19px}.cg04-search-row input{flex:1;min-width:120px}.cg04-public-title{text-align:center;padding:18px 0}.cg04-public-title p{max-width:460px;margin:8px auto;color:#62758b}
 .cg04-public-title span{color:#307a50}.cg04-public-plan{display:grid;grid-template-columns:180px minmax(0,1fr) auto;gap:18px;align-items:center}.cg04-card-art{display:grid;place-items:center;text-align:center;min-height:118px;padding:14px;color:white;border-radius:8px;overflow-wrap:anywhere}.cg04-card-art small{color:#ffdc87}
 .cg04-price{font-size:26px;color:#27794a}.cg04-public-actions{flex-direction:column;align-items:stretch;text-align:center}.cg04-public-actions small{color:#64748b}
@@ -15511,6 +15511,196 @@ button:disabled {
 .cg04-volunteer button{min-height:44px}
 @media(max-width:700px){.cg04-volunteer{padding:10px 12px 28px}.cg04-volunteer-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.cg04-volunteer-steps{grid-template-columns:minmax(0,1fr)}}
+
+/* Public healthcare semantic palette, aligned with careGangaPublicTheme. */
+:root{--cg-health-primary:#194a3a;--cg-health-gold:#ecc65b;--cg-health-border:#bccfc6;--cg-health-canvas:#fffcf5;--cg-health-pressed:#14362a;--cg-health-selected:#eaf4ee;--cg-health-surface:#fff}
+/* Public healthcare reference UI08/UI09: actual quote and selected booking only. */
+.cg-health-booking-summary{border:1px solid var(--cg-health-border);padding:14px;border-radius:12px;margin-top:8px;display:grid;gap:.65rem;background:var(--cg-health-surface)}
+.cg-health-booking-summary :is(p,h3,h4){margin-block:0 .35rem}
+.cg-health-amount{background:#fff0b7;border-radius:8px;padding:.8rem;color:var(--cg-health-primary);font-weight:700;display:flex;gap:1rem;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.cg-health-quote{display:grid;gap:.6rem}
+.cg-health-quote>div{padding:.6rem;border-bottom:1px solid #d7dfdb}
+.cg-health-quote dd{font-weight:700;margin:0}
+.cg-health-booking-summary textarea{width:100%;min-width:0}
+
+.cg-health-discovery{display:grid;grid-template-columns:2fr 1.2fr 1fr auto;gap:.75rem;align-items:end;background:#fff8df;border:1px solid #e6d59a;border-radius:12px;padding:1rem;margin:1rem 0}.cg-health-discovery label{display:grid;gap:.35rem;min-width:0;font-weight:600}.cg-health-discovery :is(input,select){min-width:0;width:100%;min-height:44px}.cg-site-healthcare-grid article{display:flex;flex-direction:column;align-items:flex-start;gap:.6rem}.cg-site-healthcare-grid article a{margin-top:auto}.cg-health-benefit-strip{background:#fff8df;border:1px solid #e6d59a;border-radius:12px;padding:1rem;margin-block:1rem}.cg-health-benefit-strip>div{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:.75rem}.cg-health-benefit-strip article{background:var(--cg-health-surface);border:1px solid var(--cg-health-border);border-radius:10px;padding:.8rem}.cg-health-benefit-strip b{color:var(--cg-health-primary)}.cg-health-patient-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:1rem;align-items:start}.cg-health-patient-layout>div,.cg-health-patient-layout>section{min-width:0}.cg-health-document-panel{border:1px solid var(--cg-health-border);border-radius:12px;padding:1rem;background:var(--cg-health-canvas)}.cg-health-document-panel h3{background:var(--cg-health-primary);color:var(--cg-health-surface);padding:.7rem;border-radius:8px;margin-top:0}@media(max-width:800px){.cg-health-discovery,.cg-health-patient-layout{grid-template-columns:1fr}}
+
+.cg-health-category-photo{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:10px;display:block}
+
+/* Public join-page review: selected tabs and steps use the public palette. */
+.cg04-public-tabs>button{min-height:58px}.cg04-volunteer-steps button[aria-current="step"]{background:#e8f4eb;border-color:#297449;color:#194a3a}.cg04-public-plan{margin-block:1rem}.cg04-hero-cta:focus-visible{outline:3px solid white;outline-offset:4px}.cg04-public-title p{overflow-wrap:anywhere}
+@media(max-width:570px){.cg04-card-art{max-width:none;width:100%}.cg04-public-actions{justify-content:stretch}.cg04-public-actions>*{flex:1 1 120px}.cg04-hero{padding:clamp(24px,7vw,48px);min-height:300px}}
+
+/* Public joining: original card tabs, rounded filters and numbered application steps. */
+.cg04-public .cg04-public-tabs>button{min-height:88px;padding:18px 22px;align-content:center;box-shadow:0 2px 5px #162f4520;overflow-wrap:anywhere}
+.cg04-public .cg04-public-tabs>button strong{font-size:1.05rem;font-weight:800}
+.cg04-public .cg04-public-tabs>button small{color:#536a82;line-height:1.5}
+.cg04-public .cg04-public-tabs>button[aria-selected=true] small{color:#cde5db}
+.cg04-public .cg04-search-card{padding:clamp(18px,3vw,26px);box-shadow:0 2px 5px #162f4515}
+.cg04-public .cg04-search-card h2{margin:0;font-weight:800}
+.cg04-public .cg04-search-card>p{margin:0 0 .25rem;color:#536a82}
+.cg04-public .cg04-search-row input{min-height:46px;border-radius:12px}
+.cg04-public .cg04-search-card button,.cg04-public .cg04-public-actions button{min-height:44px}
+.cg04-public .cg04-search-card .cg04-buttons{align-items:center;gap:.55rem}
+.cg04-public .cg04-search-card .cg04-buttons button{border-radius:999px;padding-inline:1rem}
+.cg04-public .cg04-public-title{padding-block:clamp(22px,4vw,38px)}
+.cg04-public .cg04-public-title h2{font-size:clamp(1.4rem,2.5vw,1.85rem);font-weight:850}
+.cg04-public .cg04-public-plan{box-shadow:0 2px 5px #162f4515}
+.cg04-public.cg04-volunteer{background:#f9f6ed}
+.cg04-volunteer .cg04-volunteer-steps{grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem}
+.cg04-volunteer .cg04-volunteer-steps button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;min-height:82px;border:1px solid transparent;background:transparent;color:#536a82;text-align:center;font-weight:650}
+.cg04-volunteer .cg04-volunteer-steps button[aria-current="step"]{color:#21685b;background:#eef8f5;border-color:#c5e1d9}
+.cg04-volunteer-step-number{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;border:2px solid #c7d4e0;color:#536a82;background:#fff;font-weight:800;flex:none}
+.cg04-volunteer-steps button[aria-current="step"] .cg04-volunteer-step-number{background:#27685e;border-color:#27685e;color:white}
+.cg04-volunteer .cg04-document-grid input,.cg04-volunteer .cg04-document-grid select{border-color:#c7d4e0;min-height:46px}
+@media(max-width:700px){.cg04-volunteer .cg04-volunteer-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:570px){.cg04-public .cg04-public-tabs>button{min-height:72px;padding:14px 16px}.cg04-public .cg04-search-row input{flex:1 1 100%}.cg04-public .cg04-search-row button{flex:1 1 100px}}
+
+/* Healthcare test catalogue — shared green clinical directory language. */
+.cg-health-public-chrome .cg-lab-directory .cg-public-section:first-of-type{background:#f0f7f2;border-color:#d8e7dc}
+.cg-lab-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));align-items:end;gap:1rem;margin-top:1.25rem}
+.cg-lab-filters label{display:flex;flex-direction:column;gap:.4rem;min-width:0;color:#194a3a;font-weight:700}
+.cg-lab-filters :is(input,select){width:100%}
+.cg-lab-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+.cg-health-public-chrome .cg-lab-directory .cg-public-section a{display:inline-flex;align-items:center;min-height:44px;max-width:100%;overflow-wrap:anywhere;color:#194a3a;font-weight:700;text-underline-offset:.2rem}
+.cg-lab-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:1rem;align-items:stretch}
+.cg-lab-card{display:flex;flex-direction:column;gap:.5rem;min-width:0;overflow-wrap:anywhere;background:#fff;border:1px solid #d8e7dc;border-radius:.9rem;padding:clamp(.9rem,2vw,1.3rem);box-shadow:0 2px 8px #1120390d}
+.cg-lab-card h3,.cg-lab-card p{margin:0}
+.cg-lab-card>p:nth-last-child(1){margin-top:auto;border-top:1px solid #e3e9e6;padding-top:.7rem;color:#4d6072}
+.cg-lab-card p strong{color:#194a3a}
+.cg-lab-empty{padding:1.5rem;text-align:center;background:#f5faf6;border:1px solid #d8e7dc;border-radius:.8rem}
+
+/* Public partner application responsive form. */
+.cg-partner-application{display:grid;gap:1.25rem;width:100%;max-width:900px;margin-inline:auto;min-width:0;overflow-wrap:anywhere}
+.cg-partner-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+.cg-health-public-chrome .cg-partner-tabs button{min-height:64px;background:#f4f8f4;color:#194a3a;border:1px solid #c8ddce;white-space:normal;overflow-wrap:anywhere}
+.cg-health-public-chrome .cg-partner-tabs button[aria-current="page"]{background:#194a3a;border-color:#194a3a;color:#fff}
+.cg-partner-form,.cg-partner-received{display:grid;gap:1rem;min-width:0;background:#fff;border:1px solid #dce4ed;border-radius:1rem;padding:clamp(.85rem,2.5vw,1.5rem)}
+.cg-partner-form h2,.cg-partner-received h2{margin:0;color:#112039;font-family:Georgia,"Times New Roman",serif;font-size:1.5rem}
+.cg-partner-form label{min-width:0;font-weight:650;color:#243349}
+.cg-partner-form :is(input:not([type="checkbox"]),select){width:100%;min-width:0;min-height:44px}
+.cg-partner-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+.cg-partner-address{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cg-partner-consent{display:flex;gap:.65rem;align-items:flex-start;padding:.85rem;background:#f0f7f2;border:1px solid #d0e4d5;border-radius:.65rem;font-weight:400!important;min-height:44px}
+.cg-partner-consent input{width:20px;height:20px;flex:0 0 20px;accent-color:#194a3a}
+.cg-health-public-chrome .cg-partner-form button,.cg-health-public-chrome .cg-partner-received button{min-height:44px;background:#194a3a;color:#fff;border-color:#194a3a;font-weight:750;white-space:normal}
+.cg-health-public-chrome .cg-partner-application button:disabled{opacity:.65;cursor:not-allowed}
+.cg-partner-application :is(input,select,button):focus-visible{outline:3px solid #194a3a;outline-offset:2px}
+.cg-partner-received{background:#f0f7f2}
+@media(max-width:600px){.cg-partner-fields,.cg-partner-address{grid-template-columns:minmax(0,1fr)}.cg-partner-tabs button{padding:.55rem!important;font-size:.85rem}}
+
+/* Private-safe slip verification. */
+.cg-slip-verifier{display:grid;gap:1rem;max-width:600px;min-width:0;background:#f0f7f2;border:1px solid #d0e4d5;border-radius:1rem;padding:clamp(1rem,3vw,1.5rem);overflow-wrap:anywhere}
+.cg-slip-verifier label{display:grid;gap:.45rem;font-weight:700;color:#194a3a}
+.cg-slip-verifier input{width:100%;min-width:0;min-height:48px;font-family:monospace}
+.cg-slip-verifier button{min-height:48px;width:100%;white-space:normal}
+.cg-slip-verifier button:disabled{opacity:.6;cursor:not-allowed}
+.cg-slip-verifier p{margin:0;color:#4d6072;font-size:.9rem}
+.cg-slip-verifier .cg-slip-result{padding:1rem;background:#fff;border:1px solid #bccfc6;border-radius:.7rem;color:#243349;font-weight:650}
+.cg-slip-result[data-result="valid"]{border-color:#297449;color:#194a3a;background:#e7f4e9}
+.cg-slip-result[data-result="invalid"]{border-color:#bd8484;color:#8b3030;background:#fff3f2}
+.cg-slip-result[data-result="unavailable"]{border-color:#d8b56a;color:#704d14;background:#fff8e5}
+.cg-slip-verifier :is(input,button):focus-visible{outline:3px solid #194a3a;outline-offset:2px}
+.cg-health-public-chrome .cg-slip-verifier :is(input,button){min-height:48px}
+.cg-health-public-chrome .cg-slip-verifier input:not([type="checkbox"]):not([type="radio"]){min-height:48px}
+
+/* Membership application safe pending state. */
+.cg04-enroll-fields{border:0;padding:0;margin:0;display:grid;gap:1rem;min-width:0}
+.cg04-self-service .cg04-enroll-form{max-width:880px;margin-inline:auto}
+.cg04-enroll-fields label:has(input[type=checkbox]){background:#f0f7f2;border:1px solid #d0e4d5;border-radius:.65rem;padding:.85rem;min-height:44px}
+.cg04-enroll-form button{min-height:48px;border-radius:9px;white-space:normal;font-weight:650;cursor:pointer;padding:.65rem 1rem}
+.cg04-enroll-form :is(input,select,textarea){min-width:0;max-width:100%}
+.cg04-enroll-form fieldset:disabled{opacity:.75}
+.cg04-enroll-form button:disabled{opacity:.65;cursor:not-allowed}
+.cg04-enroll-retry{padding:1rem;background:#fff8e5;border:1px solid #d8b56a;border-radius:.7rem;display:flex;flex-wrap:wrap;gap:.6rem}
+.cg04-enroll-retry p{flex:1 1 100%;margin:0}
+
+/* Private appointment detail reading and action layout. */
+.cg-health-appointment-detail>.cg-health-patient-layout{margin-top:1rem}
+.cg-health-appointment-detail .cg-health-document-panel{min-width:0;overflow-wrap:anywhere;background:#fff;border-radius:.9rem}
+.cg-health-public-chrome .cg-health-appointment-detail .cg-health-document-panel h3{background:#194a3a;color:white;padding:.75rem;border-radius:.6rem;font-size:1.1rem}
+.cg-health-appointment-detail .cg-health-document-panel h2{font-size:1.2rem;color:#194a3a;overflow-wrap:anywhere}
+.cg-health-public-chrome .cg-health-appointment-detail button{min-height:48px;white-space:normal;max-width:100%;overflow-wrap:anywhere}
+.cg-health-appointment-detail .cg-health-document-panel a{display:inline-flex;align-items:center;min-height:44px;color:#194a3a;font-weight:650;overflow-wrap:anywhere;max-width:100%}
+.cg-health-appointment-detail .cg-health-document-panel iframe{max-width:100%}
+.cg-health-appointment-detail :is(a,button):focus-visible{outline:3px solid #194a3a;outline-offset:2px}
+@media(max-width:600px){.cg-health-appointment-detail .cg-health-document-panel button{width:100%}}
+
+.cg-health-patient-profile{overflow-wrap:anywhere}
+.cg-health-patient-profile form{width:100%;min-width:0}
+.cg-health-patient-profile form>label,.cg-health-patient-profile section>label{display:grid;gap:.35rem;font-weight:600;min-width:0}
+.cg-health-patient-profile label:has(input[type=checkbox]){display:flex;align-items:flex-start;gap:.65rem;font-weight:400}
+.cg-health-patient-profile label input:not([type=checkbox]){display:block;width:100%;min-width:0}
+.cg-health-public-chrome .cg-health-patient-profile button{min-height:48px;white-space:normal;max-width:100%;overflow-wrap:anywhere}
+.cg-health-public-chrome .cg-health-patient-profile button[type=submit]{background:#194a3a;color:#fff;border-color:#194a3a}
+.cg-health-public-chrome .cg-health-patient-profile button:disabled{opacity:.65;cursor:not-allowed}
+.cg-health-patient-profile :is(input,button):focus-visible{outline:3px solid #194a3a;outline-offset:2px}
+.cg-health-patient-profile aside{background:#f3faf5}
+.cg-health-patient-profile [role=alert]{padding:.75rem 1rem;border-left:4px solid #194a3a;background:#f4f8f4;border-radius:.4rem}
+.cg-health-patient-profile section>button{margin:.25rem .5rem .25rem 0}
+@media(max-width:480px){.cg-health-patient-profile section>button{width:100%;margin:.25rem 0}}
+
+/* Clear commercial price hierarchy, without implying Foundation support. */
+.cg-lab-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))}
+.cg-lab-card>.cg-eyebrow{align-self:flex-start;background:#eaf4ee;color:#194a3a;border-radius:999px;padding:.25rem .65rem;font-size:.75rem;font-weight:750;overflow-wrap:anywhere;max-width:100%}
+.cg-lab-card h3{font-size:1.12rem;line-height:1.3;color:#112f2a}
+.cg-lab-card .cg-lab-price{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:.35rem .75rem;padding:.75rem;background:#f5f8ef;border:1px solid #d8e7dc;border-radius:.65rem}
+.cg-lab-price span{font-size:.82rem;font-weight:700;color:#4d6072}
+.cg-lab-card .cg-lab-price strong{font-size:1.4rem;color:#194a3a;font-variant-numeric:tabular-nums}
+.cg-lab-card .cg-lab-saving{font-size:.86rem;color:#4d6072}
+.cg-lab-actions .primary{min-height:48px}
+.cg-lab-grid:has(>.cg-lab-card:only-child){grid-template-columns:minmax(0,680px);justify-content:center}
+.cg-health-public-chrome>.cg-lab-directory~.cg-site-floating{position:static;padding:.75rem clamp(1rem,6vw,7rem) max(.75rem,env(safe-area-inset-bottom));background:#080d14;align-items:center}
+.cg-health-public-chrome>.cg-lab-directory~.cg-site-footer{padding-bottom:2rem}
+
+/* Keep the membership page and its verification controls unobstructed. */
+.cg-membership-page~.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+.cg-membership-page .cg04-public-plan{overflow-wrap:anywhere}
+.cg-membership-page .cg04-public :is(button,a.cg04-primary){min-height:44px}
+.cg-membership-page .cg04-public-actions a.cg04-primary{color:#fff}
+@media(max-width:570px){.cg-membership-page .cg04-search-row input{min-width:0}.cg-membership-page .cg04-public-plan{gap:1rem}}
+.cg-membership-page a.cg04-hero-cta{color:#202216}
+
+/* Keep private clinical details and protected actions clear of public CTAs. */
+.cg-private-appointment-page~.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+.cg-health-appointment-detail .cg-health-document-panel{display:grid;align-content:start;gap:.5rem}
+.cg-health-appointment-detail .cg-health-document-panel p{margin:.25rem 0}
+.cg-health-appointment-detail .cg-health-document-panel button{width:100%}
+.cg-health-appointment-detail .cg-health-document-panel h2{padding-bottom:.6rem;border-bottom:1px solid #dce7dc;margin:0 0 .25rem}
+
+
+/* Healthcare application: one clear introduction and unobstructed form. */
+.cg-health-public-chrome .cg-health-partner-page>.cg-public-header{display:grid;justify-content:stretch;gap:.65rem;padding:clamp(1rem,3vw,2rem);background:#f0f7f2;border:1px solid #d0e4d5;border-radius:1rem;align-items:start}
+.cg-health-partner-page>.cg-public-header .cg-eyebrow{font-size:.76rem;font-weight:750;text-transform:uppercase;letter-spacing:.07em;color:#194a3a;margin:.5rem 0 0}
+.cg-health-partner-page>.cg-public-header h1{font:700 clamp(1.8rem,3.2vw,3rem)/1.15 Georgia,"Times New Roman",serif;color:#112f2a;margin:0;overflow-wrap:anywhere}
+.cg-health-partner-page>.cg-public-header .cg-lead{max-width:76ch;font-size:1rem;line-height:1.65;color:#42586a;margin:0}
+.cg-health-partner-page>.cg-public-section{max-width:960px;width:100%;margin-inline:auto}
+.cg-health-partner-page~.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+.cg-health-public-chrome .cg-health-partner-page .cg-partner-form button,.cg-health-public-chrome .cg-health-partner-page .cg-partner-received button{min-height:48px}
+
+.cg-private-lab-reports{display:grid;gap:.75rem;min-width:0;overflow-wrap:anywhere;background:#fff;border:1px solid #d0e4d5;border-radius:.9rem;padding:clamp(1rem,2vw,1.5rem)}
+.cg-private-lab-reports h2{margin:0;color:#194a3a;font:700 1.4rem/1.3 Georgia,serif}
+.cg-private-lab-reports p{margin:0;color:#4d6072;line-height:1.6}
+.cg-private-lab-reports article{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:.75rem;padding:1rem;background:#f4f8f3;border:1px solid #d8e7dc;border-radius:.7rem}
+.cg-private-lab-reports article strong{color:#194a3a}
+.cg-private-lab-reports button{min-height:48px;max-width:100%;white-space:normal;border:1px solid #194a3a;background:#fff;color:#194a3a;border-radius:.65rem;padding:.65rem 1rem;font:inherit;font-weight:700}
+.cg-private-lab-reports article button{background:#194a3a;color:#fff}
+.cg-private-lab-reports button:disabled{opacity:.55}
+@media(max-width:600px){.cg-private-lab-reports article{grid-template-columns:minmax(0,1fr)}.cg-private-lab-reports button{width:100%}}
+
+/* Public account and enrolment: keep private actions unobstructed. */
+.cg-volunteer-page~.cg-site-floating,.cg-patient-account-page~.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+.cg-account-breadcrumb{width:min(calc(100% - 2rem),1200px);margin-inline:auto;padding:.6rem 0}
+.cg-account-breadcrumb a{display:inline-flex;align-items:center;min-height:44px;font-weight:750;color:#194a3a}
+.cg-membership-page .cg04-auth,.cg-volunteer-page .cg04-auth{width:min(100%,640px);margin-inline:auto;display:grid;gap:1rem}
+.cg-membership-page .cg04-auth form,.cg-volunteer-page .cg04-auth form{max-width:none}
+.cg-volunteer-page .cg04-volunteer [role=tabpanel]{display:grid;gap:1rem;min-width:0}
+.cg-volunteer-page .cg04-volunteer [role=tabpanel]>.cg04-panel>label{display:grid;gap:.4rem;min-width:0;font-weight:650}
+.cg-volunteer-page .cg04-volunteer .cg04-volunteer-span:has(input[type=checkbox]){display:flex;align-items:flex-start;gap:.5rem}
+.cg-volunteer-page .cg04-volunteer .cg04-volunteer-span input[type=checkbox]{flex:none}
+.cg-patient-account-page .cg-health-patient-profile>form{margin-inline:auto;padding:clamp(.75rem,2vw,1.25rem);border:1px solid #dce7df;border-radius:.9rem;background:#f8fbf8}
+.cg-patient-account-page .cg-health-patient-profile>div{margin-inline:auto;width:100%;min-width:0}
+.cg-patient-account-page .cg-health-link-action{display:inline-flex;align-items:center;justify-content:center;padding:.65rem 1rem;text-decoration:none;max-width:100%;overflow-wrap:anywhere}
 
 /* CG-19 Documents & Notifications Design System (B38, C15–C18, C35–C36, C39–C43) */
 .cg19-badge {
@@ -16480,7 +16670,3 @@ button:disabled {
   border-top: 1px solid #f1f5f9;
   background: #fbfcfd;
 }
-
-
-
-

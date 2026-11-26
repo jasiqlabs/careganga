@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
+import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
@@ -64,7 +64,11 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
  const [message,setMessage]=useState("");
  const [showCorrection,setShowCorrection]=useState(false);
  const submission=useRef<Submission|null>(null),custody=useRef<Custody|null>(null);
- const epoch=useRef(0);
+ const epoch=useRef(0),detailEpoch=useRef(0);
+ const [orderQuery,setOrderQuery]=useState("");
+ const orderFilter=useRef({q:"",offset:0});
+ const [nextOrderOffset,setNextOrderOffset]=useState<number|null>(null);
+ const [detailLoading,setDetailLoading]=useState(false);
  const handleError=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   setMessage(e instanceof Error?e.message:"This clinical request cannot be verified.");
@@ -82,11 +86,11 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
     Promise.resolve({patients:[]}),
    canCreate?api<{items:Offer[]}>(token,"centers/"+c+"/catalog/eligible"):
     Promise.resolve({items:[]}),
-   canView?api<{orders:Order[]}>(token,"centers/"+c+"/orders"):
-    Promise.resolve({orders:[]})
+   canView?api<{orders:Order[];nextOffset:number|null}>(token,"centers/"+c+"/orders?"+new URLSearchParams({q:orderFilter.current.q,offset:String(orderFilter.current.offset)}).toString()):
+    Promise.resolve({orders:[],nextOffset:null})
   ]);
   if(now!==epoch.current)return;
-  setPatients(p.patients);setOffers(o.items);setOrders(r.orders);
+  setPatients(p.patients);setOffers(o.items);setOrders(r.orders);setNextOrderOffset(r.nextOffset??null);
  },[token,canCreate,canView]);
  useEffect(()=>{
   let active=true;
@@ -95,10 +99,11 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
    setCenters(data.centers);
    if(data.centers.length===1)setCenter(data.centers[0].centerRef);
   }).catch(e=>{if(active)handleError(e);}).finally(()=>{if(active)setLoading(false)});
-  return()=>{active=false;++epoch.current;};
+  return()=>{active=false;++epoch.current;++detailEpoch.current;};
  },[token,handleError]);
  useEffect(()=>{
   const stamp=++epoch.current;
+  ++detailEpoch.current;setDetailLoading(false);setOrderQuery("");setShowCorrection(false);orderFilter.current={q:"",offset:0};setNextOrderOffset(null);
   setSelected(null);setDetailCenter("");setPatients([]);setOffers([]);setOrders([]);
   setChosenPatient("");setChosenOffer("");setCart([]);
   submission.current=null;custody.current=null;setUncertain(false);
@@ -108,19 +113,28 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
   void load(center).catch(e=>{if(stamp<=epoch.current)handleError(e)})
    .finally(()=>setLoading(false));
  },[center,load,handleError]);
+ async function searchOrders(q:string,offset=0){
+  if(!center||busy||loading||uncertain||custodyUncertain||detailLoading)return;
+  orderFilter.current={q:q.trim(),offset};setOrders([]);setNextOrderOffset(null);setSelected(null);setDetailCenter("");++detailEpoch.current;
+  setLoading(true);setMessage("");
+  try{await load(center);}catch(e){handleError(e)}finally{setLoading(false);}
+ }
  async function detail(id:string){
-  const requestedCenter=center,stamp=++epoch.current;
+  const requestedCenter=center,stamp=++detailEpoch.current;
+  setSelected(null);setDetailCenter("");setShowCorrection(false);setDetailLoading(true);
   try{
    const found=await api<Detail>(token,
     "centers/"+requestedCenter+"/orders/"+id);
-   if(stamp!==epoch.current)return;
+   if(stamp!==detailEpoch.current)return;
+   if(found?.order?.orderRef!==id)throw Error("The selected order is unavailable.");
    setDetailCenter(requestedCenter);setSelected(found);
-  }catch(e){if(stamp===epoch.current){setSelected(null);setDetailCenter("");handleError(e);}}
+  }catch(e){if(stamp===detailEpoch.current){setSelected(null);setDetailCenter("");handleError(e);}}
+  finally{if(stamp===detailEpoch.current)setDetailLoading(false);}
  }
  async function create(retry=false){
   if(busy||!canCreate||(!retry&&uncertain)||!center)return;
   const patient=patients.find(p=>p.patientRef+"|"+p.careSourceRef===chosenPatient);
-  if(!retry&&(!patient||cart.length===0)){
+  if(!retry&&(!patient||cart.length===0||cart.some(c=>!offers.some(o=>o.mappingRef===c.mappingRef)))){
    setMessage("Choose one authorized patient and at least one approved test.");return;
   }
   if(!retry){
@@ -188,7 +202,7 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
    {!!center&&<View style={s.panel}>
     <Text style={s.heading}>Current laboratory</Text>
     <Text style={s.note}>{centers.find(c=>c.centerRef===center)?.name??"Checking laboratory"}</Text>
-    {button("Refresh current orders",()=>void load(center),busy||uncertain)}
+    {button("Refresh current orders",()=>void load(center).catch(handleError),busy||uncertain||custodyUncertain)}
    </View>}
    {uncertain&&<View style={s.panel}>
     <Text style={s.message}>Order creation outcome is uncertain. Do not start a new order.</Text>
@@ -206,6 +220,7 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
      o.name+" · "+money(o.currentPatientPriceMinor),
      ()=>setChosenOffer(o.mappingRef),busy))}
     {!!chosenOffer&&button("Add selected test",()=>{
+     if(!offers.some(o=>o.mappingRef===chosenOffer)||cart.some(c=>c.mappingRef===chosenOffer))return;
      setCart(v=>[...v,{mappingRef:chosenOffer,quantity:1}]);setChosenOffer("");
     },busy||cart.length>=10)}
     {cart.map(c=><View key={c.mappingRef} style={s.line}>
@@ -223,19 +238,29 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
      busy||!chosenPatient||cart.length===0)}
    </View>}
    {canView&&!!center&&<View style={s.panel}>
-    <Text style={s.heading}>Latest clinical orders</Text>
-    {orders.length===0&&<Text style={s.note}>No clinical lab orders for this center.</Text>}
+    <Text style={s.heading}>Clinical orders</Text>
+    <TextInput accessibilityLabel="Find clinical orders" maxLength={80} value={orderQuery} onChangeText={setOrderQuery} placeholder="Order number or clinical status" style={[s.line,{color:t.text}]}/>
+    {button("Search",()=>void searchOrders(orderQuery),busy||loading||uncertain||custodyUncertain||detailLoading)}
+    {button("Reset",()=>{setOrderQuery("");void searchOrders("");},busy||loading||uncertain||custodyUncertain||detailLoading)}
+    {detailLoading&&<ActivityIndicator accessibilityLabel="Checking order details"/>}
+    {loading&&<ActivityIndicator accessibilityLabel="Checking clinical orders"/>}
+    {!loading&&orders.length===0&&!message&&<Text style={s.note}>No matching clinical lab orders for this center.</Text>}
     {orders.map(o=>button(o.displayOrderRef+" · "+money(o.quotedTotalMinor)+
-     " · "+o.status.replaceAll("_"," "),()=>void detail(o.orderRef),busy))}
+     " · "+o.status.replaceAll("_"," "),()=>void detail(o.orderRef),busy||loading||uncertain||custodyUncertain||detailLoading))}
+    {button("Previous page",()=>void searchOrders(orderFilter.current.q,Math.max(0,orderFilter.current.offset-30)),busy||loading||uncertain||custodyUncertain||detailLoading||orderFilter.current.offset===0)}
+    {button("Next page",()=>{if(nextOrderOffset!==null)void searchOrders(orderFilter.current.q,nextOrderOffset);},busy||loading||uncertain||custodyUncertain||detailLoading||nextOrderOffset===null)}
+    <Text style={s.note}>Up to 30 authorized orders per page. Payment and report delivery are verified separately.</Text>
    </View>}
    {!!selected&&detailCenter===center&&canView&&<View style={s.panel}>
     {button("Close order details",()=>setSelected(null),busy||custodyUncertain)}
     <Text style={s.heading}>{selected.order.displayOrderRef}</Text>
+    <Text style={s.note}>Clinical status: {selected.order.status.replaceAll("_"," ")}</Text>
     <Text style={s.note}>Accepted test total: {money(selected.order.quotedTotalMinor)}.
      This is not payment evidence.</Text>
+    <Text style={s.heading}>1. Accepted tests</Text>
     {selected.lines.map((l,i)=><Text key={i} style={s.note}>
      {l.name} · Qty {l.quantity} · {money(l.quotedLineTotalMinor)}</Text>)}
-    <Text style={s.heading}>Original specimen custody</Text>
+    <Text style={s.heading}>2. Specimen collection &amp; custody</Text>
     {selected.samples.map(sample=><View key={sample.sampleRef} style={s.line}>
      <Text style={s.note}>{sample.label} · {sample.sampleType.replaceAll("_"," ")}
       · {sample.status.replaceAll("_"," ")}</Text>
@@ -256,6 +281,7 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
       if(c&&sm)void custodyAction(sm,c.action,true);
      },busy||!custody.current)}
     </View>}
+    <Text style={s.heading}>3. Result entry, review &amp; release</Text>
     {canRelease&&selected.report?.state==="RESULT_READY"&&
      <NativeLabReportRelease key={"release:"+center+":"+selected.order.orderRef}
       token={token} centerRef={center} orderRef={selected.order.orderRef}

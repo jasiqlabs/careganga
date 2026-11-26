@@ -34,7 +34,9 @@ export default async function HealthcareReviewsPage(){
     actor={{displayName:person.displayName,roleName:person.roleName}}
     actions={keys}><HealthReviewInbox
       canManageProviders={keys.has("health.providers.manage")}
-      canManageDoctors={keys.has("health.doctors.manage")}/>
+      canManageDoctors={keys.has("health.doctors.manage")}
+       canVerifyProviders={keys.has("health.providers.verify")}
+       canVerifyDoctors={keys.has("health.doctors.verify")}/>
   </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&

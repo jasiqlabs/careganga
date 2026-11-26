@@ -1,6 +1,7 @@
 import { Controller, Get, Inject, ServiceUnavailableException } from "@nestjs/common";
 import { Pool } from "pg";
 import { DATABASE } from "../infrastructure/database.module";
+import { verifySchemaReadiness } from "../infrastructure/schema-readiness";
 
 @Controller("health")
 export class HealthController {
@@ -10,49 +11,7 @@ export class HealthController {
   @Get("ready")
   async ready(): Promise<{ status: string }> {
     try {
-      const result = await this.db.query<{ reg: string | null }>(
-        "SELECT to_regclass('public.account')::text AS reg"
-      );
-      if (!result.rows[0]?.reg) throw new Error("Migration missing");
-      // A fresh checkout must not report ready if an earlier security/realm
-      // migration was omitted, even when the newest migration is present.
-      const required = [
-        "0001_cg01_identity.sql",
-        "0003_cg01_realm_integrity.sql",
-        "0004_cg01_recovery_delivery.sql",
-        "0005_cg01_permission_namespace.sql",
-        "0006_cg01_role_operations.sql",
-        "0007_cg01_role_command_replay_digest.sql",
-        "0008_cg01_account_creation_roles.sql",
-        "0010_cg01_auth_security_policy.sql",
-        "0011_cg01_immutable_access_audit.sql",
-        "0012_cg01_auth_throttle_retention.sql",
-        "0013_cg21_platform_configuration.sql",
-        "0014_cg21_audit_recovery.sql",
-        "0015_cg21_recovery_authorization.sql",
-        "0016_cg03_protected_proposals.sql",
-        "0017_cg03_immutable_case_decisions.sql",
-        "0018_cg01_protected_approval_effect.sql",
-        "0019_cg03_owner_finalization.sql",
-        "0020_cg03_process_version_integrity.sql",
-        "0021_cg19_protected_case_files.sql",
-        "0022_cg01_verified_mobile_contact.sql",
-        "0023_cg19_notifications_notices.sql",
-        "0024_cg19_foundation_support.sql",
-        "0201_cg02_foundation_structure.sql",
-        "0202_cg02_branch_registration_drafts.sql",
-        "0022_cg03_branch_registration_approval.sql",
-        "0203_cg19_branch_evidence_adapter.sql",
-        "0204_cg02_approved_branches_and_links.sql",
-        "0205_cg02_branch_operation_audit.sql",
-        "0206_cg19_active_branch_evidence.sql"
-      ] as const;
-      const migrations = await this.db.query<{ filename: string }>(
-        "SELECT filename FROM schema_migration WHERE filename=ANY($1::text[])", [required]
-      );
-      const applied = new Set(migrations.rows.map(row => row.filename));
-      if (required.some(filename => !applied.has(filename)))
-        throw new Error("CG-01 migrations incomplete");
+      await verifySchemaReadiness(this.db);
       return { status: "ready" };
     } catch {
       throw new ServiceUnavailableException("Service is temporarily unavailable");

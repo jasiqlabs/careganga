@@ -268,14 +268,22 @@ export class SupportService{
     return {status:publicState(row.status),ticketNumber:row.ticket_number};
   }
   async cases(bearer:string,rawLimit:unknown=30,filter:unknown="ALL",
-    pageCursor:unknown=null,search:unknown=""){
+    pageCursor:unknown=null,search:unknown="",lastActivity:unknown="ALL",
+    startedFrom:unknown="",startedTo:unknown=""){
     const a=await this.actor(bearer,"support.cases.view");
     const limit=Number(rawLimit);
     if(!Number.isInteger(limit)||limit<1||limit>30||
       typeof filter!=="string"||!["ALL","OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER",
-      "ESCALATED","REPLIED","RESOLVED","CLOSED","ARCHIVED","UNREAD"].includes(filter)||
+      "ESCALATED","REPLIED","RESOLVED","CLOSED","ARCHIVED","UNREAD","OPEN_GROUP","CLOSED_GROUP"].includes(filter)||
       typeof search!=="string"||search.length>100)
       throw new BadRequestException("Choose a supported filter");
+    const validDate=(v:unknown):v is string=>typeof v==="string"&&(v===""||
+      (/^\d{4}-\d{2}-\d{2}$/.test(v)&&v>="0001-01-01"&&Number.isFinite(Date.parse(v))&&
+        new Date(v).toISOString().slice(0,10)===v));
+    if(typeof lastActivity!=="string"||!["ALL","TODAY","WEEK","MONTH"].includes(lastActivity)||
+      !validDate(startedFrom)||!validDate(startedTo)||
+      (startedFrom!==""&&startedTo!==""&&startedFrom>startedTo))
+      throw new BadRequestException("Choose a valid date range");
     let searchDigests:string[]|null=null;
     if(search.trim()){
       const words=searchTerms([search.trim()]);
@@ -289,7 +297,9 @@ export class SupportService{
       searchDigests=(unique.length?unique:words.slice(0,1))
         .map(t=>hmac("search",t));
     }
-    const searchProof=sha((searchDigests??[]).join(","));
+    const dateScope=lastActivity==="ALL"&&!startedFrom&&!startedTo?"":
+      JSON.stringify([lastActivity,startedFrom,startedTo]);
+    const searchProof=sha((searchDigests??[]).join(",")+(dateScope?"|"+dateScope:""));
     let afterTimestamp:string|null=null,afterId:string|null=null;
     if(pageCursor!==null&&pageCursor!==undefined&&pageCursor!==""){
       if(typeof pageCursor!=="string"||pageCursor.length>400||
@@ -317,15 +327,21 @@ export class SupportService{
       "($3='ARCHIVED' AND rs.archived_at IS NOT NULL) OR "+
       "($3='UNREAD' AND (rs.last_seen_inbound_at IS NULL OR "+
       "rs.last_seen_inbound_at<c.latest_inbound_at) AND rs.archived_at IS NULL) OR "+
+      "($3='OPEN_GROUP' AND c.status IN('OPEN','ASSIGNED','IN_PROGRESS','WAITING_FOR_USER','ESCALATED','REPLIED') AND rs.archived_at IS NULL) OR "+
+      "($3='CLOSED_GROUP' AND c.status IN('RESOLVED','CLOSED') AND rs.archived_at IS NULL) OR "+
       "(c.status=$3 AND rs.archived_at IS NULL)) "+
       "AND ($7::text[] IS NULL OR (SELECT count(*) "+
       "FROM cg19_support_search_token t WHERE t.realm_id=c.realm_id "+
       "AND t.case_id=c.id AND t.term_digest=ANY($7::text[])) "+
       "=cardinality($7::text[])) "+
+      "AND ($8::text='ALL' OR ($8='TODAY' AND c.updated_at>=date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC') "+
+      "OR ($8='WEEK' AND c.updated_at>=now()-interval '7 days') OR ($8='MONTH' AND c.updated_at>=now()-interval '30 days')) "+
+      "AND ($9::date IS NULL OR c.created_at>=($9::date::timestamp AT TIME ZONE 'UTC')) "+
+      "AND ($10::date IS NULL OR c.created_at<(($10::date+1)::timestamp AT TIME ZONE 'UTC')) "+
       "AND ($5::timestamptz IS NULL OR "+
       " (c.updated_at,c.id)<($5::timestamptz,$6::uuid)) "+
       "ORDER BY c.updated_at DESC,c.id DESC LIMIT $4",
-      [a.realmId,a.accountId,filter,limit+1,afterTimestamp,afterId,searchDigests]);
+      [a.realmId,a.accountId,filter,limit+1,afterTimestamp,afterId,searchDigests,lastActivity,startedFrom||null,startedTo||null]);
     const shown=results.rows.slice(0,limit);
     const more=results.rows.length>limit;
     const tail=shown.at(-1);

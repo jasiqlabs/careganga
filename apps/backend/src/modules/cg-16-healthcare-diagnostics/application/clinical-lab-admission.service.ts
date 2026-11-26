@@ -17,6 +17,20 @@ export type CurrentPatientCare={patientRef:string;consentRevision:number;
  consentRecordedAt:Date;careSource:CareSource};
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 
+// Restrict operational list/detail to the current verified care relationship.
+export const CURRENT_LAB_ORDER_CARE_PREDICATE=
+ "AND EXISTS(SELECT 1 FROM cg15_patient p WHERE p.root_realm_id=o.root_realm_id "+
+ "AND p.id=o.patient_ref AND p.profile_status='VERIFIED' "+
+ "AND EXISTS(SELECT 1 FROM cg15_patient_identity_event proof WHERE proof.root_realm_id=p.root_realm_id AND proof.patient_id=p.id) "+
+ "AND EXISTS(SELECT 1 FROM cg15_patient_consent consent WHERE consent.root_realm_id=p.root_realm_id AND consent.patient_id=p.id "+
+ "AND consent.purpose='PATIENT_CARE' AND consent.granted=true AND consent.revision_no=(SELECT MAX(latest.revision_no) FROM cg15_patient_consent latest "+
+ "WHERE latest.root_realm_id=p.root_realm_id AND latest.patient_id=p.id AND latest.purpose='PATIENT_CARE'))) "+
+ "AND ((o.care_source_kind='CENTER_INTAKE' AND EXISTS(SELECT 1 FROM cg15_patient_center_intake i "+
+ "WHERE i.root_realm_id=o.root_realm_id AND i.center_id=o.center_ref AND i.patient_id=o.patient_ref AND i.id=o.center_intake_ref AND i.assisted_consent_attested=true)) "+
+ "OR (o.care_source_kind='CONSULTATION' AND EXISTS(SELECT 1 FROM cg15_consultation_appointment a "+
+ "WHERE a.root_realm_id=o.root_realm_id AND a.center_id=o.center_ref AND a.patient_id=o.patient_ref AND a.id=o.consultation_ref "+
+ "AND a.booking_state IN('ARRIVED','WAITING','IN_CONSULTATION','COMPLETED')))) ";
+
 /** Fail-closed CG16 clinical admission. Public menu and commercial tariff
  * never imply permission to create a patient specimen or medical report. */
 @Injectable()

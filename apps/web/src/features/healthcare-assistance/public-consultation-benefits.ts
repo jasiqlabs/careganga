@@ -51,9 +51,11 @@ export async function currentConsultationBenefits(filters?:{
   if(!result.ok)throw Error("Source unavailable");
   const x:unknown=await result.json();
   if(!x||typeof x!=="object"||Array.isArray(x)||
-    !("state" in x)||!["READY","NO_APPROVED_CURRENT_BENEFITS"].includes(String(x.state))||
+    !("state" in x)||(x.state!=="READY"&&x.state!=="NO_APPROVED_CURRENT_BENEFITS")||
     !("items" in x)||!Array.isArray(x.items)||x.items.length>12||
-    !x.items.every(valid))
+    !x.items.every(item=>valid(item)&&(!center||item.centerSlug===center)&&
+      (!doctor||item.doctorRef===null||item.doctorRef.toLowerCase()===doctor.toLowerCase()))||
+    (x.state==="NO_APPROVED_CURRENT_BENEFITS"&&x.items.length!==0))
    throw Error("Invalid source payload");
   return {state:x.state as BenefitResult["state"],
    items:x.items as CurrentConsultationBenefit[],

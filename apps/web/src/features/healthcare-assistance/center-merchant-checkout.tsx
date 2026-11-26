@@ -91,7 +91,7 @@ export function CenterMerchantCheckout({bookingRef,centerRef,canInitiate=true}:P
     void refresh().catch(()=>{});},
    modal:{ondismiss:()=>setMessage("Checkout closed. No payment is confirmed. "+
     "Check the original order before trying again.")},
-   theme:{color:"#147d94"}
+   theme:{color:"#194A3A"}
   });
   instance.open();
  }
@@ -128,7 +128,7 @@ export function CenterMerchantCheckout({bookingRef,centerRef,canInitiate=true}:P
  if(!valid)return null;
  const state=current?.state??current?.status??"UNAVAILABLE";
  return <section className="cg-diagnostics-card" aria-label="Verified center online payment">
-  <h3>Pay your verified healthcare center</h3>
+  <h3>Payment method — verified healthcare center</h3>
   <p>Online collection goes only to the center's independently verified
    merchant, never to the Foundation's donation account.</p>
   {loading&&<p role="status">Checking your center's payment method…</p>}
@@ -146,7 +146,7 @@ export function CenterMerchantCheckout({bookingRef,centerRef,canInitiate=true}:P
     some funds. Only the current verified balance counts.</p>}
   </div>}
   {canInitiate&&current?.onlineAvailable&&!uncertain&&
-   <button type="button" disabled={busy||loading} onClick={()=>void begin()}>
+   <button className="primary" type="button" disabled={busy||loading} onClick={()=>void begin()}>
     {busy?"Checking original provider order…":
      current.checkoutAvailable?"Open existing verified checkout":
      "Pay online to this healthcare center"}

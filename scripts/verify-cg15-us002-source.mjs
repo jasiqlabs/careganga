@@ -80,7 +80,7 @@ const checks=[
   s.publicWeb.includes("Appointments are confirmed only after final review")&&
   !s.publicWeb.includes('>Confirm appointment</button>')],
  ["source: published CG18 healthcare landing links to real CG15 consultation action only after approval",
-  s.healthcareEditorial.includes('if(page.state==="NOT_PUBLISHED")notFound()')&&
+  s.healthcareEditorial.includes('if(page.state==="NOT_PUBLISHED"')&&s.healthcareEditorial.includes('notFound()')&&
   s.healthcareEditorial.includes('if(page.state!=="PUBLISHED")return')&&
   s.healthcareEditorial.includes('slug==="healthcare"')&&
   s.healthcareEditorial.includes('href="/health-network?tab=doctors"')&&
@@ -93,8 +93,13 @@ const checks=[
   s.publicAndroid.includes("EXPO_PUBLIC_API_URL")],
  ["source: native 30-day center and cross-center preview",s.publicAndroid.includes("dateAt(offset)")&&
   s.publicAndroid.includes("/center-options?date=")&&
-  s.publicAndroid.includes("slot-first?doctorRef=")],
- ["source: native client uses actual shared brand tokens",s.publicAndroid.includes("careGangaTheme")&&
+  s.publicAndroid.includes("slot-first?doctorRef=")&&
+  s.publicAndroid.includes("MAX_CENTERS=40,MAX_SLOTS=144")&&
+  s.publicAndroid.includes("result.centers.length>MAX_CENTERS")&&
+  s.publicAndroid.includes("result.centerChoices.length>MAX_CENTERS")&&
+  s.publicAndroid.includes("result.slots.length>MAX_SLOTS")&&
+  s.publicAndroid.includes("result.day!==day||result.time!==time")],
+ ["source: native client uses actual shared brand tokens",s.publicAndroid.includes("careGangaPublicTheme")&&
   s.publicAndroid.includes("theme.primary")&&
   !s.publicAndroid.includes("theme.textPrimary")],
  ["source: clear editable invalid/unavailable errors",s.catalog.includes("CG15_AVAILABILITY_INVALID")&&

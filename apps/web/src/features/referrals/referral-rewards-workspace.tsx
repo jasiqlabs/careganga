@@ -67,9 +67,8 @@ async function api<T>(path:string,cmd?:Command):Promise<T>{
  if(!response.ok||!body){
   const failure=body&&typeof body==="object"&&!Array.isArray(body)?
    body as {message?:unknown;code?:unknown}:{};
-  const trusted=typeof failure.code==="string"&&failure.code.startsWith("CG13_")&&
-   typeof failure.message==="string"&&failure.message.length<=220;
-  const message=trusted?failure.message:
+  const message=typeof failure.code==="string"&&failure.code.startsWith("CG13_")&&
+   typeof failure.message==="string"&&failure.message.length<=220?failure.message:
    response.status===409?"This record changed. Refresh its latest version before retrying.":
    response.status===403?"Your current Foundation permissions do not allow this action.":
    response.status===400?"Check the programme, rank or product fields.":

@@ -15,7 +15,7 @@ function allowed(parts:string[],method:"GET"|"POST"){
  if(parts[0]==="me"&&parts.length>=5&&parts[1]==="appointments"&&
   ID.test(parts[2])&&parts[3]==="collections"&&ID.test(parts[4])){
   if(parts.length===5&&method==="GET")return {ok:true,pdf:false};
-  if(parts.length===6&&parts[5]==="pdf"&&method==="GET")
+  if(parts.length===6&&["pdf","online-pdf"].includes(parts[5])&&method==="GET")
    return {ok:true,pdf:true};
  }
  return {ok:false,pdf:false};
@@ -68,7 +68,7 @@ async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
    return new NextResponse(bytes,{status:200,headers:{
     "Content-Type":"application/pdf","Cache-Control":"private, no-store",
     "X-Content-Type-Options":"nosniff",
-    "Content-Disposition":'attachment; filename="careganga-center-cash-receipt.pdf"'}});
+    "Content-Disposition":parts[5]==="online-pdf"?'attachment; filename="careganga-online-payment-confirmation.pdf"':'attachment; filename="careganga-center-cash-receipt.pdf"'}});
   }
   const value:unknown=await response.json().catch(()=>null);
   if(!value||typeof value!=="object"||Array.isArray(value))

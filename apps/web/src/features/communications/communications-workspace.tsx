@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import {
   Bell,
   Send,
@@ -260,6 +260,8 @@ export function CommunicationsWorkspace({
   const [unknown, setUnknown] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [sourceAvailable, setSourceAvailable] = useState(false);
+  const loadVersion = useRef(0);
   const [alert, setAlert] = useState<Alert | null>(null);
 
   // Delivery Counts Dialog
@@ -272,7 +274,9 @@ export function CommunicationsWorkspace({
   const [emailLoading, setEmailLoading] = useState(false);
 
   const reload = useCallback(async () => {
+    const version = ++loadVersion.current;
     setLoading(true);
+    setSourceAvailable(false);
     try {
       const result = await Promise.all([
         mayManage ? req<{ notices: Notice[] }>("notices?limit=30") : Promise.resolve({ notices: [] }),
@@ -281,19 +285,24 @@ export function CommunicationsWorkspace({
         mayRead ? mobile<PhoneProof>("status") : Promise.resolve(null),
       ]);
       if (result[0].notices.length > 30 || result[1].items.length > 30) throw Error("UNKNOWN");
+      if (version !== loadVersion.current) return;
       setNotices(result[0].notices);
       setInbox(result[1].items);
       setProviders(result[2]);
       setPhoneProof(result[3]);
+      setSourceAvailable(true);
     } catch (e) {
+      if (version !== loadVersion.current) return;
+      setNotices([]); setInbox([]); setProviders(null); setPhoneProof(null);
       setAlert({ kind: "error", message: explain(e) });
     } finally {
-      setLoading(false);
+      if (version === loadVersion.current) setLoading(false);
     }
   }, [mayManage, mayRead, mayViewDelivery]);
 
   useEffect(() => {
     void reload();
+    return () => { ++loadVersion.current; };
   }, [reload]);
 
   useEffect(() => {
@@ -599,7 +608,7 @@ export function CommunicationsWorkspace({
   const cancelledCount = notices.filter((x) => x.state === "CANCELLED").length;
   const unreadInboxCount = inbox.filter((x) => !x.read).length;
   const totalNoticesCount = notices.length;
-  const totalAudienceReached = useMemo(() => {
+  const loadedAudienceAssignments = useMemo(() => {
     return notices.reduce((acc, n) => acc + (n.audienceCount || 0), 0);
   }, [notices]);
 
@@ -753,16 +762,16 @@ export function CommunicationsWorkspace({
       </header>
 
       {/* Top 6 KPI Metric Cards matching Client Screenshot 2 */}
-      <div className="cg19-kpi-row" aria-label="Notifications status overview">
+      <div className="cg19-kpi-row" aria-label="Status of loaded notices and personal inbox, not full database totals">
         {/* 1. Total Notifications */}
         <article className="cg19-kpi-card">
           <div className="cg19-kpi-icon-wrap blue">
             <Send className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <p className="cg19-kpi-label">Total Notifications</p>
-            <h3 className="cg19-kpi-val">{totalNoticesCount}</h3>
-            <span className="cg19-kpi-sub">All time</span>
+            <p className="cg19-kpi-label">Loaded Notices</p>
+            <h3 className="cg19-kpi-val">{mayManage && !loading && sourceAvailable ? totalNoticesCount : "—"}</h3>
+            <span className="cg19-kpi-sub">Latest 30 at most</span>
           </div>
         </article>
 
@@ -772,8 +781,8 @@ export function CommunicationsWorkspace({
             <Megaphone className="w-5 h-5 text-green-600" />
           </div>
           <div>
-            <p className="cg19-kpi-label">Active Notices</p>
-            <h3 className="cg19-kpi-val">{activeCount}</h3>
+            <p className="cg19-kpi-label">Loaded Active Notices</p>
+            <h3 className="cg19-kpi-val">{mayManage && !loading && sourceAvailable ? activeCount : "—"}</h3>
             <span className="cg19-kpi-sub">Currently live</span>
           </div>
         </article>
@@ -784,9 +793,9 @@ export function CommunicationsWorkspace({
             <Users className="w-5 h-5 text-orange-600" />
           </div>
           <div>
-            <p className="cg19-kpi-label">Recipients Reached</p>
-            <h3 className="cg19-kpi-val">{totalAudienceReached}</h3>
-            <span className="cg19-kpi-sub">Across channels</span>
+            <p className="cg19-kpi-label">Audience Assignments</p>
+            <h3 className="cg19-kpi-val">{mayManage && !loading && sourceAvailable ? loadedAudienceAssignments : "—"}</h3>
+            <span className="cg19-kpi-sub">Loaded notices; not deliveries</span>
           </div>
         </article>
 
@@ -796,9 +805,9 @@ export function CommunicationsWorkspace({
             <Mail className="w-5 h-5 text-purple-600" />
           </div>
           <div>
-            <p className="cg19-kpi-label">In-App Delivered</p>
-            <h3 className="cg19-kpi-val">{inbox.length}</h3>
-            <span className="cg19-kpi-sub">Personal inbox</span>
+            <p className="cg19-kpi-label">Loaded Inbox Items</p>
+            <h3 className="cg19-kpi-val">{mayRead && !loading && sourceAvailable ? inbox.length : "—"}</h3>
+            <span className="cg19-kpi-sub">Personal inbox, up to 30</span>
           </div>
         </article>
 
@@ -808,8 +817,8 @@ export function CommunicationsWorkspace({
             <FileText className="w-5 h-5 text-red-600" />
           </div>
           <div>
-            <p className="cg19-kpi-label">Draft Notices</p>
-            <h3 className="cg19-kpi-val">{draftCount}</h3>
+            <p className="cg19-kpi-label">Loaded Draft Notices</p>
+            <h3 className="cg19-kpi-val">{mayManage && !loading && sourceAvailable ? draftCount : "—"}</h3>
             <span className="cg19-kpi-sub">Pending review</span>
           </div>
         </article>
@@ -820,8 +829,8 @@ export function CommunicationsWorkspace({
             <Calendar className="w-5 h-5 text-teal-600" />
           </div>
           <div>
-            <p className="cg19-kpi-label">Scheduled</p>
-            <h3 className="cg19-kpi-val">{scheduledCount}</h3>
+            <p className="cg19-kpi-label">Loaded Scheduled Notices</p>
+            <h3 className="cg19-kpi-val">{mayManage && !loading && sourceAvailable ? scheduledCount : "—"}</h3>
             <span className="cg19-kpi-sub">Queued to go out</span>
           </div>
         </article>
@@ -1488,7 +1497,7 @@ export function CommunicationsWorkspace({
 
                             <td>
                               <strong style={{ color: "#1e293b", fontSize: "0.85rem" }}>
-                                {x.audienceCount} recipients
+                                {x.audienceCount} configured recipients
                               </strong>
                               <p style={{ margin: "0.15rem 0 0 0", fontSize: "0.75rem", color: "#64748b" }}>
                                 {x.audienceKind.replaceAll("_", " ")}

@@ -2,6 +2,7 @@ import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/c
 import type {PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {Pool} from "pg";
+import {releaseIllustration,releaseIllustrationBytes} from "./cms-release-illustrations";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -29,7 +30,7 @@ export class CmsReviewSourceFacade{
    'JOIN cms_page_revision v ON v.page_id=p.id AND '+
    'v.foundation_root_id=p.foundation_root_id '+
    'WHERE p.id=$1 AND p.foundation_root_id=$2 AND p.archived_at IS NULL '+
-   'AND v.id=$3 AND v.revision_no=$4 AND v.content_digest=$5 FOR SHARE OF p,v',
+   'AND v.id=$3 AND v.revision_no=$4 AND v.content_digest=$5 AND NOT v.release_baseline FOR SHARE OF p,v',
    [pageRef,actor.realmId,revisionRef,revisionNo,digest]);
   const x=row.rows[0];
   if(!x||x.currentRevision!==revisionNo||
@@ -72,6 +73,15 @@ export class CmsReviewSourceFacade{
    'WHERE a.foundation_root_id=$1 AND a.page_revision_id=$2 '+
    'ORDER BY a.role,a.sort_order LIMIT 31',
    [bearerRealm,revisionRef]);
+  const releaseRows=await this.db.query<{asset_key:string;role:string;sort_order:number}>(
+   "SELECT asset_key,role,sort_order FROM cms_release_asset WHERE foundation_root_id=$1 AND page_revision_id=$2 ORDER BY role,sort_order",
+   [bearerRealm,revisionRef]);
+  const bundled=await Promise.all(releaseRows.rows.map(async row=>{
+   const art=releaseIllustration(row.asset_key);
+   let current=false;
+   if(art&&art.role===row.role&&art.order===row.sort_order)try{await releaseIllustrationBytes(art.key);current=true;}catch{}
+   return {fileRef:"release-"+row.asset_key,role:row.role,altText:art?.altText??"Unverified release illustration",order:row.sort_order,current,mime:"image/webp",bundled:true};
+  }));
   return {navigation:nav.rows[0]?{
    loginDesired:nav.rows[0].login_desired,
    memberJoinDesired:nav.rows[0].member_join_desired,
@@ -79,8 +89,8 @@ export class CmsReviewSourceFacade{
    title:original.rows[0].title,kind:original.rows[0].kind,
    slug:original.rows[0].slug,seoTitle:original.rows[0].seo_title,
    seoDescription:original.rows[0].seo_description,
-   assets:media.rows.map(a=>({fileRef:a.fileRef,role:a.role,altText:a.altText,
-    order:a.order,current:a.current,mime:a.mime})),
+   assets:[...media.rows.map(a=>({fileRef:a.fileRef,role:a.role,altText:a.altText,
+    order:a.order,current:a.current,mime:a.mime,bundled:false})),...bundled],
    sections:original.rows.slice(0,100).filter(x=>x.section_kind!==null)
     .map(x=>({kind:x.section_kind,order:x.order_no,fields:x.structured_fields}))};
  }

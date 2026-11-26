@@ -1,7 +1,7 @@
 /** Current anonymous CG-14 projection. Never cache revoked licenses or publication. */
 export type PublicCenter={slug:string;centerName:string;providerName:string;type:string;
  address:string;pinCode:string;publicPhone:string|null;
- latitude:number|null;longitude:number|null};
+ latitude:number|null;longitude:number|null;declaredServices:string[];photo:{fileRef:string;altText:string}|null};
 export type PublicFee={currency:"INR";amountMinor:number;kind:string;mode:string;
  effectiveFrom:string;effectiveTo:string|null};
 export type PublicDoctor={doctorRef:string;doctorName:string;qualifications:string[];
@@ -36,15 +36,21 @@ function center(x:unknown):x is PublicCenter{
  return typeof v.slug==="string"&&/^[a-z0-9][a-z0-9-]{2,79}$/.test(v.slug)&&
   typeof v.centerName==="string"&&typeof v.providerName==="string"&&
   typeof v.type==="string"&&typeof v.address==="string"&&
-  typeof v.pinCode==="string";
+  typeof v.pinCode==="string"&&Array.isArray(v.declaredServices)&&v.declaredServices.every(s=>typeof s==="string")&&
+  (v.photo===null||!!v.photo&&typeof v.photo.fileRef==="string"&&/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(v.photo.fileRef)&&typeof v.photo.altText==="string");
 }
 function doctor(x:unknown):x is PublicDoctor{
  if(!x||typeof x!=="object"||Array.isArray(x))return false;
  const v=x as Partial<PublicDoctor>;
  return typeof v.doctorRef==="string"&&/^[a-f0-9-]{36}$/i.test(v.doctorRef)&&
   typeof v.doctorName==="string"&&typeof v.centerName==="string"&&
-  typeof v.centerSlug==="string"&&
-  Array.isArray(v.specialties)&&Array.isArray(v.qualifications);
+  typeof v.centerSlug==="string"&&/^[a-z0-9][a-z0-9-]{2,79}$/.test(v.centerSlug)&&
+  typeof v.address==="string"&&typeof v.pinCode==="string"&&Number.isInteger(v.experienceYears)&&
+  Array.isArray(v.specialties)&&v.specialties.every(s=>typeof s==="string")&&Array.isArray(v.qualifications)&&v.qualifications.every(s=>typeof s==="string")&&
+  (v.fee===null||!!v.fee&&v.fee.currency==="INR"&&Number.isSafeInteger(v.fee.amountMinor)&&v.fee.amountMinor>=0&&
+   v.fee.kind==="CONSULTATION"&&v.fee.mode==="IN_PERSON"&&
+   typeof v.fee.effectiveFrom==="string"&&Date.parse(v.fee.effectiveFrom)<=Date.now()&&
+   (v.fee.effectiveTo===null||typeof v.fee.effectiveTo==="string"&&Date.parse(v.fee.effectiveTo)>Date.now()));
 }
 export async function directory<T extends PublicDoctor|PublicCenter>(
  resource:"centers"|"doctors",search:URLSearchParams):Promise<DirectoryResult<T>>{
@@ -53,6 +59,8 @@ export async function directory<T extends PublicDoctor|PublicCenter>(
    items?:unknown;next?:unknown};
   const valid=resource==="centers"?center:doctor;
   if(!data||!Array.isArray(data.items)||!data.items.every(valid)||
+    (resource==="doctors"&&search.has("center")&&
+     !(data.items as PublicDoctor[]).every(item=>item.centerSlug===search.get("center")))||
     !(data.next===null||typeof data.next==="string"))
    throw Error("UNAVAILABLE");
   return {state:"READY",items:data.items.slice(0,20) as T[],
@@ -84,8 +92,11 @@ export async function publicDoctor(ref:string){
    qualifications?:unknown;experienceYears?:unknown;bio?:unknown;
    centers?:unknown;notice?:unknown};
   if(typeof p.doctorName!=="string"||!Array.isArray(p.centers)||
-    !p.centers.every(doctor)||!Array.isArray(p.qualifications)||
-    !Array.isArray(p.specialties))return null;
+    !p.centers.every(x=>doctor(x)&&x.doctorRef.toLowerCase()===ref.toLowerCase())||
+    !Array.isArray(p.qualifications)||!p.qualifications.every(x=>typeof x==="string")||
+    !Array.isArray(p.specialties)||!p.specialties.every(x=>typeof x==="string")||
+    typeof p.bio!=="string"||typeof p.notice!=="string"||
+    !Number.isSafeInteger(p.experienceYears))return null;
   return p as {doctorName:string;specialties:string[];qualifications:string[];
    experienceYears:number;bio:string;centers:PublicDoctor[];notice:string};
  }catch{return null;}
@@ -111,6 +122,7 @@ export async function publicPartnerOffers(centerSlug:string):
    "serviceKind" in x&&["PHARMACY","NURSING","OT"].includes(String(x.serviceKind))&&
    "name" in x&&typeof x.name==="string"&&
    "description" in x&&typeof x.description==="string"&&
+   "currency" in x&&x.currency==="INR"&&
    "indicativePriceMinor" in x&&
    (x.indicativePriceMinor===null||typeof x.indicativePriceMinor==="string"&&
     /^[1-9][0-9]{0,10}$/.test(x.indicativePriceMinor)));

@@ -8,7 +8,7 @@ import {identityRequest} from "../identity-access/http-client";
 
 type InboxCase={caseRef:string;number:string;title:string;status:string;revision:number};
 type Media={fileRef:string;role:string;altText:string;order:number;
- current:boolean;mime:string|null};
+ current:boolean;mime:string|null;bundled?:boolean};
 type Detail={caseRef:string;caseNumber:string;status:string;revision:number;
  source:{title:string;kind:string;slug:string;seoTitle:string;
  seoDescription:string;
@@ -104,11 +104,12 @@ export function NativeCmsReviewer({token,onExpired,onDone}:Props){
   }catch(e){fail(e)}finally{setBusy(false)}
  }
  async function media(ref:string){
-  if(mediaBusy||!ID.test(ref))return;
+  const release=/^release-([a-z-]{1,45})$/.exec(ref);
+  if(mediaBusy||(!ID.test(ref)&&!release))return;
   setMediaBusy(true);setMessage("");
   let temporary:File|null=null;
   try{
-   const response=await identityRequest("/api/cms/media/preview/"+
+   const response=await identityRequest(release?"/api/cms/release-media/preview/"+release[1]:"/api/cms/media/preview/"+
     encodeURIComponent(ref),{
      method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+token}
     });
@@ -245,7 +246,7 @@ export function NativeCmsReviewer({token,onExpired,onDone}:Props){
     style={styles.group}>
     <Text style={styles.label}>{tag(asset.role)}: {asset.altText}</Text>
     <Text style={asset.current?styles.note:styles.error}>{
-     asset.current?"CG19 currently verified":"Not verified; approval blocked"}</Text>
+     asset.current?(asset.bundled?"Verified bundled illustration":"CG19 currently verified"):"Not verified; approval blocked"}</Text>
     {button("Preview original protected media",()=>void media(asset.fileRef),
      mediaBusy||!asset.current)}
    </View>)}

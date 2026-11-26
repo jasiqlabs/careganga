@@ -78,7 +78,9 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
   const [appliedListSearch,setAppliedListSearch]=useState("");
   const [nextListOffset,setNextListOffset]=useState<number|null>(null);
   const [listPageLoading,setListPageLoading]=useState(false);
-  const listRequest=useRef(0);
+  const listRequest=useRef(0),detailRequest=useRef(0);
+  const [detailLoading,setDetailLoading]=useState(false);
+  const activeProvider=useRef("");
   const [selected,setSelected]=useState<Detail|null>(null);
   const [provider,setProvider]=useState(emptyProvider);
   const [centers,setCenters]=useState<CenterDraft[]>([blankCenter()]);
@@ -122,12 +124,13 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
   },[listStatus,appliedListSearch]);
   const loadDetail=useCallback(async(ref:string)=>{
     const details=await api<Detail>("providers/"+encodeURIComponent(ref));
-    if(!details?.provider||!Array.isArray(details.centers))
+    if(details?.provider?.providerRef!==ref||!Array.isArray(details.centers))
       throw Error("Provider source is not available");
-    setSelected(details);
+    if(activeProvider.current===ref)setSelected(details);
     return details;
   },[]);
   useEffect(()=>{
+    detailRequest.current++;activeProvider.current="";setDetailLoading(false);
     setLoading(true);setList([]);setNextListOffset(null);setSelected(null);
     void loadList().catch(e=>setError(e instanceof Error?e.message:"Providers unavailable."))
       .finally(()=>setLoading(false));
@@ -140,19 +143,24 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
     finally{setListPageLoading(false);}
   }
   async function open(ref:string){
+    const turn=++detailRequest.current;activeProvider.current=ref;
+    setDetailLoading(true);setSelected(null);setMaskedLabel("");setBankVersion(0);
     setError("");setNotice("");setCenterEditor(null);setBankProof("");setExistingBankProof("");
     setEditingProvider(false);setProviderProof("");setCenterProofs({});
     setAccessPassword("");setPublicationPassword("");setSuspensionPassword("");
     try{
       await loadDetail(ref);
+      if(turn!==detailRequest.current)return;
       if(canViewFinance){
         const result=await api<{reference:{maskedLabel:string;fileRef:string;version:number}|null}>(
           "providers/"+encodeURIComponent(ref)+"/finance-reference");
+        if(turn!==detailRequest.current)return;
         setMaskedLabel(result.reference?.maskedLabel??"");
         setExistingBankProof(result.reference?.fileRef??"");
         setBankVersion(result.reference?.version??0);
       }
-    }catch(e){setSelected(null);setError(e instanceof Error?e.message:"Provider unavailable");}
+    }catch(e){if(turn===detailRequest.current){activeProvider.current="";setSelected(null);setError(e instanceof Error?e.message:"Provider unavailable");}}
+    finally{if(turn===detailRequest.current)setDetailLoading(false);}
   }
   async function submitCreate(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
@@ -394,7 +402,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
     }finally{setBusy(false);}
   }
   async function saveBank(){
-    if(!selected||!bankProof||!canManageFinance||busy)return;
+    if(!selected||!bankProof||!canManageFinance||busy||uncertain)return;
     setBusy(true);setError("");
     try{
       const result=await api<{version:number}>(
@@ -412,8 +420,8 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
       <p>Register organizations and centers, review private evidence and publish only independently verified services.</p></div>
       <div className="toolbar cg-module-header-actions">
       {canVerify&&<Link href="/admin/health-network/reviews">Review submitted registrations</Link>}
-      {canManage&&<button className="primary" type="button" onClick={()=>{
-        setMode("create");setSelected(null);setCenterEditor(null);
+      {canManage&&<button className="primary" type="button" disabled={busy||uncertain||detailLoading||mode==="create"} onClick={()=>{
+        detailRequest.current++;activeProvider.current="";setMode("create");setSelected(null);setCenterEditor(null);
         setProvider(emptyProvider());setCenters([blankCenter()]);
         setError("");setNotice("");setUncertain(false);key.current="";
       }}>Add provider</button>}
@@ -428,25 +436,30 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
     </div>}
     {mode==="create"&&canManage&&<form onSubmit={event=>void submitCreate(event)} className="form">
       <h2>Provider registration</h2>
-      <ProviderFields value={provider} onChange={setProvider}/>
+      <p className="muted">Enter the organization details, then add each operating center. Verification is a separate step.</p>
+      <fieldset className="form-section" disabled={busy||uncertain}>
+        <legend>1. Organization and contact details</legend>
+        <ProviderFields value={provider} onChange={setProvider}/>
+      </fieldset>
+      <h3>2. Operating centers ({centers.length})</h3>
       {centers.map((center,index)=><section key={index} className="form-section">
-        <h3>Operating center {index+1}</h3>
-        <CenterEditor value={center} disabled={busy} onChange={value=>
+        <h3>{index+1}. {center.displayName.trim()||"New operating center"}</h3>
+        <CenterEditor value={center} disabled={busy||uncertain} onChange={value=>
           setCenters(prev=>prev.map((x,i)=>i===index?value:x))}/>
-        {centers.length>1&&<button type="button" disabled={busy}
-          onClick={()=>setCenters(prev=>prev.filter((_,i)=>i!==index))}>Remove center</button>}
+        {centers.length>1&&<button type="button" disabled={busy||uncertain}
+          onClick={()=>{if(window.confirm("Remove this unsaved center?"))setCenters(prev=>prev.filter((_,i)=>i!==index));}}>Remove center</button>}
       </section>)}
       <div className="toolbar">
-        <button type="button" disabled={busy||centers.length>=10}
+        <button type="button" disabled={busy||uncertain||centers.length>=10}
           onClick={()=>setCenters(prev=>[...prev,blankCenter()])}>Add another center</button>
         <button type="submit" className="primary" disabled={busy||uncertain}>
           {busy?"Saving…":"Save pending provider"}</button>
-        <button type="button" disabled={busy} onClick={()=>setMode("list")}>Cancel</button>
+        <button type="button" disabled={busy||uncertain} onClick={()=>{if(window.confirm("Discard this unsaved provider registration?"))setMode("list");}}>Cancel</button>
       </div>
     </form>}
     {mode==="list"&&<>
       <form className="form-section" onSubmit={e=>{
-        e.preventDefault();setAppliedListSearch(listSearch.trim());
+        e.preventDefault();if(!busy&&!uncertain&&!detailLoading)setAppliedListSearch(listSearch.trim());
       }}>
         <h2>Find healthcare providers</h2>
         <div className="form-grid">
@@ -456,7 +469,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
               placeholder="Search registered organizations"/>
           </label>
           <label className="field">Registration status
-            <select value={listStatus} onChange={e=>setListStatus(e.target.value)}>
+            <select value={listStatus} disabled={busy||uncertain||detailLoading} onChange={e=>setListStatus(e.target.value)}>
               <option value="ALL">All statuses</option>
               <option value="PENDING">Pending draft</option>
               <option value="SUBMITTED">Submitted for review</option>
@@ -468,8 +481,8 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
           </label>
         </div>
         <div className="toolbar">
-          <button type="submit" className="primary">Apply search</button>
-          <button type="button" onClick={()=>{
+          <button type="submit" className="primary" disabled={busy||uncertain||detailLoading}>Apply search</button>
+          <button type="button" disabled={busy||uncertain||detailLoading} onClick={()=>{
             setListStatus("ALL");setListSearch("");setAppliedListSearch("");
           }}>Reset filters</button>
         </div>
@@ -483,7 +496,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
         <th>Centers</th><th>Status</th><th>Action</th></tr></thead><tbody>
         {list.map(x=><tr key={x.providerRef}><td>{x.name}</td><td>{x.type}</td>
           <td>{x.centerCount}</td><td>{x.status.replaceAll("_"," ")}</td><td>
-            <button type="button" onClick={()=>void open(x.providerRef)}>View draft</button>
+            <button type="button" disabled={busy||uncertain||detailLoading||loading} onClick={()=>void open(x.providerRef)}>View draft</button>
           </td></tr>)}
       </tbody></table></div>
       {nextListOffset!==null&&<div className="toolbar">
@@ -491,7 +504,8 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
           onClick={()=>void loadMoreProviders()}>
           {listPageLoading?"Loading more…":"Load more providers"}</button>
       </div>}
-      {selected&&<section className="form-section">
+      {detailLoading&&<p role="status">Loading provider details…</p>}
+      {selected&&!detailLoading&&<section key={selected.provider.providerRef} className="form-section">
         <h2>{selected.provider.name}</h2><p>Provider status: {selected.provider.status.replaceAll("_"," ")}.
           {selected.provider.status!=="VERIFIED"?" Centers cannot be publicly published.":""}</p>
         <p>Contact: {selected.provider.contactName} · {selected.provider.contactPhone}</p>
@@ -659,26 +673,26 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
           <HealthEvidenceUploader providerRef={selected.provider.providerRef}
             sourceVersion={selected.provider.version}
             classification="HEALTH_PROVIDER_REGISTRATION"
-            onVerified={fileRef=>setProviderProof(fileRef)}/>
+            onVerified={fileRef=>{if(activeProvider.current===selected.provider.providerRef)setProviderProof(fileRef);}}/>
           <button type="button" className="primary"
             disabled={busy||uncertain||!providerProof}
             onClick={()=>void submitProviderForReview()}>
             Submit provider for independent verification</button>
         </section>}
         {canManageFinance&&<section className="form-section"><h3>Protected settlement reference</h3>
-          <p>Enter only a masked display label. The full bank document stays in CG-19 private storage.</p>
+          <p>Enter only a masked display label. The full bank document stays in protected private storage.</p>
           {!!existingBankProof&&<p>
             <a href={"/api/documents/health-draft/files/"+encodeURIComponent(existingBankProof)+"/download"}>
               View current private bank proof</a></p>}
           <HealthEvidenceUploader providerRef={selected.provider.providerRef}
             sourceVersion={selected.provider.version} classification="HEALTH_BANK_PROOF"
-            onVerified={ref=>setBankProof(ref)}/>
+            onVerified={ref=>{if(activeProvider.current===selected.provider.providerRef)setBankProof(ref);}}/>
           <div className="toolbar">
             <label className="field">Masked bank label
               <input value={maskedLabel} maxLength={60} placeholder="Bank ****1234"
                 onChange={e=>setMaskedLabel(e.target.value)}/>
             </label>
-            <button type="button" disabled={!bankProof||busy}
+            <button type="button" disabled={!bankProof||busy||uncertain}
               onClick={()=>void saveBank()}>Save protected reference</button>
           </div>
         </section>}

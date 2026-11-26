@@ -14,6 +14,8 @@ export function NativeLabPricingPanel({token,centerRef,own,canMap,canPropose,
  canApprove,onExpired}:Props){
  const [items,setItems]=useState<Item[]>([]),[maps,setMaps]=useState<Mapping[]>([]);
  const [prices,setPrices]=useState<Price[]>([]);
+ const priceFilter=useRef({status:"",offset:0});
+ const [nextPriceOffset,setNextPriceOffset]=useState<number|null>(null),[priceLoading,setPriceLoading]=useState(false);
  const [kind,setKind]=useState<"TEST"|"PACKAGE">("TEST");
  const [itemRef,setItemRef]=useState(""),[mappingRef,setMappingRef]=useState("");
  const [base,setBase]=useState(""),[patient,setPatient]=useState("");
@@ -29,25 +31,31 @@ export function NativeLabPricingPanel({token,centerRef,own,canMap,canPropose,
   setMessage(e instanceof Error?e.message:"The current laboratory source is unavailable.");
  },[onExpired]);
  const refresh=useCallback(async()=>{
-  const version=++epoch.current;
-  const [a,b,c]=await Promise.all([
+  const version=++epoch.current,filter=priceFilter.current;
+  setPrices([]);setNextPriceOffset(null);setPriceLoading(true);
+  try{const [a,b,c]=await Promise.all([
    diagnosticRequest<{items:Item[]}>(token,prefix+"/eligible-items"),
    diagnosticRequest<{mappings:Mapping[]}>(token,prefix+"/tests"),
-   diagnosticRequest<{prices:Price[]}>(token,prefix+"/test-prices")
+   diagnosticRequest<{prices:Price[];nextOffset:number|null}>(token,prefix+"/test-prices?"+new URLSearchParams({priceStatus:filter.status,offset:String(filter.offset)}).toString())
   ]);
   if(version!==epoch.current)return;
   if(!Array.isArray(a.items)||!Array.isArray(b.mappings)||!Array.isArray(c.prices)||
     a.items.length>MAX||b.mappings.length>MAX||c.prices.length>MAX*3)
    throw Error("Lab lists cannot be verified; review again.");
-  setItems(a.items);setMaps(b.mappings);setPrices(c.prices);
+  setItems(a.items);setMaps(b.mappings);setPrices(c.prices);setNextPriceOffset(c.nextOffset??null);
+  }finally{if(version===epoch.current)setPriceLoading(false);}
  },[token,prefix]);
  useEffect(()=>{
   let live=true;
-  setMaps([]);setItems([]);setPrices([]);setLoading(true);
+  priceFilter.current={status:"",offset:0};setNextPriceOffset(null);setMaps([]);setItems([]);setPrices([]);setLoading(true);
   setUncertain(false);attempt.current=null;setMessage("");
   void refresh().catch(e=>{if(live)error(e);}).finally(()=>{if(live)setLoading(false)});
   return()=>{live=false;++epoch.current;};
  },[refresh,error]);
+ function filterPrices(status:string,offset=0){
+  if(busy||uncertain||loading||priceLoading)return;
+  priceFilter.current={status,offset};setPassword("");setMessage("");void refresh().catch(error);
+ }
  async function send(command:Attempt,retry=false){
   if(busy||(!retry&&uncertain))return;
   setBusy(true);setMessage("");
@@ -172,7 +180,10 @@ export function NativeLabPricingPanel({token,centerRef,own,canMap,canPropose,
     busy||uncertain||!mappingRef||!base||!patient||!start)}
   </View>}
   <Text style={s.title}>Original price proposals and history</Text>
-  {prices.length===0&&!loading&&<Text style={s.note}>No proposed or approved tariffs.</Text>}
+  <Text style={s.label}>Price status</Text>
+  <View style={s.row}>{[["","All statuses"],["PROPOSED","Pending review"],["APPROVED","Approved (all dates)"],["CURRENT","Approved, currently effective"],["UPCOMING","Approved, upcoming"],["EXPIRED","Approved, expired"],["REJECTED","Rejected"]].map(([value,name])=><View key={value||"all"}>{button(name,()=>filterPrices(value),busy||uncertain||loading||priceLoading,priceFilter.current.status===value)}</View>)}</View>
+  {priceLoading&&<Text accessibilityLiveRegion="polite" style={s.note}>Checking current prices…</Text>}
+  {prices.length===0&&!loading&&!priceLoading&&!message&&<Text style={s.note}>No prices match the current filter.</Text>}
   {canApprove&&prices.some(p=>p.status==="PROPOSED")&&control(
    "Current Foundation password for independent decision",password,setPassword,
    "Required only for price approval or rejection",{secure:true})}
@@ -198,6 +209,10 @@ export function NativeLabPricingPanel({token,centerRef,own,canMap,canPropose,
      ]),busy||uncertain||password.length<8)}
    </View>}
   </View>)}
+  <View style={s.row}>
+   {button("Previous prices",()=>filterPrices(priceFilter.current.status,Math.max(0,priceFilter.current.offset-100)),busy||uncertain||loading||priceLoading||priceFilter.current.offset===0)}
+   {button("Next prices",()=>{if(nextPriceOffset!==null)filterPrices(priceFilter.current.status,nextPriceOffset);},busy||uncertain||loading||priceLoading||nextPriceOffset===null)}
+  </View>
  </View>;
 }
 const s=StyleSheet.create({

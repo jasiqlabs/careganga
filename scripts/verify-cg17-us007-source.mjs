@@ -45,8 +45,8 @@ const cases={
  QA04:has("source","PUBLIC_ASSISTANCE_FILTER_INVALID")&&
   has("web","UNAVAILABLE","items:[]")&&
   has("native","status===\"UNAVAILABLE\""),
- QA05:has("cms","extra??null")&&
-  has("composition","<ApprovedConsultationBenefits/>")&&
+ QA05:has("cms","ConsultationBenefitCards")&&
+  has("composition",'slug="healthcare"')&&
   has("directory","NativeApprovedConsultationBenefits"),
  QA06:has("component","cg-site-content","cg-site-action")&&
   has("native","theme.surface","minHeight:48","accessibilityRole"),
@@ -63,8 +63,7 @@ const cases={
  QA10:has("source","valid_until>now()")&&
   has("native","AppState.addEventListener","clearTimeout(timer)")&&
   has("web","Date.parse(x.validUntil)>Date.now()"),
- QA11:has("cms","publishedCmsPage(slug)")&&
-  has("composition",'extra={<ApprovedConsultationBenefits/>}')&&
+ QA11:has("cms","publishedCmsPage(slug)","benefits&&<ConsultationBenefitCards")&&
   has("cg18fields","HEALTHCARE_CATEGORIES")
 };
 assert.equal(Object.keys(cases).length,11);

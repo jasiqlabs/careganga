@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import {
   MessageSquare,
   MessageCircle,
@@ -203,6 +203,10 @@ export function FoundationSupportWorkspace({
   const [appliedSearch, setAppliedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("ALL");
+  const [startedFrom, setStartedFrom] = useState("");
+  const [startedTo, setStartedTo] = useState("");
+  const [appliedDates, setAppliedDates] = useState({ lastActivity: "ALL", startedFrom: "", startedTo: "" });
+  const [pageSize, setPageSize] = useState(10);
 
   const [cursor, setCursor] = useState<string | null>(null);
   const [priorCursors, setPriorCursors] = useState<string[]>([]);
@@ -230,13 +234,15 @@ export function FoundationSupportWorkspace({
 
   // Compute effective filter to send to backend
   const backendFilter = useMemo(() => {
-    if (activeTabFilter === "OPEN") return "OPEN";
-    if (activeTabFilter === "CLOSED") return "CLOSED";
+    if (activeTabFilter === "OPEN") return "OPEN_GROUP";
+    if (activeTabFilter === "CLOSED") return "CLOSED_GROUP";
     if (statusFilter !== "ALL") return statusFilter;
     return "ALL";
   }, [activeTabFilter, statusFilter]);
 
+  const loadVersion = useRef(0);
   const load = useCallback(async () => {
+    const version = ++loadVersion.current;
     setLoading(true);
     try {
       const [cases, faqList] = await Promise.all([
@@ -244,24 +250,28 @@ export function FoundationSupportWorkspace({
           ? request<{ items: CaseItem[]; counts: Counts; nextCursor: string | null }>(
               "cases/search",
               "POST",
-              { limit: 30, filter: backendFilter, cursor, search: appliedSearch }
+              { limit: pageSize, filter: backendFilter, cursor, search: appliedSearch, ...appliedDates }
             )
           : Promise.resolve({ items: [], counts: null, nextCursor: null }),
         mayEditFaq ? request<{ faqs: Faq[] }>("faqs") : Promise.resolve({ faqs: [] }),
       ]);
+      if (version !== loadVersion.current) return;
       setItems(cases.items);
       setCounts(cases.counts);
       setNextCursor("nextCursor" in cases ? cases.nextCursor : null);
       setFaqs(faqList.faqs);
     } catch (e) {
+      if (version !== loadVersion.current) return;
+      setItems([]); setCounts(null); setNextCursor(null); setFaqs([]);
       setAlert(failure(e));
     } finally {
-      setLoading(false);
+      if (version === loadVersion.current) setLoading(false);
     }
-  }, [backendFilter, cursor, appliedSearch, mayView, mayEditFaq]);
+  }, [backendFilter, cursor, appliedSearch, appliedDates, pageSize, mayView, mayEditFaq]);
 
   useEffect(() => {
     void load();
+    return () => { ++loadVersion.current; };
   }, [load]);
 
   useEffect(() => {
@@ -353,7 +363,7 @@ export function FoundationSupportWorkspace({
       }
       setAlert(
         kind === "REPLY"
-          ? "Reply saved in the private case. (Simulated delivery, no raw SMS/email claim)."
+          ? "Reply saved in the private case. External delivery is not confirmed."
           : "Support record successfully updated."
       );
       const updated = await request<CaseDetail>("cases/" + id);
@@ -419,9 +429,13 @@ export function FoundationSupportWorkspace({
       setAlert("Enter at least three characters to search all Foundation cases.");
       return;
     }
+    if (startedFrom && startedTo && startedFrom > startedTo) {
+      setAlert("Choose a start date on or before the end date."); return;
+    }
     setCursor(null);
     setPriorCursors([]);
     setNextCursor(null);
+    setAppliedDates({ lastActivity: dateFilter, startedFrom, startedTo });
     setAppliedSearch(search.trim());
     setAlert("");
   };
@@ -431,6 +445,8 @@ export function FoundationSupportWorkspace({
     setAppliedSearch("");
     setStatusFilter("ALL");
     setDateFilter("ALL");
+    setStartedFrom(""); setStartedTo("");
+    setAppliedDates({ lastActivity: "ALL", startedFrom: "", startedTo: "" });
     setActiveTabFilter("ALL");
     setCursor(null);
     setPriorCursors([]);
@@ -442,18 +458,12 @@ export function FoundationSupportWorkspace({
   const statusNoteValid = !statusNoteNeedsLength || statusNote.trim().length >= 8;
 
   // Real statistics calculated truthfully from DB response
-  const totalChatsCount = counts?.total ?? items.length;
-  const openChatsCount =
-    counts?.open ?? items.filter((x) => !["CLOSED", "RESOLVED"].includes(x.status)).length;
-  const closedChatsCount =
-    counts?.closed ?? items.filter((x) => ["CLOSED", "RESOLVED"].includes(x.status)).length;
-  const totalMessagesCount = totalChatsCount > 0 ? totalChatsCount + (counts?.replied ?? 0) : 0;
-  const uniqueGuestsCount = useMemo(() => {
-    const s = new Set<string>();
-    items.forEach((i) => s.add(i.contact));
-    return s.size || items.length;
-  }, [items]);
-  const startedTodayCount = counts?.received_today ?? 0;
+  const totalChatsCount = counts?.total ?? "—";
+  const openChatsCount = counts?.open ?? "—";
+  const closedChatsCount = counts?.closed ?? "—";
+  const repliedCount = counts?.replied ?? "—";
+  const unreadCount = counts?.unread ?? "—";
+  const startedTodayCount = counts?.received_today ?? "—";
 
   return (
     <section className="cg19-support-container" aria-label="Help and Support Command Center">
@@ -542,7 +552,8 @@ export function FoundationSupportWorkspace({
       {tab === "CASES" && mayView && (
         <>
           {/* Top 6 KPI Metric Cards matching Client Screenshot 3 */}
-          <div className="cg19-kpi-row" aria-label="Actual Support Statistics">
+          <p style={{ fontSize: "0.8rem", color: "#64748b" }}>Foundation totals (not restricted by list filters)</p>
+          <div className="cg19-kpi-row" aria-label="Foundation support totals, independent of list filters">
             {/* 1. Total Chats */}
             <article className="cg19-kpi-card">
               <div className="cg19-kpi-icon-wrap blue">
@@ -563,7 +574,7 @@ export function FoundationSupportWorkspace({
               <div>
                 <p className="cg19-kpi-label">Open Chats</p>
                 <h3 className="cg19-kpi-val">{openChatsCount}</h3>
-                <span className="cg19-kpi-sub">Awaiting reply</span>
+                <span className="cg19-kpi-sub">All active statuses</span>
               </div>
             </article>
 
@@ -579,27 +590,27 @@ export function FoundationSupportWorkspace({
               </div>
             </article>
 
-            {/* 4. Total Messages */}
+            {/* 4. Replied Inquiries */}
             <article className="cg19-kpi-card">
               <div className="cg19-kpi-icon-wrap purple">
                 <Mail className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="cg19-kpi-label">Total Messages</p>
-                <h3 className="cg19-kpi-val">{totalMessagesCount}</h3>
-                <span className="cg19-kpi-sub">Across all chats</span>
+                <p className="cg19-kpi-label">Replied Inquiries</p>
+                <h3 className="cg19-kpi-val">{repliedCount}</h3>
+                <span className="cg19-kpi-sub">Currently in replied status</span>
               </div>
             </article>
 
-            {/* 5. Registered Guests */}
+            {/* 5. Unread Inquiries */}
             <article className="cg19-kpi-card">
               <div className="cg19-kpi-icon-wrap orange">
                 <Users className="w-5 h-5 text-orange-600" />
               </div>
               <div>
-                <p className="cg19-kpi-label">Registered Guests</p>
-                <h3 className="cg19-kpi-val">{uniqueGuestsCount}</h3>
-                <span className="cg19-kpi-sub">Unique visitors</span>
+                <p className="cg19-kpi-label">Unread Inquiries</p>
+                <h3 className="cg19-kpi-val">{unreadCount}</h3>
+                <span className="cg19-kpi-sub">Unread for your account</span>
               </div>
             </article>
 
@@ -645,11 +656,16 @@ export function FoundationSupportWorkspace({
                   <CustomDropdown
                     label="Status"
                     value={statusFilter}
-                    onChange={setStatusFilter}
+                    onChange={(value) => { if (statusFilter === value && activeTabFilter === "ALL" && !cursor) return; setStatusFilter(value); setActiveTabFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
                     options={[
                       { value: "ALL", label: "All Statuses" },
                       { value: "OPEN", label: "Open" },
+                      { value: "ASSIGNED", label: "Assigned" },
                       { value: "IN_PROGRESS", label: "In Progress" },
+                      { value: "ESCALATED", label: "Escalated" },
+                      { value: "REPLIED", label: "Replied" },
+                      { value: "UNREAD", label: "Unread" },
+                      { value: "ARCHIVED", label: "Archived" },
                       { value: "WAITING_FOR_USER", label: "Waiting for user" },
                       { value: "RESOLVED", label: "Resolved" },
                       { value: "CLOSED", label: "Closed" },
@@ -659,7 +675,7 @@ export function FoundationSupportWorkspace({
 
                 <div style={{ flex: "1", minWidth: 0 }}>
                   <CustomDropdown
-                    label="Last Activity"
+                    label="Last Activity (UTC)"
                     value={dateFilter}
                     onChange={setDateFilter}
                     options={[
@@ -674,18 +690,23 @@ export function FoundationSupportWorkspace({
 
               <div className="cg19-filter-row-bottom">
                 <div className="cg19-input-group" style={{ maxWidth: "340px", minWidth: "260px" }}>
-                  <label htmlFor="filter-date">Started Between</label>
+                  <label htmlFor="filter-date">Started Between (UTC)</label>
                   <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
                     <input
                       id="filter-date"
                       className="cg19-input"
                       type="date"
+                      value={startedFrom}
+                      onChange={(e) => setStartedFrom(e.target.value)}
                       style={{ padding: "0.45rem", minWidth: "120px" }}
                     />
                     <span style={{ color: "#94a3b8" }}>-</span>
                     <input
                       className="cg19-input"
+                      aria-label="Started before or on (UTC)"
                       type="date"
+                      value={startedTo}
+                      onChange={(e) => setStartedTo(e.target.value)}
                       style={{ padding: "0.45rem", minWidth: "120px" }}
                     />
                   </div>
@@ -745,8 +766,8 @@ export function FoundationSupportWorkspace({
                   <div className="cg19-overview-icon" style={{ background: "#faf5ff", color: "#9333ea" }}>
                     <Mail className="w-3.5 h-3.5" />
                   </div>
-                  <span className="cg19-overview-title">Messages</span>
-                  <span className="cg19-overview-val">{totalMessagesCount}</span>
+                  <span className="cg19-overview-title">Replied</span>
+                  <span className="cg19-overview-val">{repliedCount}</span>
                 </div>
               </div>
             </div>
@@ -761,23 +782,23 @@ export function FoundationSupportWorkspace({
                   <button
                     type="button"
                     className={`cg19-nav-tab ${activeTabFilter === "ALL" ? "is-active" : ""}`}
-                    onClick={() => setActiveTabFilter("ALL")}
+                    onClick={() => { if (activeTabFilter === "ALL" && statusFilter === "ALL" && !cursor) return; setActiveTabFilter("ALL"); setStatusFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
                   >
                     All Chats
                   </button>
                   <button
                     type="button"
                     className={`cg19-nav-tab ${activeTabFilter === "OPEN" ? "is-active" : ""}`}
-                    onClick={() => setActiveTabFilter("OPEN")}
+                    onClick={() => { if (activeTabFilter === "OPEN" && statusFilter === "ALL" && !cursor) return; setActiveTabFilter("OPEN"); setStatusFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
                   >
-                    Open ({openChatsCount})
+                    Open
                   </button>
                   <button
                     type="button"
                     className={`cg19-nav-tab ${activeTabFilter === "CLOSED" ? "is-active" : ""}`}
-                    onClick={() => setActiveTabFilter("CLOSED")}
+                    onClick={() => { if (activeTabFilter === "CLOSED" && statusFilter === "ALL" && !cursor) return; setActiveTabFilter("CLOSED"); setStatusFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
                   >
-                    Closed ({closedChatsCount})
+                    Closed
                   </button>
                 </div>
 
@@ -957,12 +978,12 @@ export function FoundationSupportWorkspace({
                 }}
               >
                 <span>
-                  Showing 1 to {items.length} of {totalChatsCount} entries
+                  Page {priorCursors.length + 1} · {items.length} entries on this page
                 </span>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
                   <button
                     type="button"
-                    disabled={busy || priorCursors.length === 0}
+                    disabled={busy || loading || priorCursors.length === 0}
                     style={{
                       border: "1px solid #cbd5e1",
                       background: "#fff",
@@ -989,11 +1010,11 @@ export function FoundationSupportWorkspace({
                       fontSize: "0.8rem",
                     }}
                   >
-                    1
+                    {priorCursors.length + 1}
                   </span>
                   <button
                     type="button"
-                    disabled={busy || !nextCursor}
+                    disabled={busy || loading || !nextCursor}
                     style={{
                       border: "1px solid #cbd5e1",
                       background: "#fff",
@@ -1015,11 +1036,13 @@ export function FoundationSupportWorkspace({
                   <select
                     className="cg19-select"
                     style={{ padding: "0.25rem 1.8rem 0.25rem 0.5rem", fontSize: "0.78rem" }}
-                    defaultValue="10"
+                    aria-label="Records per page"
+                    value={pageSize}
+                    onChange={(e) => { const size = Number(e.target.value); if (size === pageSize && !cursor) return; setPageSize(size); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
                   >
                     <option value="10">10 / page</option>
                     <option value="25">25 / page</option>
-                    <option value="50">50 / page</option>
+                    <option value="30">30 / page</option>
                   </select>
                 </div>
               </div>

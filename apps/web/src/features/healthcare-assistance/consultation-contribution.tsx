@@ -122,11 +122,11 @@ export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept
   {quote&&quote.state==="NOT_COLLECTIBLE"?
    <p>This consultation is not eligible for a new payable contribution.</p>:
    quote&&valid(quote)&&<>
-    <dl className="cg-diagnostics-summary">
+    <dl className="cg-diagnostics-summary cg-health-quote">
      <div><dt>Actual consultation fee</dt><dd>{pretty(quote.grossMinor!)}</dd></div>
      <div><dt>Applicable Foundation share</dt>
       <dd>{pretty(quote.foundationSupportMinor!)}</dd></div>
-     <div><dt>Amount due from patient</dt>
+     <div className="cg-health-amount"><dt>Amount due from patient</dt>
       <dd>{pretty(quote.patientPayableMinor!)}</dd></div>
     </dl>
     <p>{quote.state==="NO_EFFECTIVE_ASSISTANCE"?
@@ -140,9 +140,8 @@ export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept
      quote.accepted?
      "Accepted historical split. Actual patient collection has not been verified.":
      "Fee/policy quote only. Your booking and support are not yet financially accepted."}</p>
-    <p>Only the original approved CG-14 consultation fee is used; no separate
-     tax has been estimated. Payment, Foundation liability and settlement are
-     distinct later stages, not confirmed by this screen.</p>
+    <p>Only the approved consultation fee is shown. Tax is not estimated here.
+     Payment and Foundation settlement are confirmed separately.</p>
     {canAccept&&!!bookingRef&&!quote.accepted&&
      !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED","SOURCE_CHANGED_REVIEW_REQUIRED"].includes(quote.state)&&
      <button type="button" disabled={busy||uncertain} onClick={()=>void accept()}>
@@ -166,7 +165,6 @@ export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept
     bookingRef={bookingRef} centerRef={centerRef}
     canInitiate={!centerRef||canRecordCollections}/>}
   {uncertain&&<p role="alert">The previous acceptance may have succeeded.
-   Check this same booking before attempting any new request. Retrying retains
-   the original request key.</p>}
+   Check this same booking before attempting any new request. Retrying checks the same request without creating a new acceptance.</p>}
  </section>;
 }

@@ -3,7 +3,7 @@ import {BackHandler,Pressable,StyleSheet,Text,TextInput,View} from "react-native
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {NativeConsultationContribution} from "./native-consultation-contribution";
-import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as theme} from "../../../../../packages/design-tokens/src/index";
 const base=process.env.EXPO_PUBLIC_API_URL;
 const KEY="cg_public_patient_only_session";
 type Hold={holdRef:string;status:string;expiresAt:string;
@@ -14,7 +14,7 @@ type AppliedReschedule={applied:boolean;bookingId:string;doctorRef:string|null;
  centerRef:string|null;startAt:string|null;currentBooking:Booking};
 type Props={doctorRef:string;centerRef:string;doctorName:string;centerName:string;
  startAt:string;endAt:string;feeMinor:string;feeVersion:number;timeZone:string;
- reschedule?:{bookingRef:string;expectedVersion:number}};
+ reschedule?:{bookingRef:string;expectedVersion:number};onSelectionLock?:(locked:boolean)=>void;onPatientProfile?:()=>void};
 async function post<T>(path:string,data:Record<string,unknown>,token:string):Promise<T>{
  if(!base||!/^https?:\/\//.test(base)||
   (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
@@ -50,11 +50,13 @@ export function NativeConsultationAction(p:Props){
  const [message,setMessage]=useState("");
  const [reasonForVisit,setReasonForVisit]=useState("");
  const confirmedReason=useRef<string|null>(null);
+ const [staffExpanded,setStaffExpanded]=useState(false);
  const [staffBusy,setStaffBusy]=useState(false);
  const [staffCode,setStaffCode]=useState<{centerRef:string;authorizationCode:string;expiresAt:string}|null>(null);
  const [staffMessage,setStaffMessage]=useState("");
  const holdKey=useRef<string|null>(null),confirmKey=useRef<string|null>(null);
  const slipKey=useRef<string|null>(null);
+ useEffect(()=>{p.onSelectionLock?.(busy||uncertain||!!hold&&!booking);},[busy,uncertain,hold,booking,p.onSelectionLock]);
  // Hardware Back follows the same review-to-edit path as Public Web.
  // While a remote write is pending or uncertain, never silently leave and
  // invite a second reservation with a different idempotency key.
@@ -224,7 +226,7 @@ export function NativeConsultationAction(p:Props){
      setMessage("The original time is still reserved. Confirm using the same request.");return;
     }
     if(found?.status==="CONSUMED"){
-     setMessage("The original hold was used. Check the same booking again before any action.");return;
+     setUncertain(true);setMessage("The original hold was used. Check the same booking again before any action.");return;
     }
     if(found?.status==="EXPIRED"||found?.status==="CANCELLED"){
      holdKey.current=null;confirmKey.current=null;setHold(null);setReview(false);setUncertain(false);
@@ -253,16 +255,15 @@ export function NativeConsultationAction(p:Props){
     return;
    }
    setMessage("The original booking reference is unavailable. Refresh the selected time.");
-  }catch(e){setMessage(e instanceof Error?e.message:"Original appointment status is uncertain.");}
+  }catch(e){setUncertain(true);setMessage(e instanceof Error?e.message:"Original appointment status is uncertain.");}
   finally{setBusy(false);}
  }
  return <View style={style.box}>
-  <Text style={style.text}>{p.doctorName} · {p.centerName}</Text>
+  <Text accessibilityRole="header" style={style.heading}>{p.doctorName}</Text>
+  <Text style={style.text}>{p.centerName}</Text>
   <Text style={style.text}>{new Date(p.startAt).toLocaleString("en-IN",{
    timeZone:p.timeZone,dateStyle:"medium",timeStyle:"short"})}</Text>
-  <Text style={style.text}>Approved consultation fee ₹{(Number(p.feeMinor)/100).toFixed(2)}.
-   Patient due is calculated from an actual assistance policy at review.
-   No online payment is collected.</Text>
+  <Text style={style.text}>Consultation fee ₹{(Number(p.feeMinor)/100).toFixed(2)} · Pay at center.</Text>
   {!!message&&<Text accessibilityRole="alert" style={style.text}>{message}</Text>}
   {!booking&&!uncertain&&!p.reschedule&&!review&&<View style={{gap:4}}>
    <Text style={style.text}>Reason for visit (optional, private)</Text>
@@ -291,7 +292,7 @@ export function NativeConsultationAction(p:Props){
    </View>:
    p.reschedule?label(busy?"Checking…":"Accept fee and reschedule",()=>void reschedule()):
    hold?(review?<View style={{gap:8}}>
-    <Text style={style.heading}>Review doctor and appointment before confirming</Text>
+    <Text accessibilityRole="header" style={style.heading}>Review appointment</Text>
     <Text style={style.text}>Doctor: {p.doctorName}</Text>
     <Text style={style.text}>Center: {p.centerName}</Text>
     <Text style={style.text}>Date and time: {new Date(p.startAt).toLocaleString(
@@ -299,16 +300,23 @@ export function NativeConsultationAction(p:Props){
     <Text style={style.text}>Approved consultation fee:
      ₹{(Number(hold.consultationFeeMinor)/100).toFixed(2)}.
      Your patient share depends on the real assistance policy.</Text>
+    <Text accessibilityLiveRegion="polite" style={style.text}>Reserved until {new Date(hold.expiresAt).toLocaleString("en-IN")} — not yet booked.</Text>
+    <Text style={style.heading}>Foundation assistance &amp; patient amount</Text>
     <NativeConsultationContribution holdRef={hold.holdRef}/>
     <Text style={style.text}>Optional private reason:
      {reasonForVisit.trim()?" Included with this consultation":" Not provided"}</Text>
-    {label("Confirm reviewed appointment — pay at center",()=>void confirm())}
+    {label("Confirm appointment — pay at center",()=>void confirm())}
     {label("Back to edit the reason",()=>setReview(false))}
-    <Text style={style.text}>Your time is held until
-     {new Date(hold.expiresAt).toLocaleString("en-IN")}. There is no
-     confirmed appointment until the original booking succeeds.</Text>
-   </View>:label("Review doctor, center, time and fee",()=>setReview(true))):
+
+   </View>:label("Review appointment & fee",()=>setReview(true))):
    label(busy?"Checking…":"Reserve consultation time",()=>void reserve())}
+  {hold&&!booking&&!uncertain&&label("Check current reservation status",()=>void recover())}
+  {!booking&&!uncertain&&!hold&&!p.reschedule&&<> 
+  {p.onPatientProfile&&label("Sign in or complete patient registration",p.onPatientProfile)}
+  <Pressable accessibilityRole="button" accessibilityState={{expanded:staffExpanded}} onPress={()=>setStaffExpanded(v=>!v)} style={style.secondary}>
+   <Text style={style.heading}>{staffExpanded?"Hide reception booking help":"Need help booking at reception?"}</Text>
+  </Pressable>
+  {staffExpanded&&<>
   <Text style={style.text}>At this healthcare center, you can choose to have
    assigned reception staff book one consultation using a patient-issued code.</Text>
   <Pressable accessibilityRole="button" disabled={staffBusy}
@@ -322,6 +330,8 @@ export function NativeConsultationAction(p:Props){
    <Text selectable style={style.text}>Show your Virtual Patient ID
    and code {staffCode.authorizationCode} only to assigned staff at this center.
    Expires {new Date(staffCode.expiresAt).toLocaleTimeString("en-IN")}.</Text>}
+  </>}
+  </>}
  </View>;
 }
 const style=StyleSheet.create({
@@ -329,6 +339,7 @@ const style=StyleSheet.create({
  backgroundColor:theme.surface},
  text:{fontSize:13,color:theme.text},
  heading:{fontSize:15,fontWeight:"700",color:theme.text},
+ secondary:{minHeight:44,justifyContent:"center",padding:8},
  reasonInput:{minHeight:64,padding:10,borderRadius:8,borderWidth:1,
   borderColor:theme.border,color:theme.text,textAlignVertical:"top"},
  button:{minHeight:44,backgroundColor:theme.primary,padding:12,borderRadius:8,

@@ -76,6 +76,15 @@ const checks=[
  ["No public page HTML injection",!files.web.includes("dangerouslySetInnerHTML")],
  ["Public header uses Healthcare Assistance, not old Blood Donation slot",
   files.header.includes("Healthcare Assistance")&&!files.header.includes("Blood Donation")],
+ ["Public menu closes on selection, route changes and outside pointer; Escape restores focus",
+  files.header.includes('name="cg-public-navigation"')&&files.header.includes('event.key!=="Escape"')&&
+  files.header.includes('useEffect(()=>{closeNavigation();},[pathname])')&&
+  files.header.includes('event.target.closest("a[href]")')&&
+  files.header.includes('document.removeEventListener("pointerdown",outside)')],
+ ["Compact public navigation scrolls from the top with accessible tap targets",
+  read("apps/web/src/app/cg-site.css").includes(".cg-site-nav{justify-content:flex-start;max-height:min(75vh,calc(100dvh - 120px))")&&
+  read("apps/web/src/app/cg-site.css").includes(".cg-site-nav>*{flex-shrink:0}")&&
+  read("apps/web/src/app/cg-site.css").includes(".cg-site-dropdown>a{min-height:44px}")],
  ["Public carousel permits deliberate controls",files.carousel.includes("aria-pressed")],
  ["Admin owns real image placement upload",files.admin.includes("media/initiate")],
  ["No public draft media preview leak",files.media.includes('requireAction(bearer,"cms.content.view")')
@@ -208,7 +217,7 @@ const checks=[
   files.backend.includes('if(page.kind==="POLICY")')&&
   files.backend.includes("POLICY_SLUGS")&&
   files.adminExtended.includes('kind==="POLICY"')&&
-  files.policyRoute.includes('source.page.kind!=="POLICY"')],
+  files.policyRoute.includes('<CmsEditorialRoute slug={slug} expectedKind="POLICY"/>')&&files.mediaRenderer.includes('expectedKind&&page.page.kind!==expectedKind')],
  ["Original footer legal links and native legal buttons only after effective publish",
   files.web.includes('isPublished("/policies/"+slug)')&&
   files.android.includes('publishedPaths.includes("/policies/"+name)')&&
@@ -227,7 +236,7 @@ const checks=[
   files.backend.includes("item&&item.visible!==false?[{...item,originalIndex:index}]")&&
   files.backend.includes('asset.role!=="GALLERY"||authoredGallery[asset.sort_order]?.visible!==false')&&
   files.media.includes("->>'visible') IS DISTINCT FROM 'false'")&&
-  files.galleryClient.includes("mediaOrder=Number.isSafeInteger(item.originalIndex)")&&
+  files.galleryClient.includes("Number.isSafeInteger(item.originalIndex)")&&files.galleryClient.includes("a.order===item.originalIndex")&&
   files.androidExtended.includes('typeof item.originalIndex==="number"')&&
   files.adminExtended.includes("Show this item on the public site after independent approval")],
  ["Original Notices listing reads ONLY independent currently published CG19 source",
@@ -278,7 +287,7 @@ const checks=[
   files.publicExtended.includes("export function CmsContactInfo")&&
   files.publicExtended.includes("const secure=(value:unknown,hosts:string[])")&&
   files.web.includes('section.kind==="CONTACT_INFO"')&&
-  files.contactRoute.includes("<Cg19PublicContactForm/>")&&
+  files.contactRoute.includes("<Cg19PublicContactForm contact=")&&files.contactRoute.includes("!embedded&&form")&&files.web.includes("contactForm:undefined")&&
   files.cg21Copy.includes("CMS_INPUT_INVALID:")],
 
  ["Original PAN registration and annual child routes reuse current CG18/19 source",
@@ -315,7 +324,7 @@ const checks=[
 
  ["Native original NGO PAN/certificate/year tabs use approved CG18/CG19 assets",
   files.android.includes('setNgoScope("80g")')&&
-  files.android.includes('hasOfficialDocument(scope==="annual-reports"')&&
+  files.android.includes('scope==="annual-reports"||scope==="financial-reports"')&&files.android.includes('hasOfficialDocument("REGISTRATION")')&&files.android.includes('function NativeFinancialReports')&&
   files.androidExtended.includes('ngoScope!=="80g"')&&
   files.androidExtended.includes('mediaUrl(asset("DOCUMENT",index))')&&
   files.androidExtended.includes('annualYear')&&
@@ -528,7 +537,11 @@ checks.push(["Current Home CG03 approval only controls Member and Volunteer Join
  files.backend.includes("c.status='OWNER_COMPLETED'")&&
  files.backend.includes("n.status='APPROVED'")]);
 checks.push(["Public Web/footer never fabricate fundraiser links",
- files.web.includes('isPublished("/campaigns")?<Link href="/campaigns">Campaigns</Link>')&&
+ files.web.includes('<Link href="/campaigns">Campaigns</Link>')&&
+ files.header.includes('<Link href="/campaigns"')&&
+ files.header.includes('text==="Blog"?"/blog":undefined')&&
+ files.android.includes('<CmsButton title="Campaigns" secondary={slug!=="campaigns"}')&&
+ files.android.includes('<CmsButton title="News & Articles" secondary={slug!=="articles"}')&&
  files.web.includes('isPublished("/donate")?<Link href="/donate">Donate</Link>')&&
  files.web.includes('aria-disabled="true"')]);
 checks.push(["Unpublished Home remains non-indexed but exposes truthful shared public shell",
@@ -611,10 +624,10 @@ checks.push(["Generated artwork uses only authorized original CG19 uploads and i
  illustrationImporter.includes('hash(bytes)!==digest')&&illustrationImporter.includes('/api/cms/media/initiate')&&
  illustrationImporter.includes('proof.cleanVerified')&&illustrationImporter.includes('pagePath+"/draft"')&&
  !illustrationImporter.includes('"/publish"')&&firstPublication.includes('home-editorial-media')&&
- files.carousel.includes("AI-generated illustration; not a photograph")&&files.android.includes("AI-generated illustration; not a photograph")]);
+ files.carousel.includes("AI-generated illustration|Editorial illustration")&&files.carousel.includes("not a photograph of Foundation activities")&&files.android.includes("AI-generated illustration|Editorial illustration")&&files.android.includes("not a photograph of Foundation activities")]);
 const partnershipPage=read("apps/web/src/app/collaboration/page.tsx");
 checks.push(["Corporate partnership general narrative uses current CMS content in both public channels",
- initDrafts.includes('heading:"Why Partner With Us?"')&&partnershipPage.includes('approved.filter(s=>s.kind==="RICH_TEXT")')&&
+ initDrafts.includes('heading:"Why Partner With Us?"')&&partnershipPage.includes('approved.filter(s=>s.kind==="RICH_TEXT"')&&
  partnershipPage.includes("narrative.map")&&!partnershipPage.includes("<h3>Community Impact</h3>")&&
  files.android.includes('section.kind==="RICH_TEXT"')&&files.adminExtended.includes("Add partnership text section")]);
 const eventsRoute=read("apps/web/src/app/events/page.tsx");
@@ -646,7 +659,13 @@ checks.push(["E2E-006 team source and publication revalidation",
  files.admin.includes('"team-sources"')&&internalCms.includes('"team-sources"')&&
  teamRoute.includes('p.consentConfirmed!==true')&&teamRoute.includes('publishedCmsPage("about")')&&
  files.header.includes('href:"/about/team"')&&files.android.includes('slug==="@team"?<NativeTeamDirectory/>')&&
- files.backend.includes('assets:visibleAssets.filter(v=>v.role!=="TEAM")')]);
+ (files.backend.includes('assets:visibleAssets.filter(v=>v.role!=="TEAM")')||files.backend.includes('visibleAssets.filter(v=>v.role!=="TEAM")'))]);
+checks.push(["Public catalogue filters count only current visible asset placements; Android year and reset parity",
+ files.galleryClient.includes('entries.length===0?')&&files.androidExtended.includes('mediaUrl(asset("GALLERY",i))')&&files.androidExtended.includes('const [mediaYear,setMediaYear]')&&files.androidExtended.includes('onPress={resetMedia}')]);
+checks.push(["Private support form is positioned once and fallback remains independent",
+ files.contactRoute.includes('contactForm={embedded?form:undefined}')&&files.contactRoute.includes('!embedded&&form')&&files.publicExtended.includes('{form}')]);
+checks.push(["Donation enquiry does not activate unverified payment",
+ files.web.includes('isPublished("/donate")?')&&files.web.includes('cg-site-float-enquiry')&&files.web.includes('aria-label="Contact CareGanga about donations"')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);

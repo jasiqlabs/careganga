@@ -6,7 +6,7 @@ import {NativeCenterMerchantCheckout}
  from "../../../../../packages/native-checkout/src/native-center-merchant-checkout";
 import {NativePatientCenterCollectionSummary}
  from "./native-patient-center-collection-summary";
-import {careGangaTheme as t}
+import {careGangaPublicTheme as t}
  from "../../../../../packages/design-tokens/src/index";
 type Split={state:string;accepted?:boolean;replayed?:boolean;
  grossMinor?:string;foundationSupportMinor?:string;
@@ -157,7 +157,7 @@ export function NativeConsultationContribution({holdRef,bookingRef,
    <Text style={s.amount}>Actual consultation fee: {money(value.grossMinor!)}</Text>
    <Text style={s.amount}>Applicable Foundation share: {
     money(value.foundationSupportMinor!)}</Text>
-   <Text style={s.amount}>Patient due at center: {money(value.patientPayableMinor!)}</Text>
+   <View style={s.total}><Text style={s.amount}>Patient payable amount</Text><Text style={s.totalValue}>{money(value.patientPayableMinor!)}</Text></View>
    <Text style={s.note}>{value.state==="NO_EFFECTIVE_ASSISTANCE"?
     "No active approved assistance; full fee is patient due.":
     value.state==="SERVICE_NO_SHOW_REVIEW_REQUIRED"?
@@ -167,8 +167,7 @@ export function NativeConsultationContribution({holdRef,bookingRef,
      "Original split preserved; booking changed and needs center review.":
     value.accepted?"Original accepted split; payment remains unverified.":
      "Quote only. Not an accepted charge or patient payment."}</Text>
-   <Text style={s.note}>No tax amount has been invented. CG17 does not
-    collect the patient payment or create a Foundation liability here.</Text>
+   <Text style={s.note}>Tax is not estimated here. Payment and Foundation settlement are confirmed separately.</Text>
    {canAccept&&bookingRef&&!value.accepted&&
     !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED","SOURCE_CHANGED_REVIEW_REQUIRED"].includes(value.state)&&
     btn("Accept original contribution split",()=>void accept(),busy||uncertain)}
@@ -191,7 +190,7 @@ const s=StyleSheet.create({
  panel:{padding:12,gap:10,borderWidth:1,borderColor:t.border,
   borderRadius:12,backgroundColor:t.surface},
  title:{fontSize:16,fontWeight:"700",color:t.text},
- rows:{gap:9},
+ rows:{gap:9},total:{padding:12,borderRadius:10,backgroundColor:t.gold,gap:5},totalValue:{fontSize:21,fontWeight:"800",color:t.sidebar},
  amount:{fontSize:14,fontWeight:"600",color:t.text,lineHeight:20},
  note:{fontSize:13,lineHeight:20,color:t.mutedText},
  button:{minHeight:48,padding:12,justifyContent:"center",

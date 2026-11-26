@@ -383,6 +383,8 @@ Dependencies: US-001, US-002
 - Full test suite, database migrations, and local builds verified passing.
 
 
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
 **Owner:** cg-13-referrals-rewards. **Branch status:** FUTURE_OWNER_NOT_IMPLEMENTED. Delegated scope/UX/DLD/QA design clarification only; merged source where available is not proof of mobile action completeness or runtime acceptance. Reuse approved original BR/PRD/HLD, existing QA IDs, dependencies, CG-01 authenticated roles, CG-14 center affiliation and CG-19 private proof; no new business master, feature or clinical privilege.
 
 **Equivalent channels:** Foundation Admin / assigned center operator / clinician Web **↔ authorized Internal Android** for authorized referral program/ranks/rewards administration, approvals, source-backed stock fulfillment and reporting. Approved public/consented Web **↔ Public Android** for consented member or volunteer own referral points, reward state and approved redemption; every private center, patient, finance and staff action requires actual backend grant/scope and privacy proof. A historically Web-only Center Portal or selected Admin form is **not** automatically excluded: provide an Internal Android route for the same enrolled actor or obtain a specific approved exception. Do not use a WebView or invent a new partner app.

@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   Eye,
   EyeOff,
-  Printer,
   Download,
   RefreshCw,
   Trash2,
@@ -571,25 +570,9 @@ export function PrivateLetterPanel({
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontSize: "0.82rem", fontWeight: 600, color: "#334155" }}>
                   <FileText size={15} strokeWidth={2} style={{ width: "15px", height: "15px", color: "#0A1F44" }} />
-                  <span>Official A4 Document Sheet</span>
+                  <span>Draft template preview — print only the issued PDF</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <button
-                    type="button"
-                    className="cg19-btn-reset"
-                    onClick={() => window.print()}
-                    style={{
-                      fontSize: "0.75rem",
-                      padding: "0.3rem 0.65rem",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "0.35rem",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <Printer size={13} strokeWidth={2} style={{ width: "13px", height: "13px" }} />
-                    <span>Print Letter</span>
-                  </button>
                   {latestIssued?.canDownload && (
                     <a
                       href={"/api/documents/letters/" + encodeURIComponent(latestIssued.documentRef) + "/download"}
@@ -604,7 +587,7 @@ export function PrivateLetterPanel({
                       }}
                     >
                       <Download size={13} strokeWidth={2} style={{ width: "13px", height: "13px" }} />
-                      <span>Download PDF</span>
+                      <span>Download issued PDF to print</span>
                     </a>
                   )}
                 </div>
@@ -614,7 +597,7 @@ export function PrivateLetterPanel({
               <div style={{ padding: "1.25rem", background: "#f1f5f9" }}>
                 <article
                   className="cg19-letter-sheet"
-                  aria-label="Live Official Letterhead Preview"
+                  aria-label="Unissued letter template preview, not an official document"
                   style={{
                     background: "#ffffff",
                     color: "#1e293b",
@@ -682,7 +665,7 @@ export function PrivateLetterPanel({
                       }}
                     >
                       <span style={{ display: "block", fontWeight: 700, color: "#0f172a" }}>CareGanga Trust</span>
-                      <span>Verified System Letter</span>
+                      <span>PREVIEW — NOT ISSUED</span>
                     </div>
                   </header>
 
@@ -704,12 +687,12 @@ export function PrivateLetterPanel({
                         Application Reference
                       </strong>
                       <span className="font-slab" style={{ color: "#0f172a", fontWeight: 600 }}>
-                        {caseNumber || caseRef.slice(0, 8)}
+                        {caseNumber || "Reference unavailable"}
                       </span>
                     </div>
                     <div className="cg19-letter-meta-item">
                       <strong style={{ color: "#475569", fontSize: "0.7rem", textTransform: "uppercase", display: "block" }}>
-                        Approved Revision
+                        Source Revision
                       </strong>
                       <span style={{ color: "#0f172a", fontWeight: 600 }}>Revision {sourceRevision}</span>
                     </div>
@@ -775,8 +758,7 @@ export function PrivateLetterPanel({
                       }}
                     >
                       <strong>Terms &amp; Conditions:</strong> Access remains subject to current role grants and
-                      security policy. This confirmation is cryptographically issued and may be revoked at any time
-                      by authorized Foundation leadership.
+                      security policy. Only a separately issued and authorized PDF is an official document.
                     </aside>
 
                     <div
@@ -811,20 +793,18 @@ export function PrivateLetterPanel({
                           background: "#fafafa",
                         }}
                       >
-                        Official
+                        Seal position
                         <br />
-                        CareGanga
-                        <br />
-                        Seal
+                        Not applied
                       </div>
 
                       <div className="cg19-letter-signatory" style={{ textAlign: "right", fontSize: "0.8rem", color: "#475569" }}>
                         <strong style={{ display: "block", color: "#0f172a", fontSize: "0.88rem" }}>
-                          Super Admin / Operations
+                          Signatory position (illustrative)
                         </strong>
                         <span>CareGanga Foundation</span>
-                        <small style={{ display: "block", color: "#16a34a", fontWeight: 600, marginTop: "0.2rem" }}>
-                          ✓ Cryptographically Verified
+                        <small style={{ display: "block", color: "#92400e", fontWeight: 600, marginTop: "0.2rem" }}>
+                          Draft preview — not verified
                         </small>
                       </div>
                     </div>
@@ -842,7 +822,7 @@ export function PrivateLetterPanel({
                       fontFamily: "system-ui, sans-serif",
                     }}
                   >
-                    Private document. Verify current access status in CareGanga Foundation system.
+                    DRAFT PREVIEW — NOT AN OFFICIAL DOCUMENT. Download the authorized issued PDF for verification or printing.
                   </footer>
                 </article>
               </div>
@@ -1305,26 +1285,8 @@ export function PrivateLetterPanel({
                                 }}
                               >
                                 <Download size={12} strokeWidth={2} style={{ width: "12px", height: "12px" }} />
-                                <span>Download</span>
+                                <span>Download issued PDF to print</span>
                               </a>
-                            )}
-                            {item.state === "ISSUED" && (
-                              <button
-                                type="button"
-                                className="cg19-btn-reset"
-                                onClick={() => window.print()}
-                                style={{
-                                  fontSize: "0.75rem",
-                                  padding: "0.3rem 0.55rem",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "0.3rem",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                <Printer size={12} strokeWidth={2} style={{ width: "12px", height: "12px" }} />
-                                <span>Print</span>
-                              </button>
                             )}
                             {item.canReconcile && canIssue && (
                               <button

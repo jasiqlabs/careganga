@@ -277,9 +277,16 @@ export class SessionService implements IdentityAuthorization {
 async effectiveAccess(bearer:string):Promise<{displayName:string;roleName:string;actions:readonly {key:string;businessLabel:string;group:string}[]}> {
     const actor=await this.verifySession(bearer);
     const granted=await this.allowedActionsFor(actor);
+    // Optional laboratory operations must not appear as usable UI actions
+    // when their original CG16 server readiness is disabled. Role grants,
+    // assignable capability catalog and backend admission remain unchanged.
+    const labEnabled=process.env.CAREGANGA_ERP_LAB_ENABLED==="true";
+    const clinicalEnabled=labEnabled&&process.env.CAREGANGA_LAB_CLINICAL_READINESS==="APPROVED";
+    const equipment=new Set(["lab.equipment.view","lab.equipment.manage","lab.quality.record"]);
+    const clinical=new Set(["lab.orders.create","lab.orders.view","lab.samples.manage","lab.results.record","lab.report.review","lab.report.release"]);
     return {
       displayName:actor.displayName,roleName:actor.roleName,
-      actions:capabilitiesInUse().filter(c=>granted.includes(c.key))
+      actions:capabilitiesInUse().filter(c=>granted.includes(c.key)&&(!equipment.has(c.key)||labEnabled)&&(!clinical.has(c.key)||clinicalEnabled))
         .map(({key,businessLabel,group})=>({key,businessLabel,group}))
     };
   }

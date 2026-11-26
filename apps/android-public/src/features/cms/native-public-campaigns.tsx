@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,AppState,BackHandler,Image,Pressable,StyleSheet,Text,View} from "react-native";
 import {NativePublicDonation} from "./native-public-donation";
-import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Campaign={slug:string;title:string;category:string;summary:string;description:string;
  goalMinor:string|null;raisedMinor:string;startAt:string|null;endAt:string|null;area:string;
  coverSrc:string|null;heroSrc:string|null;heroAlt:string};
@@ -30,18 +30,18 @@ const clean=(v:unknown):v is Campaign=>{
   typeof x.heroAlt==="string"&&x.heroAlt.length<=240&&
   (x.coverSrc===null||typeof x.coverSrc==="string"&&safeImage(x.coverSrc)!==null)&&
   (x.heroSrc===null||typeof x.heroSrc==="string"&&safeImage(x.heroSrc)!==null)&&
-  (x.goalMinor===null||typeof x.goalMinor==="string"&&/^[0-9]{1,14}$/.test(x.goalMinor))&&
+  (x.goalMinor===null||typeof x.goalMinor==="string"&&/^[1-9][0-9]{0,13}$/.test(x.goalMinor))&&
   typeof x.raisedMinor==="string"&&/^(0|[1-9][0-9]{0,27})$/.test(x.raisedMinor)&&
   (x.startAt===null||typeof x.startAt==="string"&&/^20[0-9]{2}-[0-9]{2}-[0-9]{2}$/.test(x.startAt))&&
   (x.endAt===null||typeof x.endAt==="string"&&/^20[0-9]{2}-[0-9]{2}-[0-9]{2}$/.test(x.endAt));
 };
 export function NativePublicCampaigns(){
  const [items,setItems]=useState<Campaign[]>([]),[selected,setSelected]=useState<string|null>(null),
-  [loading,setLoading]=useState(false),[unavailable,setUnavailable]=useState(false),
+  [loading,setLoading]=useState(true),[unavailable,setUnavailable]=useState(false),
   [donationsEnabled,setDonationsEnabled]=useState(false);
  const latest=useRef(0);
  const load=useCallback(async()=>{
-  const nonce=++latest.current;setLoading(true);setUnavailable(false);
+  const nonce=++latest.current;setLoading(true);setUnavailable(false);setDonationsEnabled(false);
   try{
    if(!validApi)throw Error("Original API unavailable");
    const response=await fetch(new URL("/api/public/content/campaigns",base),{
@@ -62,7 +62,7 @@ export function NativePublicCampaigns(){
  },[]);
  useEffect(()=>{void load();return()=>{latest.current++};},[load]);
  useEffect(()=>{
-  const sub=AppState.addEventListener("change",state=>{if(state==="active")void load();});
+  const sub=AppState.addEventListener("change",state=>{if(state==="active")void load();else{latest.current++;setItems([]);setDonationsEnabled(false);setLoading(true);}});
   return()=>sub.remove();
  },[load]);
  useEffect(()=>{
@@ -77,8 +77,7 @@ export function NativePublicCampaigns(){
  return <View style={styles.page}>
   <Text accessibilityRole="header" style={styles.title}>CareGanga Campaigns</Text>
   <Text style={styles.note}>Only currently approved and independently published Foundation campaigns appear here.</Text>
-  {loading&&<ActivityIndicator accessibilityLabel="Refreshing approved campaign status"/>}
-  {unavailable?<View style={styles.card}><Text accessibilityRole="alert">Current campaign information is temporarily unavailable.</Text>{button("Try again",()=>void load())}</View>:
+  {loading?<ActivityIndicator accessibilityLabel="Refreshing approved campaign status"/>:unavailable?<View style={styles.card}><Text accessibilityRole="alert">Current campaign information is temporarily unavailable.</Text>{button("Try again",()=>void load())}</View>:
    campaign?<View style={styles.card}>
     {button("Back to campaigns",()=>setSelected(null))}
     {!!safeImage(campaign.heroSrc)&&<Image source={{uri:safeImage(campaign.heroSrc)!}}
@@ -101,16 +100,17 @@ export function NativePublicCampaigns(){
     <Text accessibilityRole="header" style={styles.heading}>{c.title}</Text>
     {!!c.summary&&<Text style={styles.body}>{c.summary}</Text>}
     {!!money(c.goalMinor)&&<Text>Fundraising goal: {money(c.goalMinor)} (planned)</Text>}
+    <Text style={styles.note}>Verified net contributions: {money(c.raisedMinor)}</Text>
     {button("Read campaign details",()=>{setSelected(c.slug);void load();})}
    </View>)}
-  {button("Refresh published campaigns",()=>void load())}
+  {!loading&&button("Refresh published campaigns",()=>void load())}
  </View>;
 }
 const styles=StyleSheet.create({
  page:{padding:12,gap:12},card:{backgroundColor:t.surface,borderColor:t.border,borderWidth:1,borderRadius:12,padding:14,gap:9},
  title:{fontSize:23,fontWeight:"700",color:t.text},heading:{fontSize:18,fontWeight:"700",color:t.text},
- label:{fontSize:12,fontWeight:"700",color:"#9a681b"},note:{fontSize:13,color:t.mutedText},
+ label:{fontSize:12,fontWeight:"700",color:t.primary},note:{fontSize:13,color:t.mutedText},
  body:{fontSize:15,color:t.text,lineHeight:22},image:{width:"100%",height:220,borderRadius:9},
- button:{backgroundColor:"#f4aa40",padding:13,borderRadius:8,minHeight:46,justifyContent:"center"},
- buttonText:{fontWeight:"700",color:"#17263c",textAlign:"center"}
+ button:{backgroundColor:t.amber,padding:13,borderRadius:8,minHeight:48,justifyContent:"center"},
+ buttonText:{fontWeight:"700",color:"#17263c",textAlign:"center",flexShrink:1}
 });

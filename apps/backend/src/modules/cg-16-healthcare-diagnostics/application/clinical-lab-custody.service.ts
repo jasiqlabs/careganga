@@ -3,7 +3,7 @@ import {BadRequestException,ConflictException,Inject,Injectable,NotFoundExceptio
 import {createHash,randomBytes} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
-import {ClinicalLabAdmissionService} from "./clinical-lab-admission.service";
+import {ClinicalLabAdmissionService,CURRENT_LAB_ORDER_CARE_PREDICATE} from "./clinical-lab-admission.service";
 
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const transitions={
@@ -49,7 +49,7 @@ export class ClinicalLabCustodyService{
     "s.material_type,o.status AS order_status FROM lab_sample s "+
     "JOIN lab_order o ON o.root_realm_id=s.root_realm_id AND o.id=s.order_ref "+
     "WHERE s.root_realm_id=$1 AND s.id=$2 AND s.order_ref=$3 "+
-    "AND o.center_ref=$4 FOR UPDATE OF s,o",
+    "AND o.center_ref=$4 "+CURRENT_LAB_ORDER_CARE_PREDICATE+"FOR UPDATE OF s,o",
     [actor.realmId,sample,order,center]);
    const old=r.rows[0];
    if(!old)throw new NotFoundException({code:"LAB_CUSTODY_SAMPLE_UNAVAILABLE"});

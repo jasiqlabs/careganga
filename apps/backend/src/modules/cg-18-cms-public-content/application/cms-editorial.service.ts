@@ -16,6 +16,8 @@ import {approvedBeneficiaryImpact,beneficiaryImpactFields,beneficiaryImpactSourc
 import {complianceEligible} from "./cms-compliance-eligibility";
 import {eligibleCampaignSources,campaignTeaserRefs,validateCampaignTeaser,publicCampaignSources,onlineDonationReady} from "../../cg-07-campaigns-donations/application/campaign-public-source";
 import {HrPublicBioEditorialSource,type HrEditorialPerson} from "../../cg-10-human-resources/application/hr-public-bio-editorial-source";
+import {initialEditorialRelease} from "./cms-initial-editorial-release";
+import {releaseIllustration,releaseIllustrations,releaseIllustrationBytes,verifyReleaseIllustrations,type ReleaseIllustration} from "./cms-release-illustrations";
 import {CsrPartnerPublicSource,type CsrEditorialSelection} from "../../cg-08-csr-funding/application/csr-partner-public-source";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
@@ -112,7 +114,8 @@ function placementFits(sections:readonly Section[],a:{role:string;order:number})
    Array.isArray(s.fields.members)&&a.order<s.fields.members.length;
   if(a.role==="FEATURE")return (s.kind==="FEATURE_CARDS"&&
    Array.isArray(s.fields.cards)&&a.order<s.fields.cards.length)||
-   (s.kind==="PARTNER_CARDS"&&Array.isArray(s.fields.partners)&&a.order<s.fields.partners.length);
+   (s.kind==="PARTNER_CARDS"&&Array.isArray(s.fields.partners)&&a.order<s.fields.partners.length)||
+   (s.kind==="HEALTHCARE_CATEGORIES"&&Array.isArray(s.fields.categories)&&a.order<s.fields.categories.length);
   if(a.role==="GALLERY")return s.kind==="GALLERY_GRID"&&
    Array.isArray(s.fields.items)&&a.order<s.fields.items.length;
   if(a.role==="ARTICLE")return s.kind==="ARTICLE_BODY"&&a.order===0;
@@ -342,7 +345,7 @@ function parseContent(raw:unknown):Content{
 type Page={id:string;kind:string;slug:string;version:string;created_by:string;
  draft_revision_no:number;archived_at:Date|null};
 type Revision={id:string;revision_no:number;status:string;content_digest:string;
- approval_case_ref:string|null;title:string;seo_title:string;seo_description:string;
+ release_baseline:boolean;approval_case_ref:string|null;title:string;seo_title:string;seo_description:string;
  seo_canonical_path:string;created_by:string};
 @Injectable()
 export class CmsEditorialService{
@@ -429,13 +432,86 @@ export class CmsEditorialService{
   const a=await this.sessions.requireAction(bearer,"cms.content.manage");
   return this.withTx(async tx=>{await this.identity.assertCurrent(tx,a,"cms.content.manage");return {sources:await eligibleProjectSources(tx,a.realmId)};});
  }
+ /**
+  * Deployment-only, fixed source baseline. No HTTP controller, staff session,
+  * fake CG03 decision, external manifest or request-provided content.
+  * Root lock serializes normal create and concurrent server startups.
+  */
+ async initializeReleaseBaseline():Promise<void>{
+  // Check the bundled files on every start (read-only), including copied
+  // prebuilt artifacts; skip all content writes and parsing once installed.
+  await verifyReleaseIllustrations();
+  const done=await this.db.query("SELECT 1 FROM cms_release_install i JOIN access_realm r ON r.id=i.foundation_root_id WHERE r.realm_key='FOUNDATION_ROOT' AND i.release_key='CAREGANGA_INITIAL_EDITORIAL_V1'");
+  if(done.rowCount){console.log("CMS initial release already installed; no content changes.");return;}
+  await this.withTx(async tx=>{
+   await tx.query("INSERT INTO access_realm(realm_key) VALUES('FOUNDATION_ROOT') ON CONFLICT(realm_key) DO NOTHING");
+   const root=(await tx.query<{id:string}>("SELECT id FROM access_realm WHERE realm_key='FOUNDATION_ROOT' FOR UPDATE")).rows[0]?.id;
+   if(!root)throw Error("CMS Foundation root unavailable");
+   if((await tx.query("SELECT 1 FROM cms_release_install WHERE foundation_root_id=$1",[root])).rowCount)return;
+   // Validate every fixed entry before writing the first page.
+   const entries=initialEditorialRelease.map(parseContent);
+   for(const value of entries){
+    if((await tx.query("SELECT 1 FROM cms_page WHERE foundation_root_id=$1 AND slug=$2",[root,value.slug])).rowCount)continue;
+    // Only fixed editorial copy, no private/operational data or uploaded asset
+    // can be admitted to this release authorization.
+    if(value.assets.length||value.sections.some(sec=>sec.kind==="TEAM"||sec.kind==="ARTICLE_BODY"||sec.kind==="CAMPAIGN_TEASER"||
+     (sec.kind==="PROJECT_TEASER"&&Array.isArray(sec.fields.sourceRefs)&&sec.fields.sourceRefs.length>0)))throw Error("Invalid release baseline");
+    const bundled=releaseIllustrations.filter(a=>a.pageSlug===value.slug);
+    if(bundled.some(a=>!placementFits(value.sections,a)))throw Error("Invalid release illustration placement");
+    if(value.kind==="HEALTHCARE")validateExtendedPage(value.kind,value.sections,bundled,true);
+    const digest=sha({...value,bundled:bundled.map(a=>a.key).sort()});
+    const page=(await tx.query<{id:string}>("INSERT INTO cms_page(foundation_root_id,slug,kind,draft_revision_no,release_baseline) VALUES($1,$2,$3,1,true) RETURNING id",[root,value.slug,value.kind])).rows[0].id;
+    const rev=(await tx.query<{id:string}>("INSERT INTO cms_page_revision(foundation_root_id,page_id,revision_no,title,seo_title,seo_description,seo_canonical_path,content_digest,release_baseline) VALUES($1,$2,1,$3,$4,$5,$6,$7,true) RETURNING id",[root,page,value.title,value.seoTitle,value.seoDescription,value.canonicalPath,digest])).rows[0].id;
+    for(const sec of value.sections)await tx.query("INSERT INTO cms_section_revision(foundation_root_id,page_revision_id,section_kind,order_no,structured_fields) VALUES($1,$2,$3,$4,$5::jsonb)",[root,rev,sec.kind,sec.order,JSON.stringify(sec.fields)]);
+    await this.writeReleaseAssets(tx,root,rev,bundled);
+    // Legal shells require genuine client text and the normal CG03 workflow.
+    if(value.kind==="POLICY")continue;
+    const publication=(await tx.query<{id:string}>("INSERT INTO cms_publication(foundation_root_id,page_id,page_revision_id,source_content_digest,publication_key,state,effective_at,release_baseline) VALUES($1,$2,$3,$4,$5,'EFFECTIVE',now(),true) RETURNING id",[root,page,rev,digest,randomUUID()])).rows[0].id;
+    await tx.query("INSERT INTO cms_page_effective(foundation_root_id,page_id,publication_id) VALUES($1,$2,$3)",[root,page,publication]);
+    if(value.navigation){
+     const seq=(await tx.query<{revision_no:number}>("SELECT COALESCE(MAX(revision_no),0)+1 AS revision_no FROM cms_navigation_revision WHERE foundation_root_id=$1",[root])).rows[0].revision_no;
+     const nav=(await tx.query<{id:string}>("INSERT INTO cms_navigation_revision(foundation_root_id,revision_no,login_desired,member_join_desired,volunteer_join_desired,source_digest,status,home_revision_id,release_baseline) VALUES($1,$2,$3,$4,$5,$6,'DRAFT',$7,true) RETURNING id",[root,seq,value.navigation.loginDesired,value.navigation.memberJoinDesired,value.navigation.volunteerJoinDesired,digest,rev])).rows[0].id;
+     await tx.query("INSERT INTO cms_navigation_effective(foundation_root_id,revision_id) VALUES($1,$2) ON CONFLICT(foundation_root_id) DO NOTHING",[root,nav]);
+    }
+   }
+   await tx.query("INSERT INTO cms_release_install(foundation_root_id,release_key) VALUES($1,'CAREGANGA_INITIAL_EDITORIAL_V1')",[root]);
+  });
+ }
+ private async releaseAssets(db:Pool|PoolClient,root:string,rev:string):Promise<ReleaseIllustration[]>{
+  const rows=await db.query<{asset_key:string}>("SELECT asset_key FROM cms_release_asset WHERE foundation_root_id=$1 AND page_revision_id=$2 ORDER BY role,sort_order",[root,rev]);
+  return rows.rows.map(row=>{
+   const asset=releaseIllustration(row.asset_key);if(!asset)throw Error("Invalid bundled media source");return asset;
+  });
+ }
+ private async writeReleaseAssets(tx:PoolClient,root:string,rev:string,assets:readonly ReleaseIllustration[]){
+  await tx.query("DELETE FROM cms_release_asset WHERE foundation_root_id=$1 AND page_revision_id=$2",[root,rev]);
+  for(const a of assets)await tx.query("INSERT INTO cms_release_asset(foundation_root_id,page_revision_id,asset_key,role,sort_order) VALUES($1,$2,$3,$4,$5)",[root,rev,a.key,a.role,a.order]);
+ }
+ async releaseMedia(key:string){
+  if(!releaseIllustration(key))throw new NotFoundException();
+  const visible=()=>this.db.query("SELECT 1 FROM cms_release_asset a JOIN cms_page_revision v ON v.id=a.page_revision_id AND v.foundation_root_id=a.foundation_root_id JOIN cms_page p ON p.id=v.page_id AND p.foundation_root_id=v.foundation_root_id JOIN access_realm r ON r.id=p.foundation_root_id JOIN cms_page_effective e ON e.page_id=p.id AND e.foundation_root_id=p.foundation_root_id JOIN cms_publication pub ON pub.id=e.publication_id AND pub.foundation_root_id=e.foundation_root_id AND pub.page_revision_id=v.id WHERE r.realm_key='FOUNDATION_ROOT' AND p.archived_at IS NULL AND pub.state='EFFECTIVE' AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) AND a.asset_key=$1 AND NOT EXISTS(SELECT 1 FROM cms_asset_placement uploaded WHERE uploaded.foundation_root_id=a.foundation_root_id AND uploaded.page_revision_id=a.page_revision_id AND uploaded.role=a.role AND uploaded.sort_order=a.sort_order) AND EXISTS(SELECT 1 FROM cms_section_revision sec WHERE sec.foundation_root_id=a.foundation_root_id AND sec.page_revision_id=a.page_revision_id AND ((a.role='HERO' AND sec.section_kind='HERO' AND sec.order_no=a.sort_order AND sec.structured_fields->>'visible' IS DISTINCT FROM 'false' AND sec.structured_fields->>'textOnly' IS DISTINCT FROM 'true') OR (a.role='ABOUT' AND sec.section_kind='RICH_TEXT' AND sec.order_no=a.sort_order AND sec.structured_fields->>'variant'='SPLIT') OR (a.role='PROMO' AND sec.section_kind='CTA' AND sec.order_no=a.sort_order) OR (a.role='FEATURE' AND ((sec.section_kind='FEATURE_CARDS' AND CASE WHEN jsonb_typeof(sec.structured_fields->'cards')='array' THEN jsonb_array_length(sec.structured_fields->'cards')>a.sort_order ELSE false END) OR (sec.section_kind='HEALTHCARE_CATEGORIES' AND CASE WHEN jsonb_typeof(sec.structured_fields->'categories')='array' THEN jsonb_array_length(sec.structured_fields->'categories')>a.sort_order ELSE false END))))) LIMIT 1",[key]);
+  if(!(await visible()).rowCount)throw new NotFoundException();
+  const bytes=await releaseIllustrationBytes(key);
+  if(!(await visible()).rowCount)throw new NotFoundException();
+  return bytes;
+ }
+ async releaseMediaPreview(bearer:string,key:string){
+  const actor=await this.sessions.requireAction(bearer,"cms.content.view");
+  if(!releaseIllustration(key))throw new NotFoundException();
+  const placed=()=>this.db.query("SELECT 1 FROM cms_release_asset a JOIN cms_page_revision v ON v.id=a.page_revision_id AND v.foundation_root_id=a.foundation_root_id JOIN cms_page p ON p.id=v.page_id AND p.foundation_root_id=v.foundation_root_id WHERE a.foundation_root_id=$1 AND a.asset_key=$2 AND p.archived_at IS NULL LIMIT 1",[actor.realmId,key]);
+  if(!(await placed()).rowCount)throw new NotFoundException();
+  const bytes=await releaseIllustrationBytes(key);
+  const fresh=await this.sessions.requireAction(bearer,"cms.content.view");
+  if(fresh.realmId!==actor.realmId||!(await placed()).rowCount)throw new NotFoundException();
+  return bytes;
+ }
  async list(bearer:string,scope?:string){
   if(scope!==undefined&&scope!=="baseline")throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"scope"});
   const a=await this.sessions.requireAction(bearer,"cms.content.view");
   const result=await this.db.query<{pageRef:string;kind:string;slug:string;title:string;
    version:string;draftStatus:string;publicStatus:string|null}>(
    'SELECT p.id AS "pageRef",p.kind,p.slug,v.title,p.version,'+
-   'v.status AS "draftStatus",pub.state AS "publicStatus" '+
+   'CASE WHEN v.release_baseline THEN \'RELEASE_BASELINE\' ELSE v.status END AS "draftStatus",pub.state AS "publicStatus" '+
    'FROM cms_page p JOIN cms_page_revision v ON v.page_id=p.id '+
    'AND v.foundation_root_id=p.foundation_root_id '+
    'AND v.revision_no=p.draft_revision_no '+
@@ -480,13 +556,14 @@ export class CmsEditorialService{
     tx.query("SELECT 1 FROM cms_publication WHERE foundation_root_id=$1 AND page_id=$2 LIMIT 1",[a.realmId,page.id])
    ]);
    return {pageRef:page.id,kind:page.kind,slug:page.slug,version:Number(page.version),
-    revisionRef:rev.id,revisionNo:rev.revision_no,status:rev.status,
+    revisionRef:rev.id,revisionNo:rev.revision_no,status:rev.release_baseline?"RELEASE_BASELINE":rev.status,
     approvalCaseRef:rev.approval_case_ref,title:rev.title,
     seoTitle:rev.seo_title,seoDescription:rev.seo_description,
     canonicalPath:rev.seo_canonical_path,
     sections:sections.rows.map(x=>({kind:x.section_kind,order:x.order_no,fields:x.structured_fields})),
     assets:assets.rows.map(x=>({fileRef:x.cg19_file_ref,
      version:x.cg19_validated_version,role:x.role,altText:x.alt_text,order:x.sort_order})),
+    bundledAssets:(await this.releaseAssets(tx,a.realmId,rev.id)).map(({key,role,order,altText})=>({key,role,order,altText})),
     navigation:page.kind==="HOME"?{loginDesired:navigation.rows[0]?.login_desired??true,
      memberJoinDesired:navigation.rows[0]?.member_join_desired??false,
      volunteerJoinDesired:navigation.rows[0]?.volunteer_join_desired??false}:null,
@@ -638,6 +715,9 @@ export class CmsEditorialService{
     throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
    let current=await this.revision(tx,actor,page),revisionRef=current.id,
     revisionNo=page.draft_revision_no;
+   const inherited=(await this.releaseAssets(tx,actor.realmId,current.id)).filter(asset=>
+    placementFits(value.sections,asset)&&!value.assets.some(a=>a.role===asset.role&&a.order===asset.order));
+   const revisionDigest=inherited.length?sha({...value,bundled:inherited.map(a=>a.key).sort()}):digest;
    if(page.kind==="ARTICLE"){
     const priorEvent=await tx.query<{activity_id:string}>("SELECT e.activity_id FROM cms_section_revision s JOIN cms_page_revision v ON v.id=s.page_revision_id AND v.foundation_root_id=s.foundation_root_id JOIN event_public_eligibility e ON e.root_realm_id=s.foundation_root_id AND e.id::text=s.structured_fields->>'sourceEventRef' WHERE v.foundation_root_id=$1 AND v.page_id=$2 AND s.section_kind='ARTICLE_BODY' LIMIT 1",[actor.realmId,page.id]);
     if(priorEvent.rows[0]){
@@ -645,24 +725,25 @@ export class CmsEditorialService{
      if(typeof next!=="string"||!(await tx.query("SELECT 1 FROM event_public_eligibility WHERE root_realm_id=$1 AND id::text=$2 AND activity_id=$3",[actor.realmId,next,priorEvent.rows[0].activity_id])).rowCount)throw new ConflictException({code:"CMS_PROJECT_SOURCE_UNAVAILABLE"});
     }
    }
-   if(current.status!=="DRAFT"){
+   if(current.status!=="DRAFT"||current.release_baseline){
     revisionNo++;
     const rev=await tx.query<{id:string}>(
      "INSERT INTO cms_page_revision(foundation_root_id,page_id,revision_no,title,"+
      "seo_title,seo_description,seo_canonical_path,content_digest,created_by) "+
      "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
      [actor.realmId,page.id,revisionNo,value.title,value.seoTitle,
-      value.seoDescription,value.canonicalPath,digest,actor.accountId]);
+      value.seoDescription,value.canonicalPath,revisionDigest,actor.accountId]);
     revisionRef=rev.rows[0].id;
    }else{
     await tx.query("UPDATE cms_page_revision SET title=$3,seo_title=$4,"+
      "seo_description=$5,seo_canonical_path=$6,content_digest=$7 "+
      "WHERE id=$1 AND foundation_root_id=$2 AND status='DRAFT'",
      [current.id,actor.realmId,value.title,value.seoTitle,value.seoDescription,
-      value.canonicalPath,digest]);
+      value.canonicalPath,revisionDigest]);
    }
    await this.putSections(tx,actor,revisionRef,value);
-   if(value.navigation)await this.saveNavigation(tx,actor,revisionRef,digest,value.navigation);
+   await this.writeReleaseAssets(tx,actor.realmId,revisionRef,inherited);
+   if(value.navigation)await this.saveNavigation(tx,actor,revisionRef,revisionDigest,value.navigation);
    await tx.query("UPDATE cms_page SET version=version+1,draft_revision_no=$3 "+
     "WHERE id=$1 AND foundation_root_id=$2",
     [page.id,actor.realmId,revisionNo]);
@@ -703,7 +784,7 @@ export class CmsEditorialService{
      version:Number(accepted.rows[0].version),replayed:true};
    }
    const page=await this.row(tx,actor,pageRef,true),rev=await this.revision(tx,actor,page);
-   if(Number(page.version)!==v.expectedVersion||rev.status!=="DRAFT")
+   if(Number(page.version)!==v.expectedVersion||rev.status!=="DRAFT"||rev.release_baseline)
     throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
    const assets=await tx.query<{file_ref:string;version:number;role:string;sort_order:number}>(
     "SELECT cg19_file_ref AS file_ref,cg19_validated_version AS version,role,sort_order "+
@@ -715,8 +796,9 @@ export class CmsEditorialService{
      "WHERE foundation_root_id=$1 AND page_revision_id=$2 AND section_kind='HERO' "+
      "AND structured_fields->>'visible' IS DISTINCT FROM 'false' "+
      "ORDER BY order_no",[actor.realmId,rev.id]);
+    const bundled=await this.releaseAssets(tx,actor.realmId,rev.id);
     if(!slides.rows.length||slides.rows.some(slide=>!slide.text_only&&!assets.rows.some(asset=>
-      asset.role==="HERO"&&asset.sort_order===slide.order_no)))
+      asset.role==="HERO"&&asset.sort_order===slide.order_no)&&!bundled.some(asset=>asset.role==="HERO"&&asset.order===slide.order_no)))
      throw new BadRequestException({code:"CMS_HERO_IMAGE_REQUIRED",field:"heroImage"});
    }
    if(page.kind==="POLICY"){
@@ -746,7 +828,7 @@ export class CmsEditorialService{
      if(!(await approvedBeneficiaryImpact(tx,actor.realmId,sec.fields)).valid||assets.rows.some(a=>a.role==="IMPACT"&&a.sort_order===sec.order))throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
     }
     validateExtendedPage(page.kind,submitted,
-     assets.rows.map(a=>({role:a.role,order:a.sort_order})),true);
+     [...assets.rows.map(a=>({role:a.role,order:a.sort_order})),...await this.releaseAssets(tx,actor.realmId,rev.id)],true);
    }
    if(!(await complianceEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_COMPLIANCE_EVIDENCE_EXPIRED"});
@@ -1068,21 +1150,21 @@ export class CmsEditorialService{
    'ON n.id=e.revision_id AND n.foundation_root_id=e.foundation_root_id '+
    'JOIN cms_page_revision v ON v.id=n.home_revision_id '+
    'AND v.foundation_root_id=n.foundation_root_id '+
-   'JOIN cg03_case c ON c.id=v.approval_case_ref '+
+   'LEFT JOIN cg03_case c ON c.id=v.approval_case_ref '+
    'AND c.realm_id=v.foundation_root_id AND c.cms_page_revision_id=v.id '+
-   'JOIN cg03_case_decision d ON d.id=n.cg03_decision_ref AND d.case_id=c.id '+
+   'LEFT JOIN cg03_case_decision d ON d.id=n.cg03_decision_ref AND d.case_id=c.id '+
    'AND d.realm_id=c.realm_id '+
    'JOIN cms_page_effective active ON active.foundation_root_id=n.foundation_root_id '+
    'JOIN cms_publication publication ON publication.id=active.publication_id '+
    'AND publication.foundation_root_id=active.foundation_root_id '+
    'AND publication.page_revision_id=n.home_revision_id '+
    'JOIN access_realm realm ON realm.id=n.foundation_root_id '+
-   "WHERE realm.realm_key='FOUNDATION_ROOT' AND n.status='APPROVED' "+
+   "WHERE realm.realm_key='FOUNDATION_ROOT' "+
    "AND publication.state='EFFECTIVE' AND publication.effective_at<=now() "+
    "AND (publication.expires_at IS NULL OR publication.expires_at>now()) "+
-   "AND c.status='OWNER_COMPLETED' AND d.action='APPROVE' "+
-   'AND d.fresh_password_verified_at IS NOT NULL '+
-   'AND n.source_digest=v.content_digest AND n.effective_at<=now() LIMIT 1');
+   "AND ((n.release_baseline AND v.release_baseline AND publication.release_baseline AND n.status='DRAFT') "+
+   "OR (NOT n.release_baseline AND NOT publication.release_baseline AND n.status='APPROVED' AND c.status='OWNER_COMPLETED' AND d.action='APPROVE' AND d.fresh_password_verified_at IS NOT NULL AND n.effective_at<=now())) "+
+   'AND n.source_digest=v.content_digest LIMIT 1');
   const x=response.rows[0];
   const routes=await this.db.query<{kind:string;slug:string}>(
    "SELECT p.kind,p.slug FROM cms_page p JOIN cms_page_effective e "+
@@ -1283,6 +1365,7 @@ export class CmsEditorialService{
   teamCards.set(section.order_no,{heading:section.structured_fields.heading,
    members:cards.map(({name,designation})=>({name,designation,consentConfirmed:true}))});
  }
+ const bundled=await this.releaseAssets(this.db,x.foundation_root_id,x.revision_id);
  const hiddenHeroOrders=new Set(sections.rows.filter(sec=>
    sec.section_kind==="HERO"&&sec.structured_fields?.visible===false)
    .map(sec=>sec.order_no));
@@ -1301,8 +1384,8 @@ export class CmsEditorialService{
        (v.structured_fields.items as Record<string,unknown>[]).flatMap((item,index)=>
         item&&item.visible!==false?[{...item,originalIndex:index}]:[]):[]}:
      v.structured_fields})),
-   assets:visibleAssets.filter(v=>v.role!=="TEAM").filter(v=>x.kind!=="PARTNERS"||v.role!=="FEATURE"||publicPartnerLogoOrders.has(v.sort_order)).filter(v=>!["HERO","MOBILE_HERO"].includes(v.role)||
+   assets:[...bundled.filter(v=>placementFits(authoredSections,v)&&!(v.role==="HERO"&&hiddenHeroOrders.has(v.order))).map(v=>({role:v.role,altText:v.altText,src:"/api/public/content/release-media/"+v.key,order:v.order})),...visibleAssets.filter(v=>v.role!=="TEAM").filter(v=>x.kind!=="PARTNERS"||v.role!=="FEATURE"||publicPartnerLogoOrders.has(v.sort_order)).filter(v=>!["HERO","MOBILE_HERO"].includes(v.role)||
      !hiddenHeroOrders.has(v.sort_order)).map(v=>({role:v.role,altText:v.alt_text,
-    src:"/api/public/content/media/"+v.cg19_file_ref,order:v.sort_order}))};
+    src:"/api/public/content/media/"+v.cg19_file_ref,order:v.sort_order}))]};
  }
 }

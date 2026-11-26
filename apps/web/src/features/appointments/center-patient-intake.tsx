@@ -43,6 +43,7 @@ export function CenterPatientIntake({centerRef}:{centerRef:string}){
     identityCheckedInPerson:guardianIdentity,authorityCheckedInPerson:guardianAuthority,
     limitedConsentAttested:guardianConsent}}:{})};
   const digest=JSON.stringify(details);
+  if(uncertain&&command.current?.digest!==digest){setMessage("Retry the original intake without changing its details.");return;}
   if(command.current?.digest!==digest)
    command.current={key:crypto.randomUUID(),digest};
   setBusy(true);setMessage("");setUncertain(false);
@@ -102,13 +103,13 @@ export function CenterPatientIntake({centerRef}:{centerRef:string}){
    </div>:<form onSubmit={e=>{e.preventDefault();void create();}}
      style={{display:"grid",gap:12,maxWidth:650}}>
     <label>First name
-     <input required maxLength={100} value={first}
+     <input required maxLength={100} disabled={busy||uncertain} value={first}
       onChange={e=>setFirst(e.target.value)}/></label>
     <label>Last name
-     <input required maxLength={100} value={last}
+     <input required maxLength={100} disabled={busy||uncertain} value={last}
       onChange={e=>setLast(e.target.value)}/></label>
     <label>Date of birth (optional)
-     <input type="date" value={dob} max={new Date().toISOString().slice(0,10)}
+     <input type="date" disabled={busy||uncertain} value={dob} max={new Date().toISOString().slice(0,10)}
       onChange={e=>setDob(e.target.value)}/></label>
     <div className="form-section" aria-label="Dependent-care registration authorization">
      <h4>Is this patient represented by a guardian or caregiver?</h4>
@@ -138,7 +139,7 @@ export function CenterPatientIntake({centerRef}:{centerRef:string}){
     <div className="form-section">
      <h4>Explain patient-care consent</h4>
      {policy.available?<><p style={{whiteSpace:"pre-wrap"}}>{policy.text}</p>
-      <label><input type="checkbox" checked={attested}
+      <label><input type="checkbox" checked={attested} disabled={busy||uncertain}
        onChange={e=>setAttested(e.target.checked)}/>
        {" "}I have explained the current CareGanga patient-care information
        to the patient or authorized guardian and recorded their agreement for

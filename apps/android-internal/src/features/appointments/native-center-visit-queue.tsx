@@ -68,6 +68,8 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
  const [auditError,setAuditError]=useState("");
  const auditSerial=useRef(0);
  const [cancelPending,setCancelPending]=useState<string|null>(null);
+ const [expanded,setExpanded]=useState("");
+ const [queueLoading,setQueueLoading]=useState(false);
  const cancelKeys=useRef<Map<string,string>>(new Map());
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
@@ -78,9 +80,10 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
  },[onExpired]);
  const load=useCallback(async(c:string,day:string,after="")=>{
   const stamp=++seq.current;
-  if(!c){setItems([]);setSummary(null);setSelectedSlip(null);return;}
-  if(!day){setItems([]);setSummary(null);setMessage("The center local date is unavailable.");return;}
-  setSummary(null);
+  if(!c){setItems([]);setSummary(null);setSelectedSlip(null);setQueueLoading(false);return;}
+  if(!day){setItems([]);setSummary(null);setQueueLoading(false);setMessage("The center local date is unavailable.");return;}
+  setSummary(null);setQueueLoading(true);setExpanded("");setSelectedSlip(null);setCancelPending(null);
+  auditSerial.current++;setAuditRef("");setAudit(null);setAuditError("");setAuditBusy(false);
   try{
    const data=await request<{items:Item[];next:string|null}>(token,
     "my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(day)+
@@ -96,7 +99,8 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
      if(stamp===seq.current&&selectedCenter.current===c&&
       report.centerRef===c&&report.day===day)setSummary(report);
     }).catch(()=>{if(stamp===seq.current)setSummary(null);});
-  }catch(e){if(stamp===seq.current&&selectedCenter.current===c){setItems([]);fail(e);}}
+  }catch(e){if(stamp===seq.current&&selectedCenter.current===c){setItems([]);setNextCursor(null);fail(e);}}
+  finally{if(stamp===seq.current)setQueueLoading(false);}
  },[token,fail]);
  useEffect(()=>{
   let live=true;
@@ -242,11 +246,11 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
    <Text style={styles.buttonLabel}>{label}</Text>
   </Pressable>
  );
- const button=(name:string,onClick:()=>void,disabled=false)=>(
+ const button=(name:string,onClick:()=>void,disabled=false,primary=false)=>(
   <Pressable accessibilityRole="button" onPress={onClick}
    disabled={disabled} accessibilityState={{disabled}}
-   style={[styles.button,disabled&&styles.disabled]}>
-   <Text style={styles.buttonLabel}>{name}</Text>
+   style={[styles.button,primary&&styles.primary,disabled&&styles.disabled]}>
+   <Text style={[styles.buttonLabel,primary&&styles.primaryLabel]}>{name}</Text>
   </Pressable>);
  return <SafeAreaView style={styles.page} edges={["left","right"]}>
   <ScrollView contentContainerStyle={styles.content}>
@@ -290,11 +294,7 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
    {summary&&summary.centerRef===center&&summary.day===dateAt(offset,centerZone)&&
     <View style={styles.card} accessibilityLabel="Original complete-day consultation summary">
      <Text style={styles.title}>Daily consultations — {summary.day}</Text>
-     <Text style={styles.help}>Total: {summary.total} · Confirmed: {summary.confirmed}</Text>
-     <Text style={styles.help}>Checked in: {summary.arrived} · Waiting: {summary.waiting}
-      · With doctor: {summary.inConsultation}</Text>
-     <Text style={styles.help}>Completed: {summary.completed} · Missed: {summary.noShow}
-      · Cancelled: {summary.cancelled}</Text>
+     <View style={styles.row}>{([["Total",summary.total],["Confirmed",summary.confirmed],["Checked in",summary.arrived],["Waiting",summary.waiting],["With doctor",summary.inConsultation],["Completed",summary.completed],["Missed",summary.noShow],["Cancelled",summary.cancelled]] as const).map(([label,value])=><View key={label} style={styles.metric}><Text style={styles.title}>{value}</Text><Text style={styles.help}>{label}</Text></View>)}</View>
      <Text style={styles.help}>These source totals include all same-day bookings,
       not just the visible 100 appointments on one page.</Text>
     </View>}
@@ -320,22 +320,37 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
       {filter(state.replaceAll("_"," "),statusFilter,state,setStatusFilter)}</View>)}
     </ScrollView>
    </>}
-   {center&&items.length===0&&!loading&&
+   {queueLoading&&<ActivityIndicator accessibilityLabel="Loading current queue"/>}
+   {center&&items.length===0&&!loading&&!queueLoading&&!message&&
     <Text style={styles.help}>No consultations were returned for this date.</Text>}
    {center&&items.length>0&&visible.length===0&&
     <Text style={styles.help}>No consultations match these filters.</Text>}
-   {selectedSlip&&items.some(row=>row.appointmentRef===selectedSlip.appointmentRef&&row.consentGranted)&&<View style={styles.card}>
+   {!queueLoading&&visible.map(a=><View key={a.appointmentRef} style={styles.card}>
+    <Text style={styles.title}>{a.patientName}</Text>
+    <Text style={styles.help}>Doctor: {a.doctorName}</Text>
+    <Text style={styles.help}>{a.bookingId} · {new Date(a.startAt).toLocaleString("en-IN",{timeZone:centerZone,dateStyle:"medium",timeStyle:"short"})}</Text>
+    <Text style={styles.help}>Current state: {a.bookingStatus} · Queue: {a.queueToken??"Not checked in"}</Text>
+    <View style={styles.row}>
+     {a.consentGranted&&a.bookingStatus==="CONFIRMED"&&
+      button("Check in",()=>void change(a,"CHECK_IN"),busy||uncertain||queueLoading,true)}
+     {a.visitStatus==="ARRIVED"&&button("Move to waiting",()=>void change(a,"WAITING"),busy||uncertain||queueLoading,true)}
+     {canClinicalManage&&clinicianAssignments.some(link=>link.centerRef===center&&link.doctorRef===a.doctorRef)&&a.visitStatus==="WAITING"&&button("Start consultation",()=>void change(a,"IN_CONSULTATION"),busy||uncertain||queueLoading,true)}
+     {canClinicalManage&&clinicianAssignments.some(link=>link.centerRef===center&&link.doctorRef===a.doctorRef)&&a.visitStatus==="IN_CONSULTATION"&&button("Complete visit",()=>void change(a,"COMPLETED"),busy||uncertain||queueLoading,true)}
+     {a.bookingStatus==="CONFIRMED"&&!a.visitRef&&
+      Number.isFinite(Date.parse(a.endAt))&&Date.parse(a.endAt)<=Date.now()&&
+      button("Mark missed appointment",()=>void change(a,"NO_SHOW"),busy||uncertain)}
+    </View>
+    <Pressable accessibilityRole="button" accessibilityState={{expanded:expanded===a.appointmentRef,disabled:busy||queueLoading}} disabled={busy||queueLoading} onPress={()=>{setExpanded(expanded===a.appointmentRef?"":a.appointmentRef);setCancelPending(null);setSelectedSlip(null);auditSerial.current++;setAuditRef("");setAudit(null);setAuditError("");setAuditBusy(false);}} style={styles.button}><Text style={styles.buttonLabel}>{expanded===a.appointmentRef?"Hide appointment details":"Appointment details & documents"}</Text></Pressable>
+    {expanded===a.appointmentRef&&<>
+     {a.consentGranted&&!["CANCELLED","NO_SHOW"].includes(a.bookingStatus)&&
+      button("Consultation slip",()=>setSelectedSlip(a),busy||uncertain)}
+   {selectedSlip?.appointmentRef===a.appointmentRef&&a.consentGranted&&items.some(row=>row.appointmentRef===a.appointmentRef&&row.consentGranted)&&<View style={styles.card}>
     {button("Close current consultation slip",()=>setSelectedSlip(null),busy)}
     <Text style={styles.title}>{selectedSlip.bookingId} — current private PDF</Text>
     <NativeCenterConsultationSlip key={selectedSlip.appointmentRef} token={token}
      bookingRef={selectedSlip.appointmentRef}
      bookingStatus={selectedSlip.bookingStatus} onExpired={onExpired}/>
    </View>}
-   {visible.map(a=><View key={a.appointmentRef} style={styles.card}>
-    <Text style={styles.title}>{a.patientName}</Text>
-    <Text style={styles.help}>Doctor: {a.doctorName}</Text>
-    <Text style={styles.help}>{a.bookingId} · {new Date(a.startAt).toLocaleString("en-IN",{timeZone:centerZone,dateStyle:"medium",timeStyle:"short"})}</Text>
-    <Text style={styles.help}>Current state: {a.bookingStatus} · Queue: {a.queueToken??"Not checked in"}</Text>
     {button(auditRef===a.appointmentRef?"Hide booking history":"Original booking history",
      ()=>{if(auditRef===a.appointmentRef){
       auditSerial.current++;setAuditRef("");setAudit(null);setAuditError("");
@@ -375,18 +390,8 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
        {button("Keep appointment",()=>setCancelPending(null),busy)}
       </View>:
       button("Cancel center booking",()=>setCancelPending(a.appointmentRef),busy||uncertain))}
-    <View style={styles.row}>
-     {a.consentGranted&&a.bookingStatus==="CONFIRMED"&&
-      button("Check in",()=>void change(a,"CHECK_IN"),busy||uncertain)}
-     {a.visitStatus==="ARRIVED"&&button("Waiting",()=>void change(a,"WAITING"),busy||uncertain)}
-     {canClinicalManage&&clinicianAssignments.some(link=>link.centerRef===center&&link.doctorRef===a.doctorRef)&&a.visitStatus==="WAITING"&&button("In consultation",()=>void change(a,"IN_CONSULTATION"),busy||uncertain)}
-     {canClinicalManage&&clinicianAssignments.some(link=>link.centerRef===center&&link.doctorRef===a.doctorRef)&&a.visitStatus==="IN_CONSULTATION"&&button("Complete",()=>void change(a,"COMPLETED"),busy||uncertain)}
-     {a.bookingStatus==="CONFIRMED"&&!a.visitRef&&
-      Number.isFinite(Date.parse(a.endAt))&&Date.parse(a.endAt)<=Date.now()&&
-      button("Mark missed appointment",()=>void change(a,"NO_SHOW"),busy||uncertain)}
-     {a.consentGranted&&!["CANCELLED","NO_SHOW"].includes(a.bookingStatus)&&
-      button("Consultation slip",()=>setSelectedSlip(a),busy||uncertain)}
-    </View>
+
+    </>}
    </View>)}
    {center&&items.length>0&&<View style={styles.card}>
     <Text style={styles.help}>Page {previousCursors.length+1}. Showing {items.length} consultations.</Text>
@@ -396,12 +401,12 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
       const prior=previousCursors.at(-1)??"";
       setPreviousCursors(p=>p.slice(0,-1));setDoctorFilter("");setStatusFilter("");
       void load(center,dateAt(offset,centerZone),prior);
-     },busy||!previousCursors.length)}
+     },busy||queueLoading||!previousCursors.length)}
      {button("Next 100",()=>{
       if(!nextCursor)return;
       setPreviousCursors(p=>[...p,cursor]);setDoctorFilter("");setStatusFilter("");
       void load(center,dateAt(offset,centerZone),nextCursor);
-     },busy||!nextCursor)}
+     },busy||queueLoading||!nextCursor)}
     </View>
    </View>}
   </ScrollView>
@@ -424,6 +429,8 @@ const styles=StyleSheet.create({
  button:{borderColor:t.border,borderWidth:1,borderRadius:10,minHeight:48,
   padding:12,justifyContent:"center"},
  selected:{borderColor:t.primary,backgroundColor:t.surface},
+ primary:{backgroundColor:t.primary,borderColor:t.primary},primaryLabel:{color:t.primaryText},
+ metric:{flexGrow:1,flexBasis:"21%",minWidth:70,padding:8,borderColor:t.border,borderWidth:1,borderRadius:8},
  buttonLabel:{color:t.text,fontSize:13,fontWeight:"600"},
  disabled:{opacity:0.4}
 });

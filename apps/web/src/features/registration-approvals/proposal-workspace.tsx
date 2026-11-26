@@ -401,14 +401,14 @@ export function ProposalWorkspace({
       }
       setDetail(data);
 
-      if (["PENDING_OWNER", "OWNER_COMPLETED", "OWNER_BLOCKED"].includes(data.status)) {
+      if (["PENDING_OWNER", "OWNER_COMPLETED", "OWNER_BLOCKED", "OWNER_FAILED_RETRYABLE"].includes(data.status)) {
         try {
           const status = await api<CG03OwnerOutcome>(
             "cases/" + encodeURIComponent(data.caseRef) + "/owner-status"
           );
           if (
             seq === detailSeq.current &&
-            ["PENDING_OWNER", "OWNER_COMPLETED", "OWNER_BLOCKED"].includes(status.status)
+            ["PENDING_OWNER", "OWNER_COMPLETED", "OWNER_BLOCKED", "OWNER_FAILED_RETRYABLE"].includes(status.status)
           ) {
             setOwnerOutcome(status);
           }

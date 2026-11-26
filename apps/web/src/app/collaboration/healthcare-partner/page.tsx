@@ -10,7 +10,7 @@ export const metadata:Metadata={
  robots:{index:true,follow:true}
 };
 export default function ApplyHealthcarePartner(){
- return <HealthcarePublicChrome><main className="cg-public-shell">
+ return <HealthcarePublicChrome><main className="cg-public-shell cg-health-partner-page">
   <header className="cg-public-header">
    <nav aria-label="Breadcrumb"><Link href="/collaboration">Partnerships</Link>
     <span aria-hidden="true"> / </span>Healthcare partner application</nav>

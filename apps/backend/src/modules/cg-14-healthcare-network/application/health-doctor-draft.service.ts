@@ -209,17 +209,21 @@ export class HealthDoctorDraftService{
         message:"Pending doctor draft updated. No approval or public listing was created."};
     });
   }
-  async list(bearer:string,offset=0,search=""){
+  async list(bearer:string,offset=0,search="",status=""){
     const actor=await this.actor(bearer,"health.doctors.view");
     if(!Number.isInteger(offset)||offset<0||offset>10000||
-      typeof search!=="string"||search.length>80||/[\u0000-\u001f\u007f]/.test(search))
+      typeof search!=="string"||search.length>80||/[\u0000-\u001f\u007f]/.test(search)||
+      !["","PENDING","VERIFIED","SUSPENDED"].includes(status))
       throw new BadRequestException({code:"HEALTH_DOCTOR_FIELD_INVALID",field:"search"});
     const r=await this.db.query<{id:string;full_name:string;status:string;
       version:number;specialties:string[]}>(
       "SELECT id,full_name,status,version,specialties FROM health_doctor "+
-      "WHERE root_realm_id=$1 AND ($3::text='' OR position($3 in normalized_name)>0) "+
+      "WHERE root_realm_id=$1 AND ($4::text='' OR status::text=$4) "+
+      "AND ($3::text='' OR position($3 in normalized_name)>0 "+
+      "OR position($3 in lower(registration_number))>0 "+
+      "OR EXISTS(SELECT 1 FROM unnest(specialties) AS s(value) WHERE position($3 in lower(s.value))>0)) "+
       "ORDER BY normalized_name,id LIMIT 51 OFFSET $2",
-      [actor.realmId,offset,search.trim().toLowerCase()]);
+      [actor.realmId,offset,search.trim().toLowerCase(),status]);
     return {doctors:r.rows.slice(0,50).map(x=>({
       doctorRef:x.id,name:x.full_name,status:x.status,version:x.version,
       specialties:x.specialties

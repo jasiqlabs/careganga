@@ -44,6 +44,8 @@ export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=f
   const [uncertain,setUncertain]=useState(false);
   const requestKey=useRef("");
   const reviewKey=useRef("");
+  const selectionSeq=useRef(0),selectedRef=useRef("");
+  const [checking,setChecking]=useState(false);
   const [verifiedLicense,setVerifiedLicense]=useState("");
   const loadList=useCallback(async()=>{
     const r=await get<{centers:Row[]}>("my-centers");
@@ -56,18 +58,21 @@ export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=f
       .then(r=>{if(alive)setCenters(r.centers);})
       .catch(e=>{if(alive)setError(e instanceof Error?e.message:"Center access unavailable");})
       .finally(()=>{if(alive)setLoading(false);});
-    return()=>{alive=false;};
+    return()=>{alive=false;selectionSeq.current++;};
   },[]);
   async function choose(ref:string){
+    const turn=++selectionSeq.current;selectedRef.current=ref;setChecking(true);
     setError("");setNotice("");setActive(null);setDraft(null);setVerifiedLicense("");
     try{
       const record=await get<Detail>("my-centers/"+encodeURIComponent(ref));
-      if(!record.center)throw Error("Center draft unavailable.");
-      setActive(record);setDraft(record.center);requestKey.current="";setUncertain(false);
-    }catch(e){setError(e instanceof Error?e.message:"Center access unavailable.");}
+      if(turn!==selectionSeq.current)return;
+      if(!record?.center||record.centerRef!==ref)throw Error("Center draft unavailable.");
+      setActive(record);setDraft(record.center);requestKey.current="";reviewKey.current="";setUncertain(false);
+    }catch(e){if(turn===selectionSeq.current)setError(e instanceof Error?e.message:"Center access unavailable.");}
+    finally{if(turn===selectionSeq.current)setChecking(false);}
   }
   async function save(){
-    if(!active||!draft||saving||uncertain)return;
+    if(!active||!draft||saving||checking||uncertain)return;
     setSaving(true);setError("");setNotice("");
     if(!requestKey.current)requestKey.current=crypto.randomUUID();
     try{
@@ -76,7 +81,7 @@ export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=f
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({requestKey:requestKey.current,
           expectedVersion:active.version,center:draft})
-      });
+      }).catch(e=>{setUncertain(true);throw e;});
       const payload:unknown=await r.json().catch(()=>null);
       if(!r.ok){
         const message=payload&&typeof payload==="object"&&"message" in payload&&
@@ -92,7 +97,7 @@ export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=f
     finally{setSaving(false);}
   }
   async function submitForReview(){
-    if(!active||saving||uncertain||!verifiedLicense||active.status!=="PENDING"||
+    if(!active||saving||checking||uncertain||!verifiedLicense||active.status!=="PENDING"||
       active.providerStatus!=="VERIFIED")return;
     setSaving(true);setError("");setNotice("");
     if(!reviewKey.current)reviewKey.current=crypto.randomUUID();
@@ -103,7 +108,7 @@ export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=f
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({requestKey:reviewKey.current,
           expectedVersion:active.version,proofFileRef:verifiedLicense})
-      });
+      }).catch(e=>{setUncertain(true);throw e;});
       const response:unknown=await r.json().catch(()=>null);
       if(!r.ok){
         if(r.status>=500)setUncertain(true);
@@ -119,6 +124,12 @@ export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=f
       "Review submission outcome uncertain. Check the original center.");}
     finally{setSaving(false);}
   }
+  const renderedSelection=selectionSeq.current;
+  function selectCenter(ref:string){
+    if(saving||checking||uncertain)return;
+    if(active&&draft&&JSON.stringify(active.center)!==JSON.stringify(draft)&&!window.confirm("Discard unsaved center changes?"))return;
+    void choose(ref);
+  }
   return <div className="role-workspace cg-health-workspace">
     <header className="topbar"><div><h1>My healthcare center</h1>
       <p>Maintain your assigned center. Foundation approval controls verification, doctor associations and public listing.</p>
@@ -127,16 +138,17 @@ export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=f
     {!!error&&<p className="notice error" role="alert">{error}</p>}
     {!!notice&&<p className="notice" role="status">{notice}</p>}
     {uncertain&&<p role="alert">Your last save is uncertain. Refresh the original center before making another change.
-      <button type="button" onClick={()=>{setUncertain(false);if(active)void choose(active.centerRef);}}>
+      <button type="button" disabled={saving||checking||!selectedRef.current} onClick={()=>{if(selectedRef.current)void choose(selectedRef.current);}}>
         Refresh original center</button></p>}
     {!loading&&centers.length===0&&
       <p>No healthcare center is currently assigned to your account. Contact your Foundation administrator.</p>}
     <div className="toolbar">
       {centers.map(x=><button type="button" key={x.centerRef}
-        onClick={()=>void choose(x.centerRef)} aria-pressed={active?.centerRef===x.centerRef}>
+        disabled={saving||checking||uncertain} onClick={()=>selectCenter(x.centerRef)} aria-pressed={active?.centerRef===x.centerRef}>
         {x.providerName} — {x.name}</button>)}
     </div>
-    {active&&draft&&<section className="form-section">
+    {checking&&<p role="status">Checking selected center…</p>}
+    {active&&draft&&!checking&&<section className="form-section">
       <h2>{draft.displayName}</h2>
       <p>Center: {active.status.replaceAll("_"," ")}.
         Provider: {active.providerStatus.replaceAll("_"," ")}.
@@ -150,7 +162,7 @@ export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=f
        <CenterMonthlySettlementSummary key={"settlement:"+active.centerRef}
         centerRef={active.centerRef}/>}
       {active.status==="PENDING"&&<CenterEditor value={draft} identityLocked
-        disabled={saving} onChange={setDraft}/>}
+        disabled={saving||uncertain} onChange={setDraft}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
        (canProposeMerchant||canVerifyMerchant)&&
        <CenterMerchantBinding key={"merchant:"+active.centerRef}
@@ -191,14 +203,14 @@ export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=f
         <button type="button" className="primary" disabled={saving||uncertain}
           onClick={()=>void save()}>{saving?"Saving…":"Save pending details"}</button>
         <button type="button" disabled={saving}
-          onClick={()=>void choose(active.centerRef)}>Discard unsaved changes</button>
+          onClick={()=>{if(window.confirm("Discard unsaved center changes?"))void choose(active.centerRef);}}>Discard unsaved changes</button>
       </div>}
       {active.status==="PENDING"&&<>
         <h3>Private center licence</h3>
-        <HealthEvidenceUploader providerRef={active.providerRef}
+        <HealthEvidenceUploader key={active.centerRef+":"+active.version} providerRef={active.providerRef}
           centerRef={active.centerRef} sourceVersion={active.version}
           classification="HEALTH_CENTER_LICENSE"
-          onVerified={fileRef=>setVerifiedLicense(fileRef)}/>
+          onVerified={fileRef=>{if(renderedSelection===selectionSeq.current)setVerifiedLicense(fileRef);}}/>
         {active.providerStatus==="VERIFIED"&&<button type="button"
           className="primary" disabled={saving||uncertain||!verifiedLicense}
           onClick={()=>void submitForReview()}>

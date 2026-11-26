@@ -424,6 +424,28 @@ export function RecoveryPanel() {
     }
   };
 
+  useEffect(() => {
+    if (!isRequestDrawerOpen && !selectedOperation && !authorization && !isConfigDrawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (authorization && !saving && !unknown) {
+        setAuthorization(null);
+        setAuthorizationPassword("");
+        setAuthorizationReview(false);
+        requestKey.current = "";
+      } else if (isConfigDrawerOpen) {
+        setIsConfigDrawerOpen(false);
+      } else if (isRequestDrawerOpen) {
+        setIsRequestDrawerOpen(false);
+        setReview(false);
+      } else if (selectedOperation) {
+        setSelectedOperation(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isRequestDrawerOpen, selectedOperation, authorization, isConfigDrawerOpen, saving, unknown]);
+
   return (
     <div className="cg-br-container">
       {/* ------------------------------------------------------------------
@@ -803,7 +825,7 @@ export function RecoveryPanel() {
             ) : (
               <>
                 {/* Desktop & Tablet Table */}
-                <div className="cg-br-table-wrap">
+                <div className="cg-br-table-wrap" role="region" aria-label="Recovery request history table" tabIndex={0}>
                   <table className="cg-br-table" aria-label="Recovery request history table">
                     <thead>
                       <tr>
@@ -1041,6 +1063,15 @@ export function RecoveryPanel() {
                               requestOperationType === "RESTORE" ? "is-selected" : ""
                             }`}
                             onClick={() => setRequestOperationType("RESTORE")}
+                            onKeyDown={e => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setRequestOperationType("RESTORE");
+                              } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+                                e.preventDefault();
+                                setRequestOperationType("BACKUP");
+                              }
+                            }}
                             role="radio"
                             aria-checked={requestOperationType === "RESTORE"}
                             tabIndex={0}
@@ -1063,6 +1094,15 @@ export function RecoveryPanel() {
                               requestOperationType === "BACKUP" ? "is-selected" : ""
                             }`}
                             onClick={() => setRequestOperationType("BACKUP")}
+                            onKeyDown={e => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setRequestOperationType("BACKUP");
+                              } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                                e.preventDefault();
+                                setRequestOperationType("RESTORE");
+                              }
+                            }}
                             role="radio"
                             aria-checked={requestOperationType === "BACKUP"}
                             tabIndex={0}
