@@ -328,3 +328,5 @@ Applied strict CG-19 UI/UX standards to all four CG-02 mobile screens:
   - **Department/Committee Creation Verified**: Created `Healthcare Advisory Committee` (Type: `DEPARTMENT`, Status: `Active`).
   - **KPI Metrics Dynamic Increment**: `TOTAL RECORDS` and `ACTIVE` incremented from 0 to 1 live.
   - **CAS Audit Trail & History Modal Verified**: Version 1 (`Department Create`) and Version 2 (`Department Update`) verified in real-time history modal with dark blur backdrop.
+  - **Officeholder Assignment Verified**: Assigned `Admin User` as `Chairperson` (`active`), with verified `End assignment` and `History` actions. Quick role suggestion chips (`Chairperson`, `Secretary`, `Coordinator`, `Head`, `Member`) and auto-select verified.
+  - **Overall US-001 Manual Web Verification**: **100% COMPLETE & VERIFIED** across all 3 tabs (Profile, Geography, Departments & Committees).
