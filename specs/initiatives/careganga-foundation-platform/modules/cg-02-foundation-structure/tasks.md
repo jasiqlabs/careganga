@@ -324,3 +324,7 @@ Applied strict CG-19 UI/UX standards to all four CG-02 mobile screens:
   - **Color-Coded Badges Verified**: `STATE` (Purple), `DISTRICT` (Blue), `SUBDIVISION` (Teal), `BLOCK` (Amber), `ACTIVE` (Green).
   - **Dynamic Client Search**: Real-time filtering verified without page reload (`ma`, `bhopal`).
   - **Icon & Typography Parity**: Verified search bar zero icon-text overlap, `"Roboto Slab"` headings, and `#4F46E5` indigo primary button.
+- **Live Manual Web Verification (Step 3 - Departments & Committees)**:
+  - **Department/Committee Creation Verified**: Created `Healthcare Advisory Committee` (Type: `DEPARTMENT`, Status: `Active`).
+  - **KPI Metrics Dynamic Increment**: `TOTAL RECORDS` and `ACTIVE` incremented from 0 to 1 live.
+  - **CAS Audit Trail & History Modal Verified**: Version 1 (`Department Create`) and Version 2 (`Department Update`) verified in real-time history modal with dark blur backdrop.
