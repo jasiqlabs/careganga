@@ -1,208 +1,228 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
 
-const TAGLINES = [
-  "Serving Communities...",
-  "Building Hope Along The Ganga...",
-  "Direct Field Impact & Transparency...",
+const messages = [
+  "Connecting communities...",
+  "Spreading care...",
+  "Building brighter futures...",
   "Welcome to CareGanga Foundation"
 ];
 
-export function CareGangaLivePreloader({ onFinish }: { onFinish?: () => void }) {
-  const [isVisible, setIsVisible] = useState(true);
-  const [progress, setProgress] = useState(0);
-  const [taglineIdx, setTaglineIdx] = useState(0);
-  const [isNavigating, setIsNavigating] = useState(false);
+export function CareGangaLivePreloader({
+  onFinish,
+  logoSrc = "/logo.png"
+}: {
+  onFinish?: () => void;
+  logoSrc?: string;
+}) {
+  const [pct, setPct] = useState(0);
+  const [hide, setHide] = useState(false);
 
   useEffect(() => {
-    let tick = 0;
-    const interval = setInterval(() => {
-      tick++;
-      const currentPct = Math.min(100, Math.round((tick / 56) * 100));
-      setProgress(currentPct);
+    const t = setInterval(() => {
+      setPct((p) => Math.min(100, p + Math.ceil(Math.random() * 6)));
+    }, 70);
+    return () => clearInterval(t);
+  }, []);
 
-      if (tick === 14) setTaglineIdx(1);
-      if (tick === 34) setTaglineIdx(2);
-      if (tick === 48) setTaglineIdx(3);
+  useEffect(() => {
+    if (pct < 100) return;
+    const a = setTimeout(() => setHide(true), 400);
+    const b = setTimeout(() => {
+      onFinish?.();
+    }, 1000);
+    return () => {
+      clearTimeout(a);
+      clearTimeout(b);
+    };
+  }, [pct, onFinish]);
 
-      if (tick >= 56) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setIsVisible(false);
-          onFinish?.();
-        }, 250);
-      }
-    }, 25);
-
-    return () => clearInterval(interval);
-  }, [onFinish]);
-
-  if (!isVisible) return null;
+  const msg = messages[Math.min(messages.length - 1, Math.floor(pct / 26))];
 
   return (
-    <AnimatePresence>
-      {isVisible && (
-        <motion.div
-          className="fixed inset-0 z-[999999] flex flex-col items-center justify-center bg-[#FAF7EE] text-slate-800 select-none overflow-hidden"
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 1.04, filter: "blur(4px)" }}
-          transition={{ duration: 0.55, ease: "easeInOut" }}
+    <div
+      className="cg-loader-bg"
+      aria-label="Loading CareGanga Foundation"
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        backgroundColor: "var(--cream)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        transition: "opacity 0.5s ease",
+        opacity: hide ? 0 : 1,
+        pointerEvents: hide ? "none" : "auto",
+        userSelect: "none"
+      }}
+    >
+      {/* Concentric animated rings + floating logo card */}
+      <div style={{ position: "relative", width: 144, height: 144 }}>
+        <div className="cg-ring cg-ring-1" />
+        <div className="cg-ring cg-ring-2" />
+        <div className="cg-ring cg-ring-3" />
+        <div
+          className="cg-float"
+          style={{
+            position: "absolute",
+            inset: 34,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 16,
+            border: "1px solid color-mix(in srgb, var(--gold) 45%, transparent)",
+            background: "var(--card)",
+            boxShadow: "var(--shadow-soft)"
+          }}
         >
-          {/* Top accent loading strip */}
-          <div className="fixed top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#134938] via-[#4EAECB] to-[#F2D03F] z-[99999] origin-left shadow-md" />
+          <img
+            src={logoSrc}
+            alt="CareGanga logo"
+            style={{ width: 42, height: 42, objectFit: "contain", borderRadius: "9999px" }}
+          />
+        </div>
+      </div>
 
-          {/* Ambient luminous glow circles */}
-          <div className="absolute w-[600px] h-[600px] rounded-full bg-[#4EAECB]/15 blur-[120px] pointer-events-none animate-pulse" />
-          <div className="absolute w-[400px] h-[400px] rounded-full bg-[#134938]/15 blur-[90px] pointer-events-none" />
+      {/* Brand title */}
+      <p
+        className="text-brand-gradient"
+        style={{
+          marginTop: 40,
+          marginBottom: 0,
+          fontFamily: '"Merriweather", Georgia, serif',
+          fontSize: "2.25rem",
+          fontWeight: 900,
+          letterSpacing: "-0.025em",
+          lineHeight: 1.1
+        }}
+      >
+        CareGanga
+      </p>
+      <p
+        style={{
+          marginTop: 4,
+          marginBottom: 0,
+          fontSize: "0.75rem",
+          fontWeight: 700,
+          letterSpacing: "0.35em",
+          color: "var(--primary)",
+          fontFamily: '"Poppins", system-ui, sans-serif'
+        }}
+      >
+        FOUNDATION
+      </p>
 
-          {/* Centered Content */}
-          <div className="relative z-10 flex flex-col items-center max-w-md px-6 text-center">
-            {/* Multi-Ring Rotating Spinner with Centered Logo */}
-            <div className="relative mb-8 flex items-center justify-center w-36 h-36">
-              {/* Outer Slow Ring */}
-              <div
-                className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-[#134938] border-r-[#4EAECB] border-b-[#F2D03F] p-1 opacity-80"
-                style={{
-                  animation: "cgSpinSlow 6s linear infinite"
-                }}
-              />
+      {/* Dynamic loading status message */}
+      <p
+        style={{
+          marginTop: 24,
+          marginBottom: 0,
+          fontSize: "0.75rem",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          color: "var(--primary)",
+          fontFamily: '"Poppins", system-ui, sans-serif'
+        }}
+      >
+        {msg}
+      </p>
 
-              {/* Inner Reverse Ring */}
-              <div
-                className="absolute inset-2 rounded-full border-2 border-transparent border-b-[#4EAECB] border-l-[#134938] opacity-70"
-                style={{
-                  animation: "cgSpinReverse 8s linear infinite"
-                }}
-              />
+      {/* Progress bar */}
+      <div
+        style={{
+          marginTop: 24,
+          height: 6,
+          width: 256,
+          overflow: "hidden",
+          borderRadius: 9999,
+          backgroundColor: "var(--border)"
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            width: `${pct}%`,
+            borderRadius: 9999,
+            transition: "width 0.15s ease",
+            background: "linear-gradient(90deg, var(--primary), var(--teal), var(--gold))"
+          }}
+        />
+      </div>
 
-              {/* Inner Pulsing Gradient */}
-              <div className="absolute inset-4 rounded-full bg-gradient-to-tr from-[#134938]/20 via-[#4EAECB]/20 to-[#F2D03F]/20 animate-pulse" />
+      {/* Percentage */}
+      <p
+        style={{
+          marginTop: 12,
+          marginBottom: 0,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: "0.75rem",
+          fontWeight: 600,
+          color: "var(--muted-foreground)",
+          fontFamily: '"Poppins", system-ui, sans-serif'
+        }}
+      >
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 9999,
+            backgroundColor: "var(--teal)",
+            display: "inline-block"
+          }}
+        />
+        {pct}%
+      </p>
 
-              {/* Elevated Logo Card with Floating Wave Motion */}
-              <motion.div
-                className="relative z-10 w-20 h-20 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-amber-100 p-3.5 flex items-center justify-center"
-                initial={{ scale: 0.7, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5, type: "spring", stiffness: 120 }}
-                style={{
-                  animation: "cgWaveFloat 3s ease-in-out infinite"
-                }}
-              >
-                <img
-                  src="/logo.png"
-                  alt="CareGanga Foundation Logo"
-                  className="w-full h-full object-contain drop-shadow-sm"
-                />
-              </motion.div>
-            </div>
-
-            {/* Brand Title */}
-            <motion.h1
-              className="text-4xl font-extrabold font-serif tracking-tight mb-0.5"
-              initial={{ y: 12, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-            >
-              <span className="bg-gradient-to-r from-[#134938] via-[#0F766E] to-[#4EAECB] bg-clip-text text-transparent">
-                CareGanga
-              </span>
-            </motion.h1>
-
-            {/* Sub-label */}
-            <motion.span
-              className="text-xs font-bold tracking-[0.3em] text-[#134938] uppercase mb-4 block"
-              initial={{ y: 12, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.15 }}
-            >
-              Foundation
-            </motion.span>
-
-            {/* Rotating Taglines */}
-            <div className="h-6 mb-6 overflow-hidden flex items-center justify-center">
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={taglineIdx}
-                  initial={{ y: 12, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -12, opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="text-xs font-semibold uppercase tracking-widest text-[#134938]"
-                >
-                  {TAGLINES[taglineIdx]}
-                </motion.p>
-              </AnimatePresence>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="w-64 bg-slate-200/80 h-2.5 rounded-full overflow-hidden p-0.5 shadow-inner border border-slate-300/30 mb-3 relative">
-              <motion.div
-                className="h-full bg-gradient-to-r from-[#134938] via-[#4EAECB] to-[#F2D03F] rounded-full shadow-sm relative overflow-hidden"
-                style={{ width: `${progress}%` }}
-                transition={{ ease: "easeOut" }}
-              >
-                <div className="absolute inset-0 bg-white/30 animate-pulse" />
-              </motion.div>
-            </div>
-
-            {/* Percentage Display */}
-            <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-500">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#4EAECB] animate-ping" />
-              <span>{progress}%</span>
-            </div>
-          </div>
-
-          {/* Bottom Wave River Graphic */}
-          <div className="absolute bottom-0 left-0 right-0 w-full overflow-hidden leading-none opacity-40 pointer-events-none">
-            <svg
-              className="relative block w-full h-16 sm:h-24"
-              viewBox="0 0 1200 120"
-              preserveAspectRatio="none"
-            >
-              <path
-                d="M0,0 C150,90 350,-40 500,40 C650,120 900,10 1200,50 L1200,120 L0,120 Z"
-                fill="#134938"
-              />
-              <path
-                d="M0,20 C200,100 450,10 700,70 C950,130 1100,30 1200,60 L1200,120 L0,120 Z"
-                fill="#4EAECB"
-                opacity="0.6"
-              />
-            </svg>
-          </div>
-
-          {/* Embedded keyframe styles */}
-          <style jsx>{`
-            @keyframes cgSpinSlow {
-              0% {
-                transform: rotate(0deg);
-              }
-              100% {
-                transform: rotate(360deg);
-              }
-            }
-            @keyframes cgSpinReverse {
-              0% {
-                transform: rotate(360deg);
-              }
-              100% {
-                transform: rotate(0deg);
-              }
-            }
-            @keyframes cgWaveFloat {
-              0%,
-              100% {
-                transform: translateY(0px);
-              }
-              50% {
-                transform: translateY(-4px);
-              }
-            }
-          `}</style>
-        </motion.div>
-      )}
-    </AnimatePresence>
+      {/* Animated SVG waves at bottom */}
+      <div
+        className="cg-wave-slow"
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          height: 112,
+          width: "200%",
+          opacity: 0.5,
+          pointerEvents: "none"
+        }}
+      >
+        <svg
+          viewBox="0 0 2880 120"
+          preserveAspectRatio="none"
+          style={{ width: "100%", height: "100%", fill: "var(--primary)", display: "block" }}
+        >
+          <path d="M0 40 C 360 0 720 0 1080 50 S 1800 80 2160 40 S 2700 20 2880 40 V120 H0Z" />
+        </svg>
+      </div>
+      <div
+        className="cg-wave"
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          height: 80,
+          width: "200%",
+          opacity: 0.4,
+          pointerEvents: "none"
+        }}
+      >
+        <svg
+          viewBox="0 0 2880 100"
+          preserveAspectRatio="none"
+          style={{ width: "100%", height: "100%", fill: "var(--teal)", display: "block" }}
+        >
+          <path d="M0 30 C 480 60 960 0 1440 30 S 2400 60 2880 30 V100 H0Z" />
+        </svg>
+      </div>
+    </div>
   );
 }

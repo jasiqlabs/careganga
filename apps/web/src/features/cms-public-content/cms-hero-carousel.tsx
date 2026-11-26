@@ -1,25 +1,51 @@
 "use client";
 import Link from "next/link";
-import {useState} from "react";
+import {useState, useEffect, useRef} from "react";
 import type {PublicCmsNavigation} from "./cms-public-source";
 import {effectiveCmsCtaRoute} from "./cms-cta-route";
 import type {PublicCmsSection,PublicCmsPage} from "./cms-public-page";
+
 type Asset=PublicCmsPage["assets"][number];
 type Slide={section:PublicCmsSection;hero?:Asset;mobile?:Asset};
 const text=(v:unknown)=>typeof v==="string"?v:"";
 const safeColor=(v:unknown)=>/^#[a-fA-F0-9]{6}$/.test(text(v))?text(v):undefined;
+
 function Button({label,href,secondary=false,navigation}:{label:unknown;href:unknown;secondary?:boolean;navigation?:PublicCmsNavigation|null}){
  const target=effectiveCmsCtaRoute(href,navigation);
- return target&&text(label)?
-  <Link className={secondary?"cg-site-hero-cta is-secondary":"cg-site-hero-cta"}
-   href={target}>{text(label)}</Link>:null;
+ const labelStr=text(label);
+ if(!target||!labelStr)return null;
+ const isDonate=target==="/donate"||labelStr.toLowerCase().includes("donate");
+ return <Link className={isDonate?"cg-site-hero-cta cg-site-hero-donate":(secondary?"cg-site-hero-cta is-secondary":"cg-site-hero-cta")}
+  href={target}>
+  {isDonate&&<span className="cg-hero-heart" aria-hidden="true">♥ </span>}
+  {labelStr}
+ </Link>;
 }
+
 export function CmsHeroCarousel({slides,navigation}:{slides:Slide[];navigation?:PublicCmsNavigation|null}){
  const [active,setActive]=useState(0);
+ const [isPaused,setIsPaused]=useState(false);
+ const timerRef=useRef<NodeJS.Timeout|null>(null);
+
+ useEffect(()=>{
+  if(slides.length<=1||isPaused)return;
+  timerRef.current=setInterval(()=>{
+   setActive(prev=>(prev+1)%slides.length);
+  },6000);
+  return ()=>{
+   if(timerRef.current)clearInterval(timerRef.current);
+  };
+ },[slides.length,isPaused]);
+
  if(slides.length===0)return null;
- const index=Math.min(active,slides.length-1),slide=slides[index],v=slide.section.fields;
- const chips=Array.isArray(v.tags)?v.tags.filter(x=>typeof x==="string").slice(0,4):[];
- return <section className="cg-site-hero" aria-label="Foundation featured initiatives">
+ const index=Math.min(active,slides.length-1);
+ const slide=slides[index];
+ const v=slide.section.fields;
+ const chips=Array.isArray(v.tags)?v.tags.filter(x=>typeof x==="string").slice(0,4):typeof v.tags==="string"?(v.tags as string).split(",").map(x=>x.trim()).filter(Boolean).slice(0,4):[];
+
+ return <section className="cg-site-hero" aria-label="Foundation featured initiatives"
+  onMouseEnter={()=>setIsPaused(true)}
+  onMouseLeave={()=>setIsPaused(false)}>
   {(slide.hero||slide.mobile)&&<picture className="cg-site-hero-media">
    {slide.mobile&&<source media="(max-width: 48rem)" srcSet={slide.mobile.src}/>}
    <img src={(slide.hero||slide.mobile)!.src}
@@ -40,8 +66,8 @@ export function CmsHeroCarousel({slides,navigation}:{slides:Slide[];navigation?:
     <span key={i}>{chip as string}</span>)}</div>}
    {[slide.hero,slide.mobile].some(a=>a?.altText.match(/^(AI-generated illustration|Editorial illustration)/))&&<p className="cg-site-hero-description">Illustration; not a photograph of Foundation activities.</p>}
    <div className="cg-site-hero-actions">
-    <Button label={v.primaryLabel} href={v.primaryPath} navigation={navigation}/>
-    <Button label={v.secondaryLabel} href={v.secondaryPath} navigation={navigation} secondary/>
+    <Button label={v.primaryLabel||"DONATE NOW"} href={v.primaryPath||"/donate"} navigation={navigation}/>
+    {!!text(v.secondaryLabel)&&<Button label={v.secondaryLabel} href={v.secondaryPath} navigation={navigation} secondary/>}
    </div>
   </div>
   {slides.length>1&&<div className="cg-site-slide-controls">

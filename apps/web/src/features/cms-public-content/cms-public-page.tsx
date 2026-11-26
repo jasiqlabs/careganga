@@ -174,6 +174,7 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
 /** Shared original public shell for genuine non-CMS owner projections.
  * This does not invent a second CMS page or reusable business master.
  */
+export {RichText, Promo, Features, JoinCards, Team, CmsAction, Photo};
 export function CmsPublicShell({children,navigation,siteFooter}:{children:ReactNode;
  navigation?:PublicCmsNavigation|null;siteFooter?:Record<string,unknown>|null}){
  const footer=siteFooter??{};
