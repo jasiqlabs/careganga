@@ -119,13 +119,13 @@ type Props = {
 };
 
 const titles = [
-  "Branch details",
-  "Location",
-  "Registration documents",
-  "Agreement & photos",
-  "Branch manager",
-  "Foundation departments",
-  "Review"
+  "Basic Information",
+  "Location & Contact",
+  "Official Photo & Registration",
+  "Agreement & Documents",
+  "Appointment & Management",
+  "Staff / Volunteers / Projects",
+  "Review & Submit"
 ];
 
 async function api<T>(
@@ -1573,184 +1573,479 @@ export function BranchRegistrationScreen({
           )}
 
           {/* ---------------------------------------------------------------- */}
-          {/* TAB 3: 7-STAGE REGISTRATION WIZARD                                */}
+          {/* TAB 3: 7-STAGE REGISTRATION WIZARD (Live CareGanga Parity)        */}
           {/* ---------------------------------------------------------------- */}
           {mode === "WIZARD" && (
-            <View style={styles.card}>
-              <Text style={styles.heading}>Seven-Stage Branch Registration</Text>
-              <View style={styles.stepRow}>
-                {titles.map((title, index) => {
-                  const num = index + 1;
-                  const active = step === num;
-                  return (
-                    <Pressable
-                      key={title}
-                      accessibilityRole="button"
-                      onPress={() => setStep(num)}
-                      style={[styles.stepButton, active && styles.selected]}
-                    >
-                      <Text style={[styles.stepText, active && { color: "#2563EB", fontWeight: "700" }]}>
-                        {num}. {title}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {step === 1 && (
-                <>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Branch name</Text>
-                    <TextInput style={styles.input} value={name} onChangeText={setName} />
-                  </View>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Branch type</Text>
-                    <TextInput style={styles.input} value={branchType} onChangeText={setBranchType} />
-                  </View>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Opening date (YYYY-MM-DD)</Text>
-                    <TextInput style={styles.input} value={openingDate} onChangeText={setOpeningDate} />
-                  </View>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Official phone</Text>
-                    <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-                  </View>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Official email</Text>
-                    <TextInput style={styles.input} value={officialEmail} onChangeText={setOfficialEmail} keyboardType="email-address" />
-                  </View>
-                </>
-              )}
-
-              {step === 2 && (
-                <>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Postal address</Text>
-                    <TextInput style={styles.input} value={address} onChangeText={setAddress} multiline />
-                  </View>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>PIN code</Text>
-                    <TextInput style={styles.input} value={pin} onChangeText={setPin} keyboardType="numeric" />
-                  </View>
-                </>
-              )}
-
-              {step === 3 && selected && (
-                <BranchNativeUploader
-                  token={token}
-                  registrationRef={selected.recordRef}
-                  draftVersion={selected.version}
-                  classification="REGISTRATION_PROOF"
-                  onVerified={(fileRef: string) =>
-                    setRegistrationFiles((prev) => (prev.includes(fileRef) ? prev : [...prev, fileRef]))
-                  }
-                  onExpired={onExpired}
-                />
-              )}
-
-              {step === 4 && selected && (
-                <BranchNativeUploader
-                  token={token}
-                  registrationRef={selected.recordRef}
-                  draftVersion={selected.version}
-                  classification="AGREEMENT"
-                  onVerified={(fileRef: string) =>
-                    setAgreementFiles((prev) => (prev.includes(fileRef) ? prev : [...prev, fileRef]))
-                  }
-                  onExpired={onExpired}
-                />
-              )}
-
-              {step === 5 && (
-                <View style={styles.field}>
-                  <Text style={styles.label}>Select Eligible Branch Manager</Text>
-                  {managers.map((m) => (
-                    <Pressable
-                      key={m.value}
-                      style={[styles.option, manager === m.value && styles.selected]}
-                      onPress={() => setManager(m.value)}
-                    >
-                      <Text style={styles.optionTitle}>{m.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-
-              {step === 6 && (
-                <View style={styles.field}>
-                  <Text style={styles.label}>Link Foundation Departments</Text>
-                  {departments.map((d) => (
-                    <Pressable
-                      key={d.value}
-                      style={[styles.option, departmentRefs.includes(d.value) && styles.selected]}
-                      onPress={() =>
-                        setDepartmentRefs((curr) =>
-                          curr.includes(d.value) ? curr.filter((x) => x !== d.value) : [...curr, d.value]
-                        )
-                      }
-                    >
-                      <Text style={styles.optionTitle}>{d.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-
-              {step === 7 && (
-                <View style={{ gap: 10 }}>
-                  <Text style={styles.help}>
-                    Review draft before submission. Approval requires Super Admin verification.
+            <>
+              {/* Top Stepper Card */}
+              <View style={styles.card}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.sectionHeading}>
+                    Step {step} of 7: {titles[step - 1]}
                   </Text>
-                  <Pressable
-                    style={styles.checkOption}
-                    onPress={() => setReviewed((x) => !x)}
-                  >
-                    <View style={styles.checkIconWrap}>
-                      {reviewed ? <IconCheckCircle size={20} color="#16A34A" /> : <View style={styles.checkboxUnchecked} />}
-                    </View>
-                    <Text style={styles.optionTitle}>I reviewed this draft</Text>
-                  </Pressable>
+                  <View style={[styles.badge, styles.badgeActive]}>
+                    <Text style={[styles.badgeText, styles.badgeTextActive]}>
+                      {Math.round((step / 7) * 100)}% Complete
+                    </Text>
+                  </View>
                 </View>
-              )}
 
-              {/* Wizard navigation actions */}
-              <View style={styles.actions}>
-                <Pressable
-                  style={[styles.button, step <= 1 && styles.disabled]}
-                  disabled={step <= 1}
-                  onPress={() => setStep((x) => x - 1)}
+                {/* Horizontal Stepper */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.wizardStepperScroll}
                 >
-                  <Text style={styles.buttonText}>Previous</Text>
-                </Pressable>
+                  {titles.map((title, index) => {
+                    const num = index + 1;
+                    const isActive = step === num;
+                    const isCompleted = step > num;
+                    return (
+                      <Pressable
+                        key={title}
+                        accessibilityRole="button"
+                        onPress={() => setStep(num)}
+                        style={[
+                          styles.wizardStepItem,
+                          isActive && styles.wizardStepItemActive,
+                          isCompleted && styles.wizardStepItemCompleted
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.wizardStepBadge,
+                            isActive && styles.wizardStepBadgeActive,
+                            isCompleted && styles.wizardStepBadgeCompleted
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.wizardStepBadgeText,
+                              isActive && styles.wizardStepBadgeTextActive,
+                              isCompleted && styles.wizardStepBadgeTextCompleted
+                            ]}
+                          >
+                            {isCompleted ? "✓" : num}
+                          </Text>
+                        </View>
+                        <Text
+                          style={[
+                            styles.wizardStepTitleText,
+                            isActive && styles.wizardStepTitleTextActive
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {title}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
 
-                <Pressable
-                  style={[styles.button, step >= 7 && styles.disabled]}
-                  disabled={step >= 7}
-                  onPress={() => setStep((x) => x + 1)}
-                >
-                  <Text style={styles.buttonText}>Next</Text>
-                </Pressable>
+              {/* Main Step Form Card */}
+              <View style={styles.card}>
+                <Text style={styles.wizardFormHeading}>
+                  {step}. {titles[step - 1]}
+                </Text>
+                <Text style={styles.wizardFormSub}>
+                  {step === 1 && "Enter the core identification and branch classification details."}
+                  {step === 2 && "Enter physical address, pincode and geographic location."}
+                  {step === 3 && "Upload official premises photo and registration certificates."}
+                  {step === 4 && "Upload signed branch operating agreement and verified documents."}
+                  {step === 5 && "Assign eligible Foundation manager for this branch."}
+                  {step === 6 && "Link operational Foundation departments and initiatives."}
+                  {step === 7 && "Review completed setup draft and submit for Super Admin approval."}
+                </Text>
 
-                {canManage && (
-                  <Pressable
-                    style={[styles.button, styles.primary]}
-                    disabled={busy}
-                    onPress={() => void write()}
-                  >
-                    <Text style={[styles.buttonText, styles.primaryText]}>Save Draft</Text>
-                  </Pressable>
+                {step === 1 && (
+                  <View style={{ gap: 10, marginTop: 6 }}>
+                    <View style={styles.field}>
+                      <Text style={styles.label}>Branch Name *</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={name}
+                        onChangeText={setName}
+                        placeholder="e.g. CareGanga Ranchi Branch"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.label}>Branch Type *</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={branchType}
+                        onChangeText={setBranchType}
+                        placeholder="e.g. Regional Office, Branch Office"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.label}>Opening Date (YYYY-MM-DD) *</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={openingDate}
+                        onChangeText={setOpeningDate}
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.label}>Official Phone *</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={phone}
+                        onChangeText={setPhone}
+                        keyboardType="phone-pad"
+                        placeholder="+91 98765 43210"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.label}>Official Email *</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={officialEmail}
+                        onChangeText={setOfficialEmail}
+                        keyboardType="email-address"
+                        placeholder="branch@careganga.org"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+                  </View>
                 )}
 
-                {step === 7 && canManage && (
-                  <Pressable
-                    style={[styles.button, { backgroundColor: "#16A34A", borderColor: "#16A34A" }]}
-                    disabled={busy || submissionBusy}
-                    onPress={() => void submit()}
-                  >
-                    <Text style={[styles.buttonText, styles.primaryText]}>Submit for Review</Text>
-                  </Pressable>
+                {step === 2 && (
+                  <View style={{ gap: 10, marginTop: 6 }}>
+                    <View style={styles.field}>
+                      <Text style={styles.label}>Full Postal Address *</Text>
+                      <TextInput
+                        style={[styles.input, { height: 72, textAlignVertical: "top" }]}
+                        value={address}
+                        onChangeText={setAddress}
+                        multiline
+                        placeholder="Complete street address, landmark, building name..."
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.label}>PIN Code *</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={pin}
+                        onChangeText={setPin}
+                        keyboardType="numeric"
+                        placeholder="6-digit PIN code"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.label}>Latitude</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={latitude}
+                        onChangeText={setLatitude}
+                        placeholder="e.g. 23.3441"
+                        placeholderTextColor="#94A3B8"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.label}>Longitude</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={longitude}
+                        onChangeText={setLongitude}
+                        placeholder="e.g. 85.3096"
+                        placeholderTextColor="#94A3B8"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+                )}
+
+                {step === 3 && selected && (
+                  <View style={{ marginTop: 6 }}>
+                    <BranchNativeUploader
+                      token={token}
+                      registrationRef={selected.recordRef}
+                      draftVersion={selected.version}
+                      classification="REGISTRATION_PROOF"
+                      onVerified={(fileRef: string) =>
+                        setRegistrationFiles((prev) => (prev.includes(fileRef) ? prev : [...prev, fileRef]))
+                      }
+                      onExpired={onExpired}
+                    />
+                  </View>
+                )}
+
+                {step === 3 && !selected && (
+                  <Text style={styles.help}>
+                    Save initial draft in Step 1 first to upload registration documents.
+                  </Text>
+                )}
+
+                {step === 4 && selected && (
+                  <View style={{ marginTop: 6 }}>
+                    <BranchNativeUploader
+                      token={token}
+                      registrationRef={selected.recordRef}
+                      draftVersion={selected.version}
+                      classification="AGREEMENT"
+                      onVerified={(fileRef: string) =>
+                        setAgreementFiles((prev) => (prev.includes(fileRef) ? prev : [...prev, fileRef]))
+                      }
+                      onExpired={onExpired}
+                    />
+                  </View>
+                )}
+
+                {step === 4 && !selected && (
+                  <Text style={styles.help}>
+                    Save initial draft in Step 1 first to upload branch agreement.
+                  </Text>
+                )}
+
+                {step === 5 && (
+                  <View style={[styles.field, { marginTop: 6 }]}>
+                    <Text style={styles.label}>Select Eligible Branch Manager</Text>
+                    {managers.length === 0 ? (
+                      <Text style={styles.help}>No eligible manager accounts found.</Text>
+                    ) : (
+                      managers.map((m) => (
+                        <Pressable
+                          key={m.value}
+                          style={[styles.option, manager === m.value && styles.selected]}
+                          onPress={() => setManager(m.value)}
+                        >
+                          <Text style={styles.optionTitle}>{m.label}</Text>
+                        </Pressable>
+                      ))
+                    )}
+                  </View>
+                )}
+
+                {step === 6 && (
+                  <View style={[styles.field, { marginTop: 6 }]}>
+                    <Text style={styles.label}>Link Foundation Departments</Text>
+                    {departments.length === 0 ? (
+                      <Text style={styles.help}>No active Foundation departments found.</Text>
+                    ) : (
+                      departments.map((d) => (
+                        <Pressable
+                          key={d.value}
+                          style={[styles.option, departmentRefs.includes(d.value) && styles.selected]}
+                          onPress={() =>
+                            setDepartmentRefs((curr) =>
+                              curr.includes(d.value) ? curr.filter((x) => x !== d.value) : [...curr, d.value]
+                            )
+                          }
+                        >
+                          <Text style={styles.optionTitle}>{d.label}</Text>
+                        </Pressable>
+                      ))
+                    )}
+                  </View>
+                )}
+
+                {step === 7 && (
+                  <View style={{ gap: 12, marginTop: 6 }}>
+                    <Text style={styles.help}>
+                      Review draft before submission. Approval requires Super Admin verification.
+                    </Text>
+                    <Pressable
+                      style={styles.checkOption}
+                      onPress={() => setReviewed((x) => !x)}
+                    >
+                      <View style={styles.checkIconWrap}>
+                        {reviewed ? <IconCheckCircle size={20} color="#16A34A" /> : <View style={styles.checkboxUnchecked} />}
+                      </View>
+                      <Text style={styles.optionTitle}>I reviewed this draft and confirm information is accurate</Text>
+                    </Pressable>
+                  </View>
                 )}
               </View>
-            </View>
+
+              {/* Branch Setup Summary Sidebar / Card (Matching Web Exactly) */}
+              <View style={styles.card}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.sectionHeading}>Branch Setup Summary</Text>
+                  <View style={[styles.badge, styles.badgeActive]}>
+                    <Text style={[styles.badgeText, styles.badgeTextActive]}>• Live</Text>
+                  </View>
+                </View>
+
+                {/* Ring & Status Row */}
+                <View style={styles.summaryRingRow}>
+                  <View style={styles.summaryRingVisual}>
+                    <Text style={styles.summaryRingPercent}>
+                      {Math.round((step / 7) * 100)}%
+                    </Text>
+                    <Text style={styles.summaryRingLabel}>Completed</Text>
+                  </View>
+                  <View style={styles.summaryStatusInfo}>
+                    <Text style={styles.summaryStatusLabel}>Setup Status</Text>
+                    <View style={styles.summaryStatusPill}>
+                      <View style={[styles.dotIndicator, { backgroundColor: "#CA8A04" }]} />
+                      <Text style={styles.summaryStatusPillText}>Draft</Text>
+                    </View>
+                    <Text style={[styles.summaryStatusLabel, { marginTop: 6 }]}>Branch Code</Text>
+                    <Text style={styles.summaryCodeText}>Auto-generated after approval</Text>
+                  </View>
+                </View>
+
+                {/* Key-Value Breakdown */}
+                <View style={styles.summaryKvBox}>
+                  <View style={styles.summaryKvRow}>
+                    <Text style={styles.summaryKvKey}>Branch Name</Text>
+                    <Text style={styles.summaryKvVal}>{name || "—"}</Text>
+                  </View>
+                  <View style={styles.summaryKvRow}>
+                    <Text style={styles.summaryKvKey}>Branch Type</Text>
+                    <Text style={styles.summaryKvVal}>{branchType || "—"}</Text>
+                  </View>
+                  <View style={styles.summaryKvRow}>
+                    <Text style={styles.summaryKvKey}>Opening Date</Text>
+                    <Text style={styles.summaryKvVal}>{openingDate || "—"}</Text>
+                  </View>
+                  <View style={styles.summaryKvRow}>
+                    <Text style={styles.summaryKvKey}>Assigned Manager</Text>
+                    <Text style={styles.summaryKvVal}>
+                      {manager ? (managers.find((m) => m.value === manager)?.label || manager) : "Not assigned"}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* 4 Metrics Counters */}
+                <View style={styles.summaryMetricsGrid}>
+                  <View style={styles.summaryMetricItem}>
+                    <Text style={styles.summaryMetricVal}>{departmentRefs.length}</Text>
+                    <Text style={styles.summaryMetricLabel}>Departments</Text>
+                  </View>
+                  <View style={styles.summaryMetricItem}>
+                    <Text style={styles.summaryMetricVal}>0</Text>
+                    <Text style={styles.summaryMetricLabel}>Employees</Text>
+                  </View>
+                  <View style={styles.summaryMetricItem}>
+                    <Text style={styles.summaryMetricVal}>0</Text>
+                    <Text style={styles.summaryMetricLabel}>Volunteers</Text>
+                  </View>
+                  <View style={styles.summaryMetricItem}>
+                    <Text style={styles.summaryMetricVal}>0</Text>
+                    <Text style={styles.summaryMetricLabel}>Active Projects</Text>
+                  </View>
+                </View>
+
+                {/* Required Documents Checklist */}
+                <View style={styles.summaryDocsBox}>
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.summaryDocsHeading}>Required Documents</Text>
+                    <Text style={styles.summaryDocsCount}>
+                      {registrationFiles.length + agreementFiles.length}/6 Uploaded
+                    </Text>
+                  </View>
+                  <View style={styles.docCheckItem}>
+                    <View style={styles.docCheckCircle}>
+                      {registrationFiles.length > 0 ? (
+                        <IconCheckCircle size={14} color="#16A34A" />
+                      ) : (
+                        <View style={styles.docCheckEmpty} />
+                      )}
+                    </View>
+                    <Text style={styles.docCheckText}>Registration Certificate</Text>
+                  </View>
+                  <View style={styles.docCheckItem}>
+                    <View style={styles.docCheckCircle}>
+                      {agreementFiles.length > 0 ? (
+                        <IconCheckCircle size={14} color="#16A34A" />
+                      ) : (
+                        <View style={styles.docCheckEmpty} />
+                      )}
+                    </View>
+                    <Text style={styles.docCheckText}>Branch Operating Agreement</Text>
+                  </View>
+                </View>
+
+                {/* 5-Stage Approval Workflow Visual */}
+                <View style={styles.approvalWorkflowBox}>
+                  <Text style={styles.approvalTrackHeading}>Approval Workflow</Text>
+                  <View style={styles.approvalTrackLine}>
+                    {["Draft", "Verification", "Approval", "Certified", "Code Generated"].map(
+                      (stage, idx) => {
+                        const isDone = idx === 0;
+                        return (
+                          <View key={stage} style={styles.approvalTrackNode}>
+                            <View
+                              style={[
+                                styles.approvalTrackCircle,
+                                isDone && styles.approvalTrackCircleActive
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.approvalTrackCircleText,
+                                  isDone && styles.approvalTrackCircleTextActive
+                                ]}
+                              >
+                                {idx + 1}
+                              </Text>
+                            </View>
+                            <Text style={styles.approvalTrackLabel} numberOfLines={1}>
+                              {stage}
+                            </Text>
+                          </View>
+                        );
+                      }
+                    )}
+                  </View>
+                </View>
+              </View>
+
+              {/* Wizard Bottom Actions */}
+              <View style={styles.wizardActionsCard}>
+                <View style={styles.wizardActionsRow}>
+                  {canManage && (
+                    <Pressable
+                      style={[styles.wizardBtnDraft, busy && styles.disabled]}
+                      disabled={busy}
+                      onPress={() => void write()}
+                    >
+                      <Text style={styles.wizardBtnDraftText}>Save Draft</Text>
+                    </Pressable>
+                  )}
+
+                  <Pressable
+                    style={styles.wizardBtnCancel}
+                    onPress={() => setMode("OPERATING")}
+                  >
+                    <Text style={styles.wizardBtnCancelText}>Cancel</Text>
+                  </Pressable>
+
+                  {step < 7 ? (
+                    <Pressable
+                      style={styles.wizardBtnPrimary}
+                      onPress={() => setStep((x) => x + 1)}
+                    >
+                      <Text style={styles.wizardBtnPrimaryText}>Save & Continue →</Text>
+                    </Pressable>
+                  ) : (
+                    canManage && (
+                      <Pressable
+                        style={[
+                          styles.wizardBtnPrimary,
+                          { backgroundColor: "#16A34A", borderColor: "#16A34A" },
+                          (busy || submissionBusy) && styles.disabled
+                        ]}
+                        disabled={busy || submissionBusy}
+                        onPress={() => void submit()}
+                      >
+                        <Text style={styles.wizardBtnPrimaryText}>Submit for Review</Text>
+                      </Pressable>
+                    )
+                  )}
+                </View>
+              </View>
+            </>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -1826,26 +2121,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
     borderRadius: 12,
-    padding: 12,
+    padding: 10,
     elevation: 2,
     shadowColor: "#0F172A",
     shadowOpacity: 0.04,
     shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     flexDirection: "row",
     alignItems: "center",
-    gap: 10
+    gap: 8
   },
   kpiIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    flexShrink: 0
   },
-  kpiTextGroup: { flex: 1 },
+  kpiTextGroup: { flex: 1, minWidth: 0 },
   kpiLabel: { fontSize: 11, fontWeight: "600", color: "#64748B" },
-  kpiValue: { fontSize: 18, fontWeight: "800", color: "#0F172A" },
+  kpiValue: { fontSize: 17, fontWeight: "800", color: "#0F172A", fontVariant: ["tabular-nums"] },
   kpiSub: { fontSize: 10, color: "#16A34A", fontWeight: "600", marginTop: 2 },
 
   // Cards
@@ -2288,5 +2584,180 @@ const styles = StyleSheet.create({
   },
   activityFeedContent: { flex: 1, gap: 2 },
   activityFeedTitle: { fontSize: 12, fontWeight: "600", color: "#0F172A" },
-  activityFeedMeta: { fontSize: 11, color: "#94A3B8" }
+  activityFeedMeta: { fontSize: 11, color: "#94A3B8" },
+
+  // Live CareGanga Wizard Styles
+  wizardStepperScroll: { flexDirection: "row", gap: 10, paddingVertical: 4 },
+  wizardStepItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0"
+  },
+  wizardStepItemActive: {
+    backgroundColor: "#EEF2FF",
+    borderColor: "#4F46E5"
+  },
+  wizardStepItemCompleted: {
+    backgroundColor: "#F0FDF4",
+    borderColor: "#BBF7D0"
+  },
+  wizardStepBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  wizardStepBadgeActive: {
+    backgroundColor: "#4F46E5"
+  },
+  wizardStepBadgeCompleted: {
+    backgroundColor: "#16A34A"
+  },
+  wizardStepBadgeText: { fontSize: 11, fontWeight: "700", color: "#64748B" },
+  wizardStepBadgeTextActive: { color: "#FFFFFF" },
+  wizardStepBadgeTextCompleted: { color: "#FFFFFF" },
+  wizardStepTitleText: { fontSize: 12, fontWeight: "600", color: "#64748B" },
+  wizardStepTitleTextActive: { color: "#4F46E5", fontWeight: "700" },
+  wizardFormHeading: { fontSize: 16, fontWeight: "800", color: "#0F172A" },
+  wizardFormSub: { fontSize: 12, color: "#64748B", marginTop: 2, marginBottom: 8 },
+
+  // Summary Card
+  summaryRingRow: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 8 },
+  summaryRingVisual: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 5,
+    borderColor: "#4F46E5",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  summaryRingPercent: { fontSize: 18, fontWeight: "800", color: "#0F172A" },
+  summaryRingLabel: { fontSize: 9, color: "#64748B", fontWeight: "600" },
+  summaryStatusInfo: { flex: 1, gap: 2 },
+  summaryStatusLabel: { fontSize: 11, color: "#64748B", fontWeight: "600" },
+  summaryStatusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: "#FEF9C3",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12
+  },
+  summaryStatusPillText: { fontSize: 11, fontWeight: "700", color: "#854D0E" },
+  summaryCodeText: { fontSize: 11, color: "#94A3B8", fontStyle: "italic" },
+
+  // Key-value
+  summaryKvBox: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 10,
+    gap: 6,
+    marginTop: 8
+  },
+  summaryKvRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  summaryKvKey: { fontSize: 11, color: "#64748B", fontWeight: "500" },
+  summaryKvVal: { fontSize: 12, fontWeight: "700", color: "#0F172A" },
+
+  // Summary Metrics
+  summaryMetricsGrid: { flexDirection: "row", gap: 6, marginTop: 8 },
+  summaryMetricItem: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 8,
+    padding: 8,
+    alignItems: "center"
+  },
+  summaryMetricVal: { fontSize: 15, fontWeight: "800", color: "#0F172A" },
+  summaryMetricLabel: { fontSize: 9, color: "#64748B", marginTop: 2, textAlign: "center" },
+
+  // Summary Docs
+  summaryDocsBox: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 8,
+    padding: 10,
+    gap: 8,
+    marginTop: 8
+  },
+  summaryDocsHeading: { fontSize: 12, fontWeight: "700", color: "#0F172A" },
+  summaryDocsCount: { fontSize: 11, fontWeight: "700", color: "#2563EB" },
+  docCheckItem: { flexDirection: "row", alignItems: "center", gap: 8 },
+  docCheckCircle: { width: 16, height: 16, alignItems: "center", justifyContent: "center" },
+  docCheckEmpty: { width: 12, height: 12, borderRadius: 6, borderWidth: 1.5, borderColor: "#CBD5E1" },
+  docCheckText: { fontSize: 11, color: "#475569", fontWeight: "500" },
+
+  // Approval Track
+  approvalWorkflowBox: { marginTop: 10, gap: 8 },
+  approvalTrackHeading: { fontSize: 12, fontWeight: "700", color: "#0F172A" },
+  approvalTrackLine: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  approvalTrackNode: { alignItems: "center", flex: 1, gap: 4 },
+  approvalTrackCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  approvalTrackCircleActive: { backgroundColor: "#4F46E5" },
+  approvalTrackCircleText: { fontSize: 10, fontWeight: "700", color: "#64748B" },
+  approvalTrackCircleTextActive: { color: "#FFFFFF" },
+  approvalTrackLabel: { fontSize: 9, color: "#64748B", textAlign: "center" },
+
+  // Wizard Action Buttons
+  wizardActionsCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 12,
+    elevation: 2
+  },
+  wizardActionsRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  wizardBtnDraft: {
+    flex: 1,
+    height: 42,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  wizardBtnDraftText: { fontSize: 12, fontWeight: "700", color: "#334155" },
+  wizardBtnCancel: {
+    paddingHorizontal: 12,
+    height: 42,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  wizardBtnCancelText: { fontSize: 12, fontWeight: "600", color: "#64748B" },
+  wizardBtnPrimary: {
+    flex: 2,
+    height: 42,
+    borderRadius: 8,
+    backgroundColor: "#4F46E5",
+    borderWidth: 1,
+    borderColor: "#4338CA",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  wizardBtnPrimaryText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" }
 });
