@@ -211,3 +211,61 @@ Applied strict CG-19 UI/UX standards to all four CG-02 mobile screens:
      - **US-002-QA16:** Approved-branch operational updates: active branch edits, CAS version check, history preservation -> **PASS**
 
 **Gate Status:** US-001 and US-002 QA & UI/UX verified with 25/25 automated tests passing and CG-19 mobile standards enforced. Main Foundation Structure page (`/admin/foundation`) overhauled to match live CareGanga 5-screenshot visual parity (Profile 2-column layout, Geography 2-column layout with level pills and CustomDropdowns, Departments & Committees 4 KPI cards and CustomDropdown filters, modern Lucide vector icons, and zero fake data / real backend bindings). Live PostgreSQL container and physical Android device tests remain pending runtime qualification.
+
+### 2026-11-26 — CG-02 100% Mobile & Web UI/UX Feature Parity & Manual Testing Verification Checkpoint
+
+**Scope & Role:** Complete component-wise feature & UI/UX parity between Web Admin (`apps/web`) and Internal Android (`apps/android-internal`) per live CareGanga production references (all 9 screenshots: 4 Branches/Locations captures and 5 Foundation Structure captures).
+
+**1. Mobile Parity Implementations (`apps/android-internal`):**
+- **Foundation Structure Screen (`foundation-structure-screen.tsx`)**:
+  - Registered in module router (`dashboard-modules.ts`) and authenticated staff navigation shell (`staff-authentication-screen.tsx`).
+  - **Header**: Circular 36×36 arrow-only back button (`IconArrowLeft`), title "Foundation Structure", subtitle, and live Refresh button (`IconRefresh`).
+  - **Foundation Profile Tab**:
+    - 6 form inputs (Legal name, contact, postal address, registration reference, authority, registration date).
+    - "View change history" button opening audit trail modal sheet.
+    - "Save official profile" button with CAS version protection.
+  - **Geography Tab**:
+    - State -> District -> Subdivision -> Block hierarchy card list with level badges, parent name, status badge (`ACTIVE`/`INACTIVE`), inline Edit modal sheet, and History modal sheet.
+    - "Add real geography" form with searchable `NativeCustomDropdown` for level and parent selection.
+    - "Download verified areas" CSV export.
+  - **Departments & Committees Tab**:
+    - 4 Top KPI cards (Total records, Active, Inactive, Committees) in 2×2 grid.
+    - Search input, Type dropdown filter (`GOVERNING_BODY`, `CENTRAL_COMMITTEE`, `DEPT`, `STANDING_COMMITTEE`), and Status dropdown filter (`ACTIVE`, `INACTIVE`).
+    - Department card list with officeholders sheet, history sheet, and Add/Edit department modal sheet.
+    - "Download verified departments" CSV export.
+  - **Pending Replay Banner**: Resilient offline/timeout recovery with "Check request" and "Retry same request" buttons.
+- **Branches & Locations Screen (`branch-registration-screen.tsx`)**:
+  - **Top 6 KPI Cards**: Total Branches (`IconBuilding`), Active Branches (`IconCheckCircle`), Inactive (`IconClock`), Closed (`IconXCircle`), States Covered (`IconMapPin`), Total Staff (`IconUsers`).
+  - **Search & Filters**: Search keyword input, Branch Status `NativeCustomDropdown`, Branch Type `NativeCustomDropdown`, and "Export" CSV button.
+  - **Branches Analytics Section**:
+    - *Branches by Status*: Active/Inactive/Closed counts with proportional multi-colored progress indicator.
+    - *Branches by Type*: Head Office (33%) and Regional Office (67%) distribution bars.
+    - *Top 5 States*: West Bengal (3 branches) state row.
+  - **Branch Details View (`selectedOperating`)**:
+    - *Hero Card*: Branch Code, Status badge, Branch Name, Type subtitle, Quote, Meta details (Location, Established, Region), "Edit Branch Details" action button, and Map Box with Lat/Lon coordinates and "Open In Maps" button (`IconExternalLink`).
+    - *6 Metrics Grid*: Total Staff (1), Volunteers (2), Active Members (1), Total Projects (0), Total Budget (₹ 0), Funds Received (₹ 0).
+    - *8 Sub-Tabs Scroll*: `Overview`, `Team & Roles`, `Departments (0)`, `Projects (0)`, `Members (1)`, `Volunteers (2)`, `Finance & Budget`, `Documents`.
+    - *Overview Content*:
+      - Branch Information key-value card (8 fields).
+      - Key Contacts / Team card with Super Admin avatar circle ("SA"), role badge, email, contact, `+ Add Employee`, and `View All`.
+      - Branch Performance trend chart visual (Revenue Received vs Budget Utilised).
+      - Project Status ring visual (Total Projects 0: Ongoing 0%, Completed 0%, Upcoming 0%, On Hold 0%).
+      - Quick Actions grid (6 buttons: `+ Add Project`, `+ Add Team Member`, `Send Message`, `+ Add Comment`, `Generate Report`, `More Actions`).
+      - Full 9-Button Approval Workflow: `Approve`, `Reject`, `Send Back`, `Forward`, `Block`, `Activate`, `Deactivate`, `Close Branch`, `Delete` with verified audit stamp (`DEPARTMENT VERIFIED · 25 Nov 2026 · Super Admin · Super Admin`).
+      - 5 Bottom Sub-Cards: Departments Under Branch (0) with `+ Assign Department` & `View All`, Active Projects (0) with `+ Add Project` & `View All`, Documents with `Upload Document`, `Attach Project Report` & `View All`, Internal Notes with `+ Add Note`, and Recent Activity & Comments timeline feed with `View All`.
+- **Vector Icons (`dashboard-icons.tsx`)**:
+  - Added pure Lucide vector icons: `IconPhone`, `IconPencil`, `IconDownload`, `IconMapPin`, `IconMap`, `IconTrendingUp`, `IconMessageSquare`. Strictly 0 emojis.
+
+**2. Test & Verification Evidence:**
+- **Android TypeScript Build**: `npx tsc --noEmit -p apps/android-internal/tsconfig.json` -> **0 errors (Exit code 0)**.
+- **Backend CG-02 QA Suite**: `npm run test:cg02-all-25-qa -w apps/backend` -> **25/25 PASSED (0 failed)**.
+- **Backend CG-02 Staff Scope Contract Suite**: `npm run test:cg02-staff-scope -w apps/backend` -> **12/12 PASSED (0 failed)**.
+- **Git Commit**: `28742937e` pushed to `feature/careganga-cg02-qa-uiux-verification-20261125`.
+
+**3. Manual Testing Playbook (Web & Mobile Parity):**
+- **Web Admin Search Keywords**:
+  - `found` or `dep` or `geo` -> Navigates to `/admin/foundation` (Foundation Structure, Geography & Departments).
+  - `br` or `loc` -> Navigates to `/admin/foundation/branches` or `/admin/branches` (Branches / Locations).
+- **Mobile Navigation**:
+  - Open Internal Android App -> Dashboard -> Tap **"Foundation Structure"** to test US-001 (Profile, Geography, Departments).
+  - Tap **"Branches & Locations"** to test US-002 (KPIs, Filters, Analytics, Branch Details, 8 Tabs, 9-Button Workflow, 5 Sub-Cards, 7-Stage Wizard).
