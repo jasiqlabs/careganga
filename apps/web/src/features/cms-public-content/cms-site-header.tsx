@@ -221,7 +221,7 @@ export function CmsSiteHeader({
     <div className="cg-site-nav-inner">
      {/* Brand Logo Container (Left) */}
      <Link href="/" className="cg-site-brand" aria-label="CareGanga Foundation homepage">
-      <img src={logoSrc} alt="CareGanga logo" width={48} height={48} className="cg-brand-logo nav-logo"/>
+      <img src={logoSrc} alt="CareGanga logo" width={70} height={70} className="cg-brand-logo nav-logo"/>
       <span className="cg-brand-text">
        <strong>{brandTitle}</strong>
        <small>{brandSub}</small>
