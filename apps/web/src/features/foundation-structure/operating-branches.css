@@ -399,24 +399,6 @@
   transform: translateY(-1px) !important;
   box-shadow: 0 4px 10px rgba(79, 70, 229, 0.35) !important;
 }
-  padding: 0 1rem;
-  background: #4F46E5;
-  border: none;
-  color: #FFFFFF;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  cursor: pointer;
-  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.25);
-  transition: background 0.15s ease;
-}
-
-.cg-btn-add:hover {
-  background: #4338CA;
-}
 
 .cg-table-container {
   overflow-x: auto;
@@ -954,7 +936,6 @@
 .cg-info-card:hover {
   transform: translateY(-1px) !important;
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06) !important;
-}
 }
 
 .cg-info-table {
