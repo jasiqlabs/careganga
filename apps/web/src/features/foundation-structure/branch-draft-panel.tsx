@@ -36,7 +36,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object
 const fresh=()=>crypto.randomUUID();
 function string(value:unknown){return typeof value==="string"?value:"";}
 function ids(value:unknown):string[]{return Array.isArray(value)?value.filter((v):v is string=>typeof v==="string"):[];}
-export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canReview:boolean}){
+export function BranchDraftPanel({canManage,canReview,embedded=false}:{canManage:boolean;canReview:boolean;embedded?:boolean}){
   const [drafts,setDrafts]=useState<Draft[]>([]);
   const [nextOffset,setNextOffset]=useState<number|null>(null);
   const [selected,setSelected]=useState<Detail|null>(null);
@@ -70,7 +70,7 @@ export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canRev
   const [message,setMessage]=useState("");
   const [error,setError]=useState("");
   const [pending,setPending]=useState<Pending|null>(null);
-  const [createOpen,setCreateOpen]=useState(false);
+  const [createOpen,setCreateOpen]=useState(embedded);
   const load=useCallback(async(offset=0)=>{
     const items=await api<{drafts:Draft[];nextOffset:number|null}>("/branches/drafts?offset="+offset);
     setDrafts(prev=>offset===0?items.drafts:[...prev,...items.drafts]);
@@ -207,10 +207,10 @@ export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canRev
   }
   const hasAttachedEvidence=registrationFiles.length>0&&agreementFiles.length>0;
   return <section className="role-workspace branch-workspace">
-    <header className="topbar"><div><h1>Branches & registration</h1>
+    {!embedded&&<header className="topbar"><div><h1>Branches & registration</h1>
       <p>Seven-stage Foundation registration, protected evidence and Super Admin decisions.</p></div>
       <Link href="/admin/foundation">Foundation overview</Link>
-    </header>
+    </header>}
     <div className="toolbar"><span className="account-status">Genuine verified approvals required for activation</span>
       {canManage&&<button type="button" className="primary" disabled={busy||!!pending}
         onClick={()=>{setSelected(null);setCreateOpen(true);setDraftName("");setBranchType("");
@@ -385,6 +385,6 @@ export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canRev
               {event.remarks?": "+event.remarks:""}</li>)}</ol>}
         </aside>
       </div>}
-    {canReview&&<BranchApprovalInbox/>}
+    {!embedded&&canReview&&<BranchApprovalInbox/>}
   </section>;
 }

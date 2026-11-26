@@ -163,11 +163,17 @@
 
 /* White Card Shell */
 .cg-card {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 14px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 12px !important;
+  padding: 1.25rem 1.5rem !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.cg-card:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06) !important;
 }
 
 .cg-card-header {
@@ -178,9 +184,10 @@
 }
 
 .cg-card-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #1E293B;
+  font-family: "Roboto Slab", Georgia, serif !important;
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  color: #0F172A !important;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -243,81 +250,90 @@
 }
 
 .cg-input-with-icon {
-  position: relative;
-  display: flex;
-  align-items: center;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
 }
 
 .cg-input-with-icon svg {
-  position: absolute;
-  left: 0.75rem;
-  color: #94A3B8;
-  pointer-events: none;
+  position: absolute !important;
+  left: 0.95rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: #94A3B8 !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
 }
 
 .cg-input-field {
-  width: 100%;
-  height: 38px;
-  border: 1px solid #CBD5E1;
-  border-radius: 8px;
-  padding: 0 0.75rem;
-  font-size: 0.8125rem;
-  color: #0F172A;
-  background-color: #FFFFFF;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 100% !important;
+  height: 40px !important;
+  border: 1px solid #CBD5E1 !important;
+  border-radius: 8px !important;
+  padding: 0 1rem !important;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: #0F172A !important;
+  background-color: #FFFFFF !important;
+  outline: none !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
 .cg-input-with-icon .cg-input-field {
-  padding-left: 2.25rem;
+  padding: 0 1rem 0 2.85rem !important;
 }
 
 .cg-input-field:focus {
-  border-color: #4F46E5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: #4F46E5 !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
 }
 
 .cg-filter-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.75rem !important;
 }
 
 .cg-btn-reset {
-  height: 38px;
-  padding: 0 1rem;
-  border: none;
-  background: transparent;
-  color: #64748B;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: background 0.15s ease;
+  height: 40px !important;
+  padding: 0 1rem !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #64748B !important;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  border-radius: 8px !important;
+  transition: all 0.15s ease !important;
 }
 
 .cg-btn-reset:hover {
-  background: #F1F5F9;
-  color: #0F172A;
+  background: #F1F5F9 !important;
+  color: #0F172A !important;
 }
 
 .cg-btn-apply {
-  height: 38px;
-  padding: 0 1.25rem;
-  border: none;
-  background: #4F46E5;
-  color: #FFFFFF;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.25);
-  transition: background 0.15s ease;
+  height: 40px !important;
+  padding: 0 1.25rem !important;
+  border: 1px solid #4338CA !important;
+  background: #4F46E5 !important;
+  color: #FFFFFF !important;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25) !important;
+  transition: all 0.15s ease !important;
 }
 
 .cg-btn-apply:hover {
-  background: #4338CA;
+  background: #4338CA !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.35) !important;
 }
 
 /* All Branches Table Card */
@@ -337,27 +353,52 @@
 }
 
 .cg-btn-export {
-  height: 36px;
-  padding: 0 0.875rem;
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  color: #475569;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  cursor: pointer;
-  transition: background 0.15s ease;
+  height: 40px !important;
+  padding: 0 0.875rem !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #475569 !important;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.15s ease !important;
 }
 
 .cg-btn-export:hover {
-  background: #F8FAFC;
+  background: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
 }
 
 .cg-btn-add {
-  height: 36px;
+  height: 40px !important;
+  padding: 0 1.15rem !important;
+  border: 1px solid #4338CA !important;
+  background: #4F46E5 !important;
+  color: #FFFFFF !important;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25) !important;
+  transition: all 0.15s ease !important;
+}
+
+.cg-btn-add:hover {
+  background: #4338CA !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.35) !important;
+}
   padding: 0 1rem;
   background: #4F46E5;
   border: none;
@@ -709,22 +750,24 @@
 }
 
 .cg-hero-code {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #1E293B;
+  font-family: "Roboto Slab", Georgia, serif !important;
+  font-size: 1.125rem !important;
+  font-weight: 800 !important;
+  color: #0F172A !important;
 }
 
 .cg-hero-name {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #0F172A;
-  margin: 0;
+  font-family: "Roboto Slab", Georgia, serif !important;
+  font-size: 1.625rem !important;
+  font-weight: 800 !important;
+  color: #0F172A !important;
+  margin: 0 !important;
 }
 
 .cg-hero-type {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #2563EB;
+  color: #4F46E5;
 }
 
 .cg-hero-quote {
@@ -736,25 +779,27 @@
 
 .cg-btn-edit-branch {
   align-self: flex-start;
-  height: 34px;
+  height: 36px;
   padding: 0 1rem;
-  background: #2563EB;
-  color: #FFFFFF;
-  border: none;
+  background: #4F46E5 !important;
+  border: 1px solid #4338CA !important;
+  color: #FFFFFF !important;
   border-radius: 8px;
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   cursor: pointer;
   margin-top: 0.25rem;
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25);
-  transition: background 0.15s ease;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25) !important;
+  transition: all 0.15s ease;
 }
 
 .cg-btn-edit-branch:hover {
-  background: #1D4ED8;
+  background: #4338CA !important;
+  transform: translateY(-1px);
 }
 
 .cg-hero-meta-row {
@@ -872,9 +917,9 @@
 
 .cg-detail-tab-btn.active {
   background: #4F46E5 !important;
+  border: 1px solid #4338CA !important;
   color: #FFFFFF !important;
-  border-color: #4F46E5 !important;
-  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25) !important;
 }
 
 /* 4-Column Grid Layout (Screenshot 3) */
@@ -898,11 +943,18 @@
 
 /* Column 1: Branch Information Key-Value Table */
 .cg-info-card {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 12px !important;
+  padding: 1.25rem !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.cg-info-card:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06) !important;
+}
 }
 
 .cg-info-table {

@@ -524,7 +524,7 @@ export function OperatingBranchesPanel({
             <X size={14} /> Back to Branches
           </button>
         </header>
-        <BranchDraftPanel canManage={canManage} canReview={canAdmin} />
+        <BranchDraftPanel canManage={canManage} canReview={canAdmin} embedded={true} />
       </div>
     );
   }
@@ -786,8 +786,21 @@ export function OperatingBranchesPanel({
           </div>
         )}
 
-        {/* 4-Column Grid Layout (Screenshot 3) */}
-        <div className="cg-overview-4col-grid">
+        {/* Tab Content: Team & Roles */}
+        {activeTab === "team" && (
+          <div className="cg-card">
+            <h3 className="cg-card-title" style={{ marginBottom: "1.25rem" }}>
+              <Users size={18} color="#2563EB" /> Branch Staff Assignments & Delegated Access
+            </h3>
+            <BranchAccessPanel />
+          </div>
+        )}
+
+        {/* Tab Content: Overview (Default) */}
+        {activeTab === "overview" && (
+          <>
+            {/* 4-Column Grid Layout (Screenshot 3) */}
+            <div className="cg-overview-4col-grid">
           {/* Column 1: Branch Information Key-Value Table */}
           <div className="cg-info-card">
             <div className="cg-card-header">
@@ -1248,6 +1261,8 @@ export function OperatingBranchesPanel({
             </div>
           </div>
         </div>
+        </>
+      )}
 
         {/* Modal: Edit Branch Details */}
         {isEditModalOpen && (
@@ -1634,9 +1649,6 @@ export function OperatingBranchesPanel({
               </div>
             )}
           </div>
-
-          {/* Delegated Access Panel if Admin */}
-          {canAdmin && <BranchAccessPanel/>}
 
           {/* All Branches Table Card (Screenshot 1) */}
           <div className="cg-card">

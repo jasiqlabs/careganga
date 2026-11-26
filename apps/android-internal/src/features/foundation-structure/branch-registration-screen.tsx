@@ -1765,24 +1765,16 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 36,
     height: 36,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 18,
     alignItems: "center",
-    justifyContent: "center",
-    elevation: 2,
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 }
+    justifyContent: "center"
   },
   refreshBtn: {
     width: 36,
     height: 36,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center"
   },
@@ -1861,23 +1853,25 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 14,
     gap: 10,
     elevation: 2,
     shadowColor: "#0F172A",
     shadowOpacity: 0.04,
     shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 }
+    shadowOffset: { width: 0, height: 1 }
   },
   cardHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center"
   },
-  sectionHeading: { fontSize: 15, fontWeight: "700", color: "#0F172A" },
+  sectionHeading: { fontSize: 16, fontWeight: "800", color: "#0F172A" },
   smallAddBtn: {
     backgroundColor: "#4F46E5",
+    borderWidth: 1,
+    borderColor: "#4338CA",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 6
@@ -1888,13 +1882,15 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
     borderRadius: 8,
-    paddingHorizontal: 10,
-    height: 40,
+    paddingHorizontal: 12,
+    height: 44,
     gap: 8
   },
-  searchInput: { flex: 1, fontSize: 13, color: "#0F172A" },
+  searchInput: { flex: 1, fontSize: 14, color: "#0F172A" },
 
   // Branch Card Item
   branchCardItem: {
@@ -2035,7 +2031,7 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   buttonText: { color: "#334155", fontWeight: "600", fontSize: 13 },
-  primary: { backgroundColor: "#2563EB", borderColor: "#2563EB" },
+  primary: { backgroundColor: "#4F46E5", borderWidth: 1, borderColor: "#4338CA" },
   primaryText: { color: "#FFFFFF" },
   disabled: { opacity: 0.5 },
   option: {
