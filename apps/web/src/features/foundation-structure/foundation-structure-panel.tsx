@@ -178,6 +178,18 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
+  // Escape key handler for modals
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setAudit(null);
+        setDepartmentEditorOpen(false);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const [audit, setAudit] = useState<{ title: string; events: { action: string; version: number; recordedAt: string }[] } | null>(null);
   const [exportOffset, setExportOffset] = useState<Record<string, number>>({ AREAS: 0, DEPARTMENTS: 0 });
   const [search, setSearch] = useState("");
@@ -605,9 +617,15 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
 
       {/* History Modal / Drawer */}
       {audit && (
-        <div className="cg-modal-backdrop role-pane" aria-label="Foundation change history">
+        <div
+          className="cg-modal-backdrop"
+          aria-label="Foundation change history"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setAudit(null);
+          }}
+        >
           <div className="cg-modal-card">
-            <div className="cg-modal-header toolbar">
+            <div className="cg-modal-header">
               <h2>{audit.title} — history</h2>
               <button
                 type="button"
