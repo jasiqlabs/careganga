@@ -141,6 +141,7 @@ export function BranchDraftPanel({
   const [pin, setPin] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
+  const [geographyRef, setGeographyRef] = useState("");
 
   // Step 3 & 4 Files
   const [stagePhotos, setStagePhotos] = useState<string[]>([]);
@@ -180,8 +181,6 @@ export function BranchDraftPanel({
     const preview = URL.createObjectURL(file);
     setLogoPreviewUrl(preview);
     setLogoFileName(file.name);
-    const refId = "photo-" + fresh().slice(0, 8);
-    setStageLogos((prev) => (prev.includes(refId) ? prev : [...prev, refId]));
     setMessage(`Selected "${file.name}" (${Math.round(file.size / 1024)} KB)`);
   }
 
@@ -271,6 +270,7 @@ export function BranchDraftPanel({
     setPin(string(s2.pinCode));
     setLatitude(s2.latitude === null || s2.latitude === undefined ? "" : String(s2.latitude));
     setLongitude(s2.longitude === null || s2.longitude === undefined ? "" : String(s2.longitude));
+    setGeographyRef(data.geographyRef || string(s2.geographyRef));
     setManager(string(s5.managerRef));
     setDepartments(ids(s6.departmentRefs));
     setAck(s7.reviewAcknowledged === true);
@@ -304,7 +304,7 @@ export function BranchDraftPanel({
   }
 
   function currentStage(): Record<string, unknown> {
-    if (step === 1 || step === 2) {
+    if (step === 1) {
       return {
         branchName: draftName,
         branchType,
@@ -312,7 +312,12 @@ export function BranchDraftPanel({
         officialPhone,
         officialEmail,
         photoFiles: stagePhotos,
-        logoFiles: stageLogos,
+        logoFiles: stageLogos
+      };
+    }
+    if (step === 2) {
+      return {
+        geographyRef: geographyRef || null,
         postalAddress: address,
         pinCode: pin,
         latitude: latitude.trim() ? Number(latitude) : null,
@@ -343,16 +348,33 @@ export function BranchDraftPanel({
       if (!selected) {
         // Create draft if not yet created
         setPending({ action: "BRANCH_DRAFT_CREATE", requestKey });
-        const result = await api<{ recordRef: string }>("/branches/drafts", "POST", {
+        const result = await api<{ recordRef: string; version: number }>("/branches/drafts", "POST", {
           requestKey,
           stage: {
             branchName: draftName || "Untitled branch",
             branchType,
             openingDate: openingDate || null,
             officialPhone,
-            officialEmail
+            officialEmail,
+            photoFiles: stagePhotos,
+            logoFiles: stageLogos
           }
         });
+        // If user already filled Step 2 location fields on Step 1, persist Stage 2 immediately
+        if (address.trim() || pin.trim() || latitude.trim() || longitude.trim() || geographyRef) {
+          await api("/branches/drafts/" + encodeURIComponent(result.recordRef), "PATCH", {
+            requestKey: fresh(),
+            expectedVersion: result.version ?? 1,
+            step: 2,
+            stage: {
+              geographyRef: geographyRef || null,
+              postalAddress: address,
+              pinCode: pin,
+              latitude: latitude.trim() ? Number(latitude) : null,
+              longitude: longitude.trim() ? Number(longitude) : null
+            }
+          });
+        }
         setPending(null);
         await refreshAfterWrite(result.recordRef);
         setMessage("Draft saved successfully.");
@@ -798,11 +820,9 @@ export function BranchDraftPanel({
                       value: a.areaRef,
                       label: `${a.name} (${a.level})`
                     }))}
-                    value={selected?.geographyRef || ""}
+                    value={geographyRef}
                     placeholder="Choose an active block"
-                    onChange={(val) => {
-                      if (selected) selected.geographyRef = val;
-                    }}
+                    onChange={(val) => setGeographyRef(val)}
                   />
                 </div>
                 <div className="cg-form-grid-2">

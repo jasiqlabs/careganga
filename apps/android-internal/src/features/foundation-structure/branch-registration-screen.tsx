@@ -1753,8 +1753,6 @@ export function BranchRegistrationScreen({
                                 if (!res.canceled && res.assets?.[0]) {
                                   const asset = res.assets[0];
                                   setPickedLogoName(asset.name);
-                                  const refId = "photo-" + Crypto.randomUUID().slice(0, 8);
-                                  setLogos((prev) => (prev.includes(refId) ? prev : [...prev, refId]));
                                   setMessage(`Selected "${asset.name}"`);
                                 }
                               } catch {
