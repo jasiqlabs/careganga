@@ -674,11 +674,12 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
                   Legal Foundation name
                 </label>
                 <div className="cg-f-input-wrap">
+                  <Building2 size={16} className="cg-f-input-icon" />
                   <input
                     required
                     minLength={2}
                     maxLength={180}
-                    className="cg-f-input no-icon"
+                    className="cg-f-input"
                     disabled={!can("foundation.profile.manage") || busy || Boolean(pending)}
                     value={form.legalName}
                     onChange={(e) => setProfileField("legalName", e.target.value)}
@@ -693,9 +694,10 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
                   Official contact
                 </label>
                 <div className="cg-f-input-wrap">
+                  <Phone size={16} className="cg-f-input-icon" />
                   <input
                     maxLength={180}
-                    className="cg-f-input no-icon"
+                    className="cg-f-input"
                     disabled={!can("foundation.profile.manage") || busy || Boolean(pending)}
                     value={form.officialContact}
                     onChange={(e) => setProfileField("officialContact", e.target.value)}
@@ -710,9 +712,10 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
                   Postal address
                 </label>
                 <div className="cg-f-input-wrap">
+                  <MapPin size={16} className="cg-f-input-icon" style={{ top: "0.85rem" }} />
                   <textarea
                     maxLength={700}
-                    className="cg-f-textarea no-icon"
+                    className="cg-f-textarea"
                     disabled={!can("foundation.profile.manage") || busy || Boolean(pending)}
                     value={form.postalAddress}
                     onChange={(e) => setProfileField("postalAddress", e.target.value)}
@@ -727,9 +730,10 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
                   Registration reference
                 </label>
                 <div className="cg-f-input-wrap">
+                  <FileText size={16} className="cg-f-input-icon" />
                   <input
                     maxLength={120}
-                    className="cg-f-input no-icon"
+                    className="cg-f-input"
                     disabled={!can("foundation.profile.manage") || busy || Boolean(pending)}
                     value={form.registrationRef}
                     onChange={(e) => setProfileField("registrationRef", e.target.value)}
@@ -744,9 +748,10 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
                   Registration authority
                 </label>
                 <div className="cg-f-input-wrap">
+                  <ShieldCheck size={16} className="cg-f-input-icon" />
                   <input
                     maxLength={180}
-                    className="cg-f-input no-icon"
+                    className="cg-f-input"
                     disabled={!can("foundation.profile.manage") || busy || Boolean(pending)}
                     value={form.registrationAuthority}
                     onChange={(e) => setProfileField("registrationAuthority", e.target.value)}
@@ -761,9 +766,10 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
                   Registration date
                 </label>
                 <div className="cg-f-input-wrap">
+                  <Calendar size={16} className="cg-f-input-icon" />
                   <input
                     type="date"
-                    className="cg-f-input no-icon"
+                    className="cg-f-input"
                     disabled={!can("foundation.profile.manage") || busy || Boolean(pending)}
                     value={form.registrationDate}
                     onChange={(e) => setProfileField("registrationDate", e.target.value)}
