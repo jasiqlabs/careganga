@@ -4,6 +4,7 @@ import {File,Paths} from "expo-file-system";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {IconFileText,IconRefresh} from "../dashboard/dashboard-icons";
 
 type FileItem={fileRef:string;revision:number;classification:string;mime:string;
  sizeBytes:number;status:string;revoked:boolean;createdAt:string};
@@ -113,6 +114,7 @@ export function BranchNativeEvidenceHistory({registrationRef,token,canManage,onE
        <Text style={styles.help}>{row.revoked?"Revoked":row.status.replaceAll("_"," ")}</Text>
        {!row.revoked&&row.status==="VALIDATED"&&<Pressable accessibilityRole="button"
          disabled={busy} style={styles.action} onPress={()=>void openPrivate(row)}>
+         <IconFileText size={16} color="#2563EB" />
          <Text style={styles.actionLabel}>Preview private original</Text></Pressable>}
        {canManage&&!row.revoked&&<Pressable accessibilityRole="button" disabled={busy}
          style={styles.action} onPress={()=>Alert.alert(
@@ -121,20 +123,22 @@ export function BranchNativeEvidenceHistory({registrationRef,token,canManage,onE
            [{text:"Cancel",style:"cancel"},{text:"Revoke file",style:"destructive",
              onPress:()=>void revoke(row)}]
          )}>
-         <Text style={styles.actionLabel}>Revoke file</Text></Pressable>}
+         <Text style={[styles.actionLabel,{color:"#DC2626"}]}>Revoke file</Text></Pressable>}
      </View>)}
    <Pressable accessibilityRole="button" disabled={busy} style={styles.action}
      onPress={()=>void refresh().catch(()=>setMessage("File history cannot be refreshed."))}>
+     <IconRefresh size={16} color="#64748B" />
      <Text style={styles.actionLabel}>Refresh original file status</Text></Pressable>
  </View>;
 }
 const styles=StyleSheet.create({
- panel:{borderWidth:1,borderColor:theme.border,borderRadius:8,padding:12,gap:8},
+ panel:{borderWidth:1,borderColor:"#E2E8F0",backgroundColor:"#FFFFFF",borderRadius:14,padding:16,gap:10,
+   shadowColor:"#0F172A",shadowOpacity:0.04,shadowOffset:{width:0,height:2},shadowRadius:6,elevation:2},
  heading:{color:theme.text,fontSize:17,fontWeight:"700"},
- item:{borderTopWidth:1,borderColor:theme.border,paddingVertical:10,gap:5},
+ item:{borderTopWidth:1,borderColor:"#E2E8F0",paddingVertical:10,gap:6},
  label:{color:theme.text,fontSize:14,fontWeight:"600"},
  help:{fontSize:13,color:theme.mutedText},
- action:{minHeight:44,padding:10,borderWidth:1,borderColor:theme.border,
-   borderRadius:7,justifyContent:"center",alignItems:"center"},
+ action:{minHeight:44,padding:10,borderWidth:1,borderColor:"#E2E8F0",backgroundColor:"#F8FAFC",
+   borderRadius:9,flexDirection:"row",gap:6,justifyContent:"center",alignItems:"center"},
  actionLabel:{color:theme.text,fontSize:14,fontWeight:"600"}
 });

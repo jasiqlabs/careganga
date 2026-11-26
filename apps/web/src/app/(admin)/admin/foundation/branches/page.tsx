@@ -1,7 +1,6 @@
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
-import {BranchDraftPanel} from "../../../../../features/foundation-structure/branch-draft-panel";
 import {OperatingBranchesPanel} from "../../../../../features/foundation-structure/operating-branches-panel";
 import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {UnavailablePage} from "../../../../../shared/unavailable-page";
@@ -42,10 +41,10 @@ export default async function BranchRegistrationPage(){
         canViewDocuments={keys.includes("documents.files.view")}
         canViewFoundation={keys.some(x=>["foundation.profile.view","foundation.geography.view","foundation.departments.view"].includes(x))}
         canViewBranches/>
-      <main className="workspace"><BranchDraftPanel canManage={keys.includes("foundation.branches.manage")}
-        canReview={keys.includes("approvals.review")&&keys.includes("foundation.branches.admin")}/>
+      <main className="workspace">
         <OperatingBranchesPanel canManage={keys.includes("foundation.branches.manage")}
-          canAdmin={keys.includes("foundation.branches.admin")}/></main>
+          canAdmin={keys.includes("foundation.branches.admin")}/>
+      </main>
     </div>;
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&

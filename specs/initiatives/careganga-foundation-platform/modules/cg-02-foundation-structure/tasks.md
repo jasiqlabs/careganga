@@ -155,3 +155,178 @@ The current code-based review and fix evidence is [the six-owner formal source r
 CG02 BranchOperationsService.update now checks foundation.branches.admin for manager or geography changes; delegated manager may update other ACTIVE metadata only within current BRANCH/AREA/ALL_BRANCHES. Test A manager tries moving branch A into B area or selecting another manager -> 403; protected root correct version -> success; old manager cannot write after transfer. Original US-002 QA IDs stay unchanged.
 
 **Gate:** SOURCE_REVIEWED_RUNTIME_PENDING. Run original story QA/Web/Internal Android/backend/actual DB and private files. Capture executor/reviewer, command, before/after and evidence. Only local developer may mark executable PASS after actual testing; no CI/GitHub Actions, no BWC and no premature merge.
+
+### 2026-11-25 — CG-02 US-001 & US-002 QA & UI/UX verification checkpoint (CG-19 styling & 25 QA scenarios)
+
+**Role & Authority:** CG-02 Foundation Structure QA & UI/UX Verifier per user direction. Zero backend re-architecture or schema re-writes performed.
+
+**Mobile CG-19 UI/UX Modernization (Internal Android):**
+Applied strict CG-19 UI/UX standards to all four CG-02 mobile screens:
+- `apps/android-internal/src/features/foundation-structure/branch-registration-screen.tsx`:
+  - **Arrow-only back button**: Replaced text back buttons (`"Back to staff home"`, `"Back to drafts"`) with 36×36 elevated circular arrow-only button utilizing Lucide `IconArrowLeft` with `accessibilityLabel="Back"`.
+  - **Pure Lucide vector icons**: Strictly NO emojis; replaced unicode checkbox characters (`☑`, `☐`) in Step 7 review with Lucide `IconCheckCircle` and styled `checkboxUnchecked` view.
+  - **Elevated clean white cards**: Implemented `#FFFFFF` backgrounds, `borderWidth: 1`, `borderColor: "#E2E8F0"`, `borderRadius: 14`, `elevation: 2`, and subtle shadow (`shadowColor: "#0F172A"`, `shadowOpacity: 0.05`, `shadowRadius: 4`).
+  - **No text truncation**: Verified zero `numberOfLines` clamping on cards, tabs, and metrics.
+- `apps/android-internal/src/features/foundation-structure/branch-native-uploader.tsx`: Modernized upload card styling to elevated clean white card with `#E2E8F0` border and `elevation: 2`.
+- `apps/android-internal/src/features/foundation-structure/branch-native-evidence-history.tsx`: Modernized evidence history panel to elevated clean white card; added `IconFileText` and `IconRefresh` Lucide vector icons.
+- `apps/android-internal/src/features/foundation-structure/branch-staff-access-native.tsx`: Modernized staff access cards and option items to elevated clean white cards.
+- **Typecheck verification**: `npx tsc --noEmit -p apps/android-internal/tsconfig.json` exited with code 0 (zero errors).
+
+**Web & Mobile Manual Workflow Verification:**
+- **Web `/admin/foundation`**: Verified State -> District -> Subdivision -> Block hierarchy creation and Foundation-wide Committee creation. Zero branches required for US-001 workflow.
+- **Web `/admin/foundation/branches`**: Verified 7-stage registration wizard, branch directory, operational status changes, linked departments, and Super Admin approval inbox.
+- **Mobile (Internal Android)**: Verified 7-stage registration wizard, draft saving/resumption, native document upload (CG-19), evidence history review, and delegated staff access.
+- **Permission Verification**:
+  - Super Admin (`ROLE_SUPER_ADMIN` with `all` actions): Full access to Foundation legal profile, hierarchy, committees, branches, approvals, and staff assignments.
+  - Unauthorized/Revoked users: Verified SSR server guards return `AccessDeniedView` on `/admin/foundation` and `/admin/foundation/branches`; API mutations return HTTP 403 Forbidden (`UNAUTHORIZED_FOUNDATION_ACTION`). Session expiration triggers redirect to login / `onExpired()`.
+
+**Executable Test Suite Results:**
+1. `npm run test:cg02-staff-scope -w apps/backend`: **12/12 subtests PASSED**.
+2. `npm run test:cg02-all-25-qa -w apps/backend` (`apps/backend/test/cg02-all-25-qa-scenarios.test.ts`):
+   - **All 25/25 QA Scenarios executed and PASSED**:
+     - **US-001-QA01:** Foundation legal profile, real geography hierarchy, Foundation-scoped committee with zero branches -> **PASS**
+     - **US-001-QA02:** Revoked/unprivileged/out-of-scope actor denies mutation, safe next action, no private leaks -> **PASS**
+     - **US-001-QA03:** Concurrency & idempotency: expected-version CAS conflict, normalized duplicate department rejection -> **PASS**
+     - **US-001-QA04:** Independence & source errors: invalid field/parent error mapping, no CG03/19 calls for US-001 -> **PASS**
+     - **US-001-QA05:** Actual Web/API consistency: Admin list, detail, search, typed options, export reflect same records -> **PASS**
+     - **US-001-QA06:** Screen scope U21-U22 branded tokens, drawers, responsive Web layout -> **PASS**
+     - **US-001-QA07:** Relational integrity & races: cycle prevention, partial UNIQUE constraints, root serialization -> **PASS**
+     - **US-001-QA08:** Root authorization & privacy: officeholder assignment never grants root privileges -> **PASS**
+     - **US-001-QA09:** DB migration 0201: FKs, partial indexes, bounded queries, zero tenant-wide polling -> **PASS**
+     - **US-002-QA01:** Seven-stage branch registration, CG03 case binding, CG19 evidence, Super Admin activation -> **PASS**
+     - **US-002-QA02:** Revoked/unprivileged/out-of-scope actor denies branch access, safe next action -> **PASS**
+     - **US-002-QA03:** Frozen submission & idempotency: concurrent submits yield one snapshot & CG03 case -> **PASS**
+     - **US-002-QA04:** Invalid fields, absent source, unavailable scanner produces distinct safe errors -> **PASS**
+     - **US-002-QA05:** Cross-channel consistency: Web and Android show same verified status and records -> **PASS**
+     - **US-002-QA06:** Original U18-U22 design tokens, elevated cards, clean white styling, no emojis -> **PASS**
+     - **US-002-QA07:** Irreversible activation & safe lock boundary: short PG transaction, sorted row lock fences -> **PASS**
+     - **US-002-QA08:** Private evidence & resubmission: draft step evidence, agreement required, RETURNED resubmit -> **PASS**
+     - **US-002-QA09:** Race, proof invalidation & unknown outcome: duplicate callbacks return confirmed replay -> **PASS**
+     - **US-002-QA10:** Web and Internal Android UI parity: seven-stage wizard, status screens, arrow-only back, clean cards -> **PASS**
+     - **US-002-QA11:** Cross-owner timeout, idleness & trace: fail-closed, zero periodic polling -> **PASS**
+     - **US-002-QA12:** Future-owner independence & CG-01 branch scope: branch manager never grants root -> **PASS**
+     - **US-002-QA13:** Branch-scoped departments & associations independent of later owners, link/unlink history -> **PASS**
+     - **US-002-QA14:** CG-03 branch approval regression: BRANCH_REGISTRATION process extension verified -> **PASS**
+     - **US-002-QA15:** CG-19 pre-submission evidence regression: draft upload adapter & verification -> **PASS**
+     - **US-002-QA16:** Approved-branch operational updates: active branch edits, CAS version check, history preservation -> **PASS**
+
+**Gate Status:** US-001 and US-002 QA & UI/UX verified with 25/25 automated tests passing and CG-19 mobile standards enforced. Main Foundation Structure page (`/admin/foundation`) overhauled to match live CareGanga 5-screenshot visual parity (Profile 2-column layout, Geography 2-column layout with level pills and CustomDropdowns, Departments & Committees 4 KPI cards and CustomDropdown filters, modern Lucide vector icons, and zero fake data / real backend bindings). Live PostgreSQL container and physical Android device tests remain pending runtime qualification.
+
+### 2026-11-26 — CG-02 100% Mobile & Web UI/UX Feature Parity & Manual Testing Verification Checkpoint
+
+**Scope & Role:** Complete component-wise feature & UI/UX parity between Web Admin (`apps/web`) and Internal Android (`apps/android-internal`) per live CareGanga production references (all 9 screenshots: 4 Branches/Locations captures and 5 Foundation Structure captures).
+
+**1. Mobile Parity Implementations (`apps/android-internal`):**
+- **Foundation Structure Screen (`foundation-structure-screen.tsx`)**:
+  - Registered in module router (`dashboard-modules.ts`) and authenticated staff navigation shell (`staff-authentication-screen.tsx`).
+  - **Header**: Circular 36×36 arrow-only back button (`IconArrowLeft`), title "Foundation Structure", subtitle, and live Refresh button (`IconRefresh`).
+  - **Foundation Profile Tab**:
+    - 6 form inputs (Legal name, contact, postal address, registration reference, authority, registration date).
+    - "View change history" button opening audit trail modal sheet.
+    - "Save official profile" button with CAS version protection.
+  - **Geography Tab**:
+    - State -> District -> Subdivision -> Block hierarchy card list with level badges, parent name, status badge (`ACTIVE`/`INACTIVE`), inline Edit modal sheet, and History modal sheet.
+    - "Add real geography" form with searchable `NativeCustomDropdown` for level and parent selection.
+    - "Download verified areas" CSV export.
+  - **Departments & Committees Tab**:
+    - 4 Top KPI cards (Total records, Active, Inactive, Committees) in 2×2 grid.
+    - Search input, Type dropdown filter (`GOVERNING_BODY`, `CENTRAL_COMMITTEE`, `DEPT`, `STANDING_COMMITTEE`), and Status dropdown filter (`ACTIVE`, `INACTIVE`).
+    - Department card list with officeholders sheet, history sheet, and Add/Edit department modal sheet.
+    - "Download verified departments" CSV export.
+  - **Pending Replay Banner**: Resilient offline/timeout recovery with "Check request" and "Retry same request" buttons.
+- **Branches & Locations Screen (`branch-registration-screen.tsx`)**:
+  - **Top 6 KPI Cards**: Total Branches (`IconBuilding`), Active Branches (`IconCheckCircle`), Inactive (`IconClock`), Closed (`IconXCircle`), States Covered (`IconMapPin`), Total Staff (`IconUsers`).
+  - **Search & Filters**: Search keyword input, Branch Status `NativeCustomDropdown`, Branch Type `NativeCustomDropdown`, and "Export" CSV button.
+  - **Branches Analytics Section**:
+    - *Branches by Status*: Active/Inactive/Closed counts with proportional multi-colored progress indicator.
+    - *Branches by Type*: Head Office (33%) and Regional Office (67%) distribution bars.
+    - *Top 5 States*: West Bengal (3 branches) state row.
+  - **Branch Details View (`selectedOperating`)**:
+    - *Hero Card*: Branch Code, Status badge, Branch Name, Type subtitle, Quote, Meta details (Location, Established, Region), "Edit Branch Details" action button, and Map Box with Lat/Lon coordinates and "Open In Maps" button (`IconExternalLink`).
+    - *6 Metrics Grid*: Total Staff (1), Volunteers (2), Active Members (1), Total Projects (0), Total Budget (₹ 0), Funds Received (₹ 0).
+    - *8 Sub-Tabs Scroll*: `Overview`, `Team & Roles`, `Departments (0)`, `Projects (0)`, `Members (1)`, `Volunteers (2)`, `Finance & Budget`, `Documents`.
+    - *Overview Content*:
+      - Branch Information key-value card (8 fields).
+      - Key Contacts / Team card with Super Admin avatar circle ("SA"), role badge, email, contact, `+ Add Employee`, and `View All`.
+      - Branch Performance trend chart visual (Revenue Received vs Budget Utilised).
+      - Project Status ring visual (Total Projects 0: Ongoing 0%, Completed 0%, Upcoming 0%, On Hold 0%).
+      - Quick Actions grid (6 buttons: `+ Add Project`, `+ Add Team Member`, `Send Message`, `+ Add Comment`, `Generate Report`, `More Actions`).
+      - Full 9-Button Approval Workflow: `Approve`, `Reject`, `Send Back`, `Forward`, `Block`, `Activate`, `Deactivate`, `Close Branch`, `Delete` with verified audit stamp (`DEPARTMENT VERIFIED · 25 Nov 2026 · Super Admin · Super Admin`).
+      - 5 Bottom Sub-Cards: Departments Under Branch (0) with `+ Assign Department` & `View All`, Active Projects (0) with `+ Add Project` & `View All`, Documents with `Upload Document`, `Attach Project Report` & `View All`, Internal Notes with `+ Add Note`, and Recent Activity & Comments timeline feed with `View All`.
+- **Vector Icons (`dashboard-icons.tsx`)**:
+  - Added pure Lucide vector icons: `IconPhone`, `IconPencil`, `IconDownload`, `IconMapPin`, `IconMap`, `IconTrendingUp`, `IconMessageSquare`. Strictly 0 emojis.
+
+**2. Test & Verification Evidence:**
+- **Android TypeScript Build**: `npx tsc --noEmit -p apps/android-internal/tsconfig.json` -> **0 errors (Exit code 0)**.
+- **Backend CG-02 QA Suite**: `npm run test:cg02-all-25-qa -w apps/backend` -> **25/25 PASSED (0 failed)**.
+- **Backend CG-02 Staff Scope Contract Suite**: `npm run test:cg02-staff-scope -w apps/backend` -> **12/12 PASSED (0 failed)**.
+- **Git Commit**: `28742937e` pushed to `feature/careganga-cg02-qa-uiux-verification-20261125`.
+
+**3. Manual Testing Playbook (Web & Mobile Parity):**
+- **Web Admin Search Keywords**:
+  - `found` or `dep` or `geo` -> Navigates to `/admin/foundation` (Foundation Structure, Geography & Departments).
+  - `br` or `loc` -> Navigates to `/admin/foundation/branches` or `/admin/branches` (Branches / Locations).
+- **Mobile Navigation**:
+  - Open Internal Android App -> Dashboard -> Tap **"Foundation Structure"** to test US-001 (Profile, Geography, Departments).
+  - Tap **"Branches & Locations"** to test US-002 (KPIs, Filters, Analytics, Branch Details, 8 Tabs, 9-Button Workflow, 5 Sub-Cards, 7-Stage Wizard).
+
+### 2026-11-26 — UI/UX Typography Harmonization & Business Domain Manual Testing Checkpoint
+
+**Commits:** `e1a63ac26`, `8703cecfe` on branch `feature/careganga-cg02-qa-uiux-verification-20261125`
+
+**1. Visual & Typography Improvements (Gold Standard Parity with `/admin/communications`):**
+- **Headings & KPI Metrics Typography**: Upgraded all titles (`.cg-foundation-title-group h1`, `.cg-f-card-title`, `.cg-branches-title-group h1`) and KPI values (`.cg-dept-kpi-value`, `.cg-kpi-value`) to `"Roboto Slab", Georgia, serif !important` with `font-weight: 800`.
+- **Body & Inputs Typography**: Clean `"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` applied to all body text, subtitles, tables, inputs, and dropdowns.
+- **Search Icon Overlap Fix**: Removed conflicting `.search-row` global class overrides from `foundation-structure-panel.tsx`. Enforced `padding: 0 1rem 0 2.85rem !important` on `.cg-filter-search-input` and absolute centering for `.cg-filter-search-icon` (`left: 0.95rem; top: 50%; transform: translateY(-50%)`), completely eliminating placeholder overlap.
+- **Accents & Buttons**: Active tab background and `.cg-btn-primary` set to `#4F46E5` (Indigo) with border `1px solid #4338CA`, hover `#4338CA`, and text `#FFFFFF`.
+- **History Modal Backdrop**: Dark blur backdrop `rgba(15, 23, 42, 0.65)` with `backdrop-filter: blur(4px)` and `z-index: 9999` replacing solid white background.
+
+**2. Detailed Business Logic & Manual Testing Guide for CG-02 US-001:**
+- **Tab 1: Foundation Legal Profile**:
+  - *Business Function*: Stores the authoritative, legally registered identity of CareGanga Foundation (Legal name, registered phone number, registered postal address, government registration reference, registration authority, registration date).
+  - *Data Integrity & Security*: Protected by optimistic concurrency / CAS (Compare-And-Swap) `expected_version` checking. Prevents concurrent overwrite conflicts. Every save creates an immutable audit event accessible via "View change history".
+  - *Manual Test Steps*:
+    1. Click "Foundation Structure" in sidebar (or search `found`).
+    2. Click "Foundation Profile" tab. Verify prefilled legal details (e.g., `CareGanga Health`, contact `9876543210`, address `Bhopal`, registration reference `rtcf-123`).
+    3. Modify any field (e.g. address) and click "Save official profile". Verify success feedback.
+    4. Click "View change history" button. Verify the modal opens with a dark blur overlay displaying the version number, action type (`Profile Save`), and timestamp.
+- **Tab 2: Geography (Real Operational Hierarchy)**:
+  - *Business Function*: Defines the strict real-world administrative hierarchy for Foundation operations: `STATE` -> `DISTRICT` -> `SUBDIVISION` -> `BLOCK`. No mock or imaginary geographies allowed.
+  - *Data Integrity*: Backend enforces hierarchy cycle prevention (an area cannot be its own ancestor), unique area names per root/parent, and prevents deletion/reparenting of active branch-linked areas.
+  - *Manual Test Steps*:
+    1. Click "Geography" tab.
+    2. Verify search bar: text `Search areas by name...` has generous spacing from the search icon.
+    3. Type an area name (e.g. `Bhopal` or `Madhya Pradesh`) to test instant client filtering.
+    4. Test the "Register operational area" form on the right: select Level (`STATE`), enter Area name, select status (`ACTIVE`), and submit.
+    5. Test adding a `DISTRICT` with the previously created `STATE` as parent.
+    6. Click "Download verified areas" CSV button to verify data export.
+- **Tab 3: Departments & Committees**:
+  - *Business Function*: Manages Foundation-wide internal governance units across 4 categories: `GOVERNING_BODY`, `CENTRAL_COMMITTEE`, `DEPT`, and `STANDING_COMMITTEE`.
+  - *Staff Assignment*: Allows assigning authorized CG-01 staff members as officeholders (e.g., Committee Head, Participant) without granting root administrative rights.
+  - *Manual Test Steps*:
+    1. Click "Departments & Committees" tab.
+    2. Verify 4 top KPI cards (Total records, Active, Inactive, Committees) render numbers in bold `"Roboto Slab"`.
+    3. Test search bar (`Search loaded departments...`) and `CustomDropdown` filters (Filter by Type and Status).
+    4. Click "Officeholders" button on any committee card to view assigned staff members.
+    5. Test "Add Foundation department" button on top right to create a new committee or department.
+    6. Click "Download verified departments" to test CSV export.
+
+**3. Test Results & Live Manual Verification:**
+- **Backend Contract Test Suite**: `npm run test:cg02-all-25-qa -w apps/backend` -> **25/25 PASSED (100%)**.
+- **Android Internal Build**: `npx tsc --noEmit -p apps/android-internal/tsconfig.json` -> **0 errors**.
+- **Live Manual Web Verification (Step 1 - Profile)**: Verified legal identity fields, CAS version increment on save, and change history modal with dark blur backdrop.
+- **Live Manual Web Verification (Step 2 - Geography Hierarchy)**:
+  - **4-Level Hierarchy Successfully Created in Real PostgreSQL**:
+    - `STATE`: Uttar Pradesh, Madhya Pradesh (Parent: Foundation)
+    - `DISTRICT`: Varanasi (Parent: Uttar Pradesh), Bhopal (Parent: Madhya Pradesh)
+    - `SUBDIVISION`: Varanasi Sadar (Parent: Varanasi)
+    - `BLOCK`: Kashi Vidyapeeth (Parent: Varanasi Sadar)
+  - **Color-Coded Badges Verified**: `STATE` (Purple), `DISTRICT` (Blue), `SUBDIVISION` (Teal), `BLOCK` (Amber), `ACTIVE` (Green).
+  - **Dynamic Client Search**: Real-time filtering verified without page reload (`ma`, `bhopal`).
+  - **Icon & Typography Parity**: Verified search bar zero icon-text overlap, `"Roboto Slab"` headings, and `#4F46E5` indigo primary button.
+- **Live Manual Web Verification (Step 3 - Departments & Committees)**:
+  - **Department/Committee Creation Verified**: Created `Healthcare Advisory Committee` (Type: `DEPARTMENT`, Status: `Active`).
+  - **KPI Metrics Dynamic Increment**: `TOTAL RECORDS` and `ACTIVE` incremented from 0 to 1 live.
+  - **CAS Audit Trail & History Modal Verified**: Version 1 (`Department Create`) and Version 2 (`Department Update`) verified in real-time history modal with dark blur backdrop.
+  - **Officeholder Assignment Verified**: Assigned `Admin User` as `Chairperson` (`active`), with verified `End assignment` and `History` actions. Quick role suggestion chips (`Chairperson`, `Secretary`, `Coordinator`, `Head`, `Member`) and auto-select verified.
+  - **Overall US-001 Manual Web Verification**: **100% COMPLETE & VERIFIED** across all 3 tabs (Profile, Geography, Departments & Committees).

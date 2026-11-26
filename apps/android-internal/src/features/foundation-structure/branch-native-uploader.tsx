@@ -137,11 +137,13 @@ export function BranchNativeUploader({token,registrationRef,draftVersion,classif
  </View>;
 }
 const styles=StyleSheet.create({
- card:{padding:12,borderWidth:1,borderColor:theme.border,borderRadius:8,gap:8},
+ card:{padding:16,borderWidth:1,borderColor:"#E2E8F0",backgroundColor:"#FFFFFF",borderRadius:14,gap:10,
+   shadowColor:"#0F172A",shadowOpacity:0.04,
+   shadowOffset:{width:0,height:2},shadowRadius:6,elevation:2},
  label:{fontWeight:"700",fontSize:14,color:theme.text},
  help:{fontSize:13,color:theme.mutedText},
- button:{minHeight:48,padding:10,borderRadius:7,borderWidth:1,borderColor:theme.border,
-   alignItems:"center",justifyContent:"center"},
+ button:{minHeight:48,padding:10,borderRadius:10,borderWidth:1,borderColor:"#E2E8F0",
+   backgroundColor:"#F8FAFC",alignItems:"center",justifyContent:"center"},
  text:{fontSize:14,fontWeight:"600",color:theme.text},
  primary:{backgroundColor:theme.primary,borderColor:theme.primary},
  primaryText:{color:theme.primaryText,fontWeight:"700"}

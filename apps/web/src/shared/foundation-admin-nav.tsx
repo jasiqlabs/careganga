@@ -766,7 +766,7 @@ export function FoundationAdminNav({
     ...(accountsAccess ? [{ key: "accounts" as const, label: "Users Management", href: "/admin/accounts" }] : []),
     ...(rolesAccess ? [{ key: "roles" as const, label: "Roles & permissions", href: "/admin/roles" }] : []),
     ...(foundationAccess ? [{ key: "foundation" as const, label: "Foundation Structure", href: "/admin/foundation" }] : []),
-    ...(branchAccess ? [{ key: "branches" as const, label: "Branches & registration", href: "/admin/foundation/branches" }] : []),
+    ...(branchAccess ? [{ key: "branches" as const, label: "Branches / Locations", href: "/admin/foundation/branches" }] : []),
     ...((allowed("campaigns.view",false)||allowed("campaigns.review",false)&&allowed("approvals.review",false))?[{key:"campaigns" as const,label:"Campaigns",href:"/admin/campaigns"}]:[]),
     ...((allowed("csr.partners.view",false)||(allowed("csr.partners.review",false)&&allowed("approvals.review",false)))?[{key:"csr" as const,label:"CSR & Partnerships",href:"/admin/csr"}]:[]),
     ...((allowed("referrals.programmes.view",false)||allowed("rewards.catalog.view",false))?[{key:"referrals" as const,label:"Referral Programme & Rewards",href:"/admin/referrals"}]:[]),

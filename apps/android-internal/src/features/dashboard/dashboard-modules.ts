@@ -91,6 +91,7 @@ export interface ModuleActionHandlers {
   openReports: () => void;
   openMis: () => void;
   openFinance: () => void;
+  openFoundation?: () => void;
   openBranches: () => void;
   openHr: () => void;
   openPayroll: () => void;
@@ -270,11 +271,26 @@ export function getAuthorizedModules(
     });
   }
 
-  // 7. Branches & registration
+  // Foundation Structure (Legal profile, geography, departments & committees)
+  if (["foundation.profile.view", "foundation.geography.view", "foundation.departments.view"].some(k => roleActions.includes(k))) {
+    list.push({
+      key: "foundation",
+      title: "Foundation Structure",
+      shortLabel: "Structure",
+      description: "Official profile, geography, departments and committees.",
+      category: "ORGANIZATION MANAGEMENT",
+      iconName: "building",
+      iconBg: "#EFF6FF",
+      iconColor: "#2563EB",
+      onOpen: handlers.openFoundation ?? handlers.openBranches
+    });
+  }
+
+  // 7. Branches / Locations
   if (roleActions.includes("foundation.branches.view")) {
     list.push({
       key: "branches",
-      title: "Branches & registration",
+      title: "Branches / Locations",
       shortLabel: "Branches",
       description: "Manage foundation physical offices, centers and facilities.",
       category: "ORGANIZATION MANAGEMENT",

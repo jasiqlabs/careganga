@@ -137,15 +137,16 @@ function labelToPanel(label:string):"ACCOUNT"|"SCOPE"{
  return label==="Staff account"?"ACCOUNT":"SCOPE";
 }
 const styles=StyleSheet.create({
- card:{padding:14,gap:10,borderRadius:14,backgroundColor:theme.surface,
-  borderWidth:1,borderColor:theme.border},
+ card:{padding:16,gap:10,borderRadius:14,backgroundColor:"#FFFFFF",
+  borderWidth:1,borderColor:"#E2E8F0",shadowColor:"#0F172A",shadowOpacity:0.04,
+  shadowOffset:{width:0,height:2},shadowRadius:6,elevation:2},
  title:{fontSize:18,color:theme.text,fontWeight:"700"},
  label:{color:theme.text,fontSize:14,fontWeight:"600"},copy:{color:theme.text,fontSize:13},
- button:{padding:12,minHeight:48,backgroundColor:theme.background,
-  borderColor:theme.border,borderWidth:1,borderRadius:9,justifyContent:"center"},
+ button:{padding:12,minHeight:48,backgroundColor:"#F8FAFC",
+  borderColor:"#E2E8F0",borderWidth:1,borderRadius:9,justifyContent:"center"},
  buttonText:{color:theme.text,fontWeight:"600",textAlign:"center"},
- field:{gap:6},input:{borderWidth:1,borderColor:theme.border,padding:12,
-  borderRadius:9,minHeight:48,color:theme.text,backgroundColor:theme.surface},
- disabled:{opacity:.5},option:{padding:10,borderColor:theme.border,borderWidth:1,
-  borderRadius:10,gap:5},notice:{padding:10,color:theme.text,backgroundColor:theme.background}
+ field:{gap:6},input:{borderWidth:1,borderColor:"#E2E8F0",padding:12,
+  borderRadius:9,minHeight:48,color:theme.text,backgroundColor:"#FFFFFF"},
+ disabled:{opacity:.5},option:{padding:12,borderColor:"#E2E8F0",borderWidth:1,
+  borderRadius:10,gap:5,backgroundColor:"#FFFFFF"},notice:{padding:10,color:theme.text,backgroundColor:theme.background}
 });
