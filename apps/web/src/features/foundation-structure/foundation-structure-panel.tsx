@@ -399,6 +399,9 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
         "/officeholders/options?search=" + encodeURIComponent(officeholderSearch.trim())
       );
       setOfficeholders(result.options);
+      if (result.options.length === 1) {
+        setParticipantAccount(result.options[0].value);
+      }
       if (result.options.length === 0) setNotice("No eligible staff account matched. Try another name.");
     } catch (e) {
       setOfficeholders([]);
@@ -1617,9 +1620,17 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
                   }}
                   onSubmit={(e) => {
                     e.preventDefault();
+                    if (!participantAccount) {
+                      setError("Please select a staff member from the eligible accounts list.");
+                      return;
+                    }
+                    if (!participantRole.trim()) {
+                      setError("Please enter or select a responsibility (e.g. Chairperson, Secretary).");
+                      return;
+                    }
                     save("POST", "/departments/" + focusedDept + "/participants", "PARTICIPANT_ADD", {
                       accountRef: participantAccount,
-                      officeRole: participantRole,
+                      officeRole: participantRole.trim(),
                     });
                   }}
                 >
@@ -1628,14 +1639,20 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
                   </h3>
 
                   <div className="cg-field-group">
-                    <label className="cg-field-label field">Find eligible staff by name</label>
+                    <label className="cg-field-label field">Step 1 · Find staff by name</label>
                     <div style={{ display: "flex", gap: "0.5rem" }}>
                       <input
                         maxLength={80}
                         className="cg-f-input no-icon"
                         value={officeholderSearch}
                         onChange={(e) => setOfficeholderSearch(e.target.value)}
-                        placeholder="Staff name"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void findEligibleOfficeholders();
+                          }
+                        }}
+                        placeholder="Type staff name and press Search"
                         disabled={busy || Boolean(pending)}
                       />
                       <button
@@ -1652,9 +1669,9 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
 
                   <div className="cg-field-group">
                     <CustomDropdown
-                      label="Eligible Foundation account"
+                      label="Select staff account"
                       value={participantAccount}
-                      placeholder="Choose current staff account"
+                      placeholder="Choose staff account"
                       onChange={(val) => setParticipantAccount(val)}
                       options={officeholders.map((a) => ({
                         value: a.value,
@@ -1664,7 +1681,7 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
                   </div>
 
                   <div className="cg-field-group">
-                    <label className="cg-field-label field">Officeholder responsibility</label>
+                    <label className="cg-field-label field">Step 2 · Responsibility / Role</label>
                     <input
                       required
                       minLength={2}
@@ -1672,8 +1689,27 @@ export function FoundationStructurePanel({ actions }: { actions: string[] }) {
                       className="cg-f-input no-icon"
                       value={participantRole}
                       onChange={(e) => setParticipantRole(e.target.value)}
-                      placeholder="Chairperson, Secretary, Coordinator…"
+                      placeholder="e.g. Chairperson, Secretary, Coordinator..."
                     />
+                    {/* Quick Role Suggestions */}
+                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.35rem" }}>
+                      {["Chairperson", "Secretary", "Coordinator", "Head", "Member"].map((role) => (
+                        <button
+                          key={role}
+                          type="button"
+                          className="cg-action-btn-small"
+                          style={{
+                            background: participantRole === role ? "#EEF2FF" : "#F8FAFC",
+                            borderColor: participantRole === role ? "#4F46E5" : "#CBD5E1",
+                            color: participantRole === role ? "#4F46E5" : "#475569",
+                            fontWeight: participantRole === role ? 700 : 500,
+                          }}
+                          onClick={() => setParticipantRole(role)}
+                        >
+                          {role}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <button
