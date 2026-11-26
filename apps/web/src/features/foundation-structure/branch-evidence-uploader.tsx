@@ -1,5 +1,5 @@
 "use client";
-import {useState} from "react";
+import {useRef,useState} from "react";
 const MIME=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
 type NewUpload={uploadRef:string;status:string;uploadUrl?:string;
  uploadHeaders?:Record<string,string>;expiresAt?:string};
@@ -23,8 +23,10 @@ async function request<T>(path:string,method:"GET"|"POST"="GET",body?:object):Pr
  }
  return response.json() as Promise<T>;
 }
-export function BranchEvidenceUploader({registrationRef,draftVersion,classification,onVerified,disabled=false}:Props){
+ export function BranchEvidenceUploader({registrationRef,draftVersion,classification,onVerified,disabled=false}:Props){
+ const inputRef=useRef<HTMLInputElement|null>(null);
  const [file,setFile]=useState<File|null>(null);
+ const [dragging,setDragging]=useState(false);
  const [busy,setBusy]=useState(false),[intent,setIntent]=useState("");
  const [key,setKey]=useState("");
  const [verified,setVerified]=useState(false);
@@ -90,19 +92,53 @@ export function BranchEvidenceUploader({registrationRef,draftVersion,classificat
    finally{setBusy(false);}
  }
  return <div className="branch-upload form">
-   <label className="field">{name}
-     <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" disabled={disabled||busy||uncertain}
-       onChange={e=>choose(e.target.files?.[0]??null)}/></label>
-   <div className="toolbar">
-     <button type="button" onClick={()=>void upload()}
+   <span className="cg-field-label" style={{marginBottom:"0.35rem",display:"block"}}>{name}</span>
+   <input
+     ref={inputRef}
+     type="file"
+     accept=".pdf,.jpg,.jpeg,.png,.webp"
+     style={{display:"none"}}
+     disabled={disabled||busy||uncertain}
+     onChange={e=>{choose(e.target.files?.[0]??null);e.target.value="";}}
+   />
+   <div
+     className="cg-dropzone-box"
+     style={{
+       minHeight:"115px",
+       padding:"1rem",
+       ...(dragging?{borderColor:"#4F46E5",backgroundColor:"#EEF2FF"}:{})
+     }}
+     onClick={()=>{if(!disabled&&!busy&&!uncertain)inputRef.current?.click();}}
+     onDragOver={e=>{e.preventDefault();e.stopPropagation();if(!disabled&&!busy&&!uncertain)setDragging(true);}}
+     onDragLeave={e=>{e.preventDefault();e.stopPropagation();setDragging(false);}}
+     onDrop={e=>{
+       e.preventDefault();e.stopPropagation();setDragging(false);
+       if(!disabled&&!busy&&!uncertain)choose(e.dataTransfer.files?.[0]??null);
+     }}
+   >
+     <span style={{fontSize:"0.8125rem",color:"#334155",fontWeight:600}}>
+       {dragging?"Drop file here":file?`Selected: ${file.name} (${Math.round(file.size/1024)} KB)`:"Drag & drop PDF, JPG, PNG or WebP here"}
+     </span>
+     <span style={{fontSize:"0.75rem",color:"#94A3B8"}}>or</span>
+     <button
+       type="button"
+       className="cg-btn-choose-file"
+       disabled={disabled||busy||uncertain}
+       onClick={e=>{e.stopPropagation();inputRef.current?.click();}}
+     >
+       Choose File
+     </button>
+   </div>
+   <div className="toolbar" style={{marginTop:"0.75rem",display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
+     <button type="button" className="cg-btn-primary" onClick={()=>void upload()}
        disabled={disabled||busy||uncertain||!file||verified}>
-       {busy?"Verifying...":"Upload privately"}</button>
-     {!!intent&&<button type="button" onClick={()=>void status()} disabled={busy}>
+       {busy?"Verifying...":verified?"Verified":"Upload privately"}</button>
+     {!!intent&&<button type="button" className="cg-btn-draft" onClick={()=>void status()} disabled={busy}>
        Check original upload</button>}
-     {uncertain&&<button type="button" onClick={()=>{setUncertain(false);setNotice(
+     {uncertain&&<button type="button" className="cg-btn-draft" onClick={()=>{setUncertain(false);setNotice(
        "Only retry the same upload key or confirm its original status before a new upload.");}}
        disabled={busy}>Review retry</button>}
    </div>
-   {!!notice&&<p className="notice" role={uncertain?"alert":"status"}>{notice}</p>}
+   {!!notice&&<p className="notice" role={uncertain?"alert":"status"} style={{marginTop:"0.5rem",fontSize:"0.8125rem",color:uncertain?"#DC2626":"#475569"}}>{notice}</p>}
  </div>;
 }

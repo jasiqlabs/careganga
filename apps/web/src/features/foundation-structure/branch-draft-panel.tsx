@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -155,6 +155,35 @@ export function BranchDraftPanel({
 
   // Step 7 Review
   const [ack, setAck] = useState(false);
+
+  // Photo / Logo file input + drag & drop state
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string>("");
+  const [logoFileName, setLogoFileName] = useState<string>("");
+  const [isDraggingLogo, setIsDraggingLogo] = useState<boolean>(false);
+
+  function handleLogoFileSelect(file: File | null | undefined) {
+    if (!file) return;
+    const validTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+    if (!validTypes.has(file.type)) {
+      setError("Please select a valid JPG, PNG, or WebP image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("File size must be under 5 MB.");
+      return;
+    }
+    setError("");
+    if (logoPreviewUrl) {
+      URL.revokeObjectURL(logoPreviewUrl);
+    }
+    const preview = URL.createObjectURL(file);
+    setLogoPreviewUrl(preview);
+    setLogoFileName(file.name);
+    const refId = "photo-" + fresh().slice(0, 8);
+    setStageLogos((prev) => (prev.includes(refId) ? prev : [...prev, refId]));
+    setMessage(`Selected "${file.name}" (${Math.round(file.size / 1024)} KB)`);
+  }
 
   // Metadata options
   const [areas, setAreas] = useState<Area[]>([]);
@@ -649,25 +678,97 @@ export function BranchDraftPanel({
                     Upload official branch photo or logo (JPG, PNG -max 5MB)
                   </span>
                   <div className="cg-photo-upload-row">
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        handleLogoFileSelect(e.target.files?.[0]);
+                        e.target.value = "";
+                      }}
+                    />
                     <div
                       className="cg-dropzone-box"
-                      onClick={() => {
-                        const fakeRef = "photo-" + fresh().slice(0, 8);
-                        setStageLogos((prev) => [...prev, fakeRef]);
-                        setMessage("Photo verified and attached.");
+                      style={
+                        isDraggingLogo
+                          ? {
+                              borderColor: "#4F46E5",
+                              backgroundColor: "#EEF2FF"
+                            }
+                          : undefined
+                      }
+                      onClick={() => photoInputRef.current?.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDraggingLogo(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDraggingLogo(false);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDraggingLogo(false);
+                        handleLogoFileSelect(e.dataTransfer.files?.[0]);
                       }}
                     >
                       <UploadCloud size={32} color="#4F46E5" />
                       <span style={{ fontSize: "0.8125rem", color: "#334155", fontWeight: 600 }}>
-                        Drag & drop your image here
+                        {isDraggingLogo ? "Drop image here" : "Drag & drop your image here"}
                       </span>
                       <span style={{ fontSize: "0.75rem", color: "#94A3B8" }}>or</span>
-                      <button type="button" className="cg-btn-choose-file">
+                      <button
+                        type="button"
+                        className="cg-btn-choose-file"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          photoInputRef.current?.click();
+                        }}
+                      >
                         Choose File
                       </button>
                     </div>
-                    <div className="cg-photo-preview-placeholder">
-                      {stageLogos.length > 0 ? (
+                    <div className="cg-photo-preview-placeholder" style={{ position: "relative", overflow: "hidden" }}>
+                      {logoPreviewUrl ? (
+                        <>
+                          <img
+                            src={logoPreviewUrl}
+                            alt={logoFileName || "Branch Logo"}
+                            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "8px" }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              URL.revokeObjectURL(logoPreviewUrl);
+                              setLogoPreviewUrl("");
+                              setLogoFileName("");
+                              setStageLogos([]);
+                            }}
+                            style={{
+                              position: "absolute",
+                              top: "6px",
+                              right: "6px",
+                              background: "rgba(15,23,42,0.75)",
+                              color: "#FFFFFF",
+                              border: "none",
+                              borderRadius: "50%",
+                              width: "22px",
+                              height: "22px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              cursor: "pointer"
+                            }}
+                            title="Remove image"
+                          >
+                            <X size={12} />
+                          </button>
+                        </>
+                      ) : stageLogos.length > 0 ? (
                         <>
                           <CheckCircle2 size={24} color="#16A34A" />
                           <span style={{ color: "#16A34A", fontWeight: 600 }}>Logo Attached</span>
@@ -688,24 +789,43 @@ export function BranchDraftPanel({
             {step === 2 && (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 <p style={{ fontSize: "0.875rem", color: "#475569" }}>
-                  Confirm administrative Block / Subdivision geography for real-time field operations.
+                  Confirm administrative Block / Subdivision geography and contact details for real-time field operations.
                 </p>
                 <div className="cg-field-group">
                   <label className="cg-field-label">Eligible Foundation Block</label>
-                  <select
-                    className="cg-form-input no-icon"
+                  <CustomDropdown
+                    options={areas.map((a) => ({
+                      value: a.areaRef,
+                      label: `${a.name} (${a.level})`
+                    }))}
                     value={selected?.geographyRef || ""}
-                    onChange={(e) => {
-                      if (selected) selected.geographyRef = e.target.value;
+                    placeholder="Choose an active block"
+                    onChange={(val) => {
+                      if (selected) selected.geographyRef = val;
                     }}
-                  >
-                    <option value="">Choose an active block</option>
-                    {areas.map((a) => (
-                      <option key={a.areaRef} value={a.areaRef}>
-                        {a.name} ({a.level})
-                      </option>
-                    ))}
-                  </select>
+                  />
+                </div>
+                <div className="cg-form-grid-2">
+                  <div className="cg-field-group">
+                    <label className="cg-field-label">Latitude</label>
+                    <input
+                      type="text"
+                      className="cg-form-input no-icon"
+                      placeholder="23.3441"
+                      value={latitude}
+                      onChange={(e) => setLatitude(e.target.value)}
+                    />
+                  </div>
+                  <div className="cg-field-group">
+                    <label className="cg-field-label">Longitude</label>
+                    <input
+                      type="text"
+                      className="cg-form-input no-icon"
+                      placeholder="85.3096"
+                      value={longitude}
+                      onChange={(e) => setLongitude(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -716,13 +836,17 @@ export function BranchDraftPanel({
                 <p style={{ fontSize: "0.875rem", color: "#475569" }}>
                   Upload verified legal registration certificates for this branch.
                 </p>
-                {selected && canManage && (
+                {selected && canManage ? (
                   <BranchEvidenceUploader
                     registrationRef={selected.recordRef}
                     draftVersion={selected.version}
                     classification="REGISTRATION_PROOF"
                     onVerified={(ref) => setRegistrationFiles((old) => (old.includes(ref) ? old : [...old, ref]))}
                   />
+                ) : (
+                  <div style={{ padding: "1rem", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: "8px", fontSize: "0.875rem", color: "#92400E" }}>
+                    Please save Step 1 as a draft first to enable private document uploads.
+                  </div>
                 )}
                 <span className="cg-field-helper">Uploaded registration documents: {registrationFiles.length}</span>
               </div>
@@ -734,13 +858,17 @@ export function BranchDraftPanel({
                 <p style={{ fontSize: "0.875rem", color: "#475569" }}>
                   Attach signed lease agreements, MOU documents, and authorized branch site proofs.
                 </p>
-                {selected && canManage && (
+                {selected && canManage ? (
                   <BranchEvidenceUploader
                     registrationRef={selected.recordRef}
                     draftVersion={selected.version}
                     classification="AGREEMENT"
                     onVerified={(ref) => setAgreementFiles((old) => (old.includes(ref) ? old : [...old, ref]))}
                   />
+                ) : (
+                  <div style={{ padding: "1rem", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: "8px", fontSize: "0.875rem", color: "#92400E" }}>
+                    Please save Step 1 as a draft first to enable private agreement uploads.
+                  </div>
                 )}
                 <span className="cg-field-helper">Uploaded agreements: {agreementFiles.length}</span>
               </div>
@@ -753,18 +881,15 @@ export function BranchDraftPanel({
                   <label className="cg-field-label">
                     Eligible Foundation Branch Manager <span className="req">*</span>
                   </label>
-                  <select
-                    className="cg-form-input no-icon"
+                  <CustomDropdown
+                    options={managerOptions.map((x) => ({
+                      value: x.value,
+                      label: x.label
+                    }))}
                     value={manager}
-                    onChange={(e) => setManager(e.target.value)}
-                  >
-                    <option value="">Choose an authorized staff account</option>
-                    {managerOptions.map((x) => (
-                      <option key={x.value} value={x.value}>
-                        {x.label}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Choose an authorized staff account"
+                    onChange={(val) => setManager(val)}
+                  />
                   <span className="cg-field-helper">Only verified CareGanga Foundation accounts can be assigned.</span>
                 </div>
               </div>
@@ -776,33 +901,36 @@ export function BranchDraftPanel({
                 <p style={{ fontSize: "0.875rem", color: "#475569" }}>
                   Select Foundation departments operating under this branch:
                 </p>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.75rem" }}>
-                  {departmentOptions.map((d) => (
-                    <label
-                      key={d.value}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        padding: "0.75rem",
-                        background: "#F8FAFC",
-                        borderRadius: "8px",
-                        border: "1px solid #E2E8F0",
-                        cursor: "pointer"
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={departments.includes(d.value)}
-                        onChange={(e) =>
-                          setDepartments((prev) =>
-                            e.target.checked ? [...prev, d.value] : prev.filter((id) => id !== d.value)
-                          )
-                        }
-                      />
-                      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#0F172A" }}>{d.label}</span>
-                    </label>
-                  ))}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem" }}>
+                  {departmentOptions.map((d) => {
+                    const isChecked = departments.includes(d.value);
+                    return (
+                      <label
+                        key={d.value}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          padding: "0.75rem",
+                          background: isChecked ? "#EEF2FF" : "#F8FAFC",
+                          borderRadius: "8px",
+                          border: isChecked ? "1px solid #4F46E5" : "1px solid #E2E8F0",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) =>
+                            setDepartments((prev) =>
+                              e.target.checked ? [...prev, d.value] : prev.filter((id) => id !== d.value)
+                            )
+                          }
+                        />
+                        <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: isChecked ? "#4338CA" : "#0F172A" }}>{d.label}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             )}

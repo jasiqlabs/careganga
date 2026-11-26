@@ -377,24 +377,18 @@
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
+  gap: 1.25rem;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-}
-
-@media (max-width: 900px) {
-  .cg-wizard-status-banner {
-    flex-direction: column;
-    align-items: flex-start;
-  }
 }
 
 .cg-status-banner-left {
   display: flex;
   align-items: flex-start;
   gap: 1rem;
-  max-width: 450px;
+  flex: 1 1 280px;
 }
 
 .cg-status-banner-icon {
@@ -427,8 +421,9 @@
 .cg-workflow-track {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex-shrink: 0;
 }
 
 .cg-workflow-step-node {
@@ -459,10 +454,68 @@
 }
 
 .cg-workflow-line {
-  width: 24px;
+  width: 16px;
   height: 2px;
   background: #E2E8F0;
   margin-top: -12px;
+}
+
+@media (max-width: 600px) {
+  .cg-workflow-line {
+    display: none;
+  }
+  .cg-workflow-track {
+    gap: 0.75rem;
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.cg-btn-primary {
+  height: 40px;
+  padding: 0 1.25rem;
+  background: #4F46E5 !important;
+  border: 1px solid #4338CA !important;
+  color: #FFFFFF !important;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+  transition: all 0.15s ease;
+}
+
+.cg-btn-primary:hover:not(:disabled) {
+  background: #4338CA !important;
+}
+
+.cg-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cg-btn-draft {
+  height: 40px;
+  padding: 0 1rem;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cg-btn-draft:hover:not(:disabled) {
+  background: #F8FAFC;
+  border-color: #94A3B8;
 }
 
 /* Bottom Wizard Actions */

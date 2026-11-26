@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
+import * as DocumentPicker from "expo-document-picker";
 import { careGangaTheme as theme } from "../../../../../packages/design-tokens/src/index";
 import { identityRequest } from "../identity-access/http-client";
 import {
@@ -211,6 +212,7 @@ export function BranchRegistrationScreen({
   const [officialEmail, setOfficialEmail] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [logos, setLogos] = useState<string[]>([]);
+  const [pickedLogoName, setPickedLogoName] = useState("");
   const [registrationFiles, setRegistrationFiles] = useState<string[]>([]);
   const [agreementFiles, setAgreementFiles] = useState<string[]>([]);
   const [extraPhotos, setExtraPhotos] = useState<string[]>([]);
@@ -1711,6 +1713,59 @@ export function BranchRegistrationScreen({
                         placeholder="branch@careganga.org"
                         placeholderTextColor="#94A3B8"
                       />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.label}>Branch Photo / Logo *</Text>
+                      <View
+                        style={{
+                          borderWidth: 1.5,
+                          borderStyle: "dashed",
+                          borderColor: pickedLogoName ? "#16A34A" : "#CBD5E1",
+                          borderRadius: 10,
+                          padding: 14,
+                          backgroundColor: pickedLogoName ? "#F0FDF4" : "#F8FAFC",
+                          alignItems: "center",
+                          gap: 8
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: pickedLogoName ? "#15803D" : "#475569", textAlign: "center" }}>
+                          {pickedLogoName ? `Selected: ${pickedLogoName}` : "Select official branch photo or logo (JPG, PNG, WebP)"}
+                        </Text>
+                        <Pressable
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 8,
+                            borderRadius: 8,
+                            backgroundColor: "#FFFFFF",
+                            borderWidth: 1,
+                            borderColor: "#CBD5E1",
+                            minHeight: 40,
+                            justifyContent: "center"
+                          }}
+                          onPress={() => {
+                            void (async () => {
+                              try {
+                                const res = await DocumentPicker.getDocumentAsync({
+                                  type: ["image/jpeg", "image/png", "image/webp"],
+                                  multiple: false,
+                                  copyToCacheDirectory: true
+                                });
+                                if (!res.canceled && res.assets?.[0]) {
+                                  const asset = res.assets[0];
+                                  setPickedLogoName(asset.name);
+                                  const refId = "photo-" + Crypto.randomUUID().slice(0, 8);
+                                  setLogos((prev) => (prev.includes(refId) ? prev : [...prev, refId]));
+                                  setMessage(`Selected "${asset.name}"`);
+                                }
+                              } catch {
+                                setMessage("Could not open image picker.");
+                              }
+                            })();
+                          }}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: "700", color: "#334155" }}>Choose File</Text>
+                        </Pressable>
+                      </View>
                     </View>
                   </View>
                 )}
