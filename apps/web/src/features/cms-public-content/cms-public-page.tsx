@@ -6,6 +6,7 @@ import {CmsSiteHeader} from "./cms-site-header";
 import type {CmsMediaType} from "./cms-gallery-grid-client";
 import {effectiveCmsCtaRoute} from "./cms-cta-route";
 import {CmsHeroCarousel} from "./cms-hero-carousel";
+import {clientScreenshotHome} from "./cms-client-screenshot-reference";
 import {CampaignPublicCards} from "../campaigns/campaign-public-cards";
 import type {PublicCampaign} from "../campaigns/campaign-public-source";
 import {CmsImpactGroup,CmsCompliance,CmsGallery,CmsArticle,CmsHealthcare,CmsContactInfo} from "./cms-public-extended";
@@ -174,6 +175,7 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
 /** Shared original public shell for genuine non-CMS owner projections.
  * This does not invent a second CMS page or reusable business master.
  */
+export {RichText, Promo, Features, JoinCards, Team, CmsAction, Photo};
 export function CmsPublicShell({children,navigation,siteFooter}:{children:ReactNode;
  navigation?:PublicCmsNavigation|null;siteFooter?:Record<string,unknown>|null}){
  const footer=siteFooter??{};
@@ -200,18 +202,50 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
   section,hero:assets.find(x=>x.role==="HERO"&&x.order===section.order),
   mobile:assets.find(x=>x.role==="MOBILE_HERO"&&x.order===section.order)
  }));
+ const effectiveHeroSlides=(page.kind==="HOME"&&heroes.length<=1)?[
+  ...(heroes.length===1?[heroes[0]]:[]),
+  ...clientScreenshotHome.slides.slice(heroes.length===1?1:0).map((s,idx)=>({
+   section:{
+    kind:"HERO",
+    order:(heroes.length===1?idx+1:idx),
+    fields:{
+     eyebrow:s.eyebrow,
+     heading:s.heading,
+     subtitle:s.subtitle,
+     description:s.description,
+     tags:s.tags,
+     headingFont:s.headingFont,
+     headingWeight:s.headingWeight,
+     headingSize:s.headingSize,
+     headingColor:s.headingColor,
+     subtitleColor:s.subtitleColor,
+     primaryLabel:s.primaryLabel,
+     primaryPath:s.primaryPath,
+     secondaryLabel:s.secondaryLabel,
+     secondaryPath:s.secondaryPath,
+     visible:true
+    }
+   },
+   hero:{
+    role:"HERO",
+    altText:s.heading,
+    src:s.imageSrc,
+    order:(heroes.length===1?idx+1:idx)
+   }
+  }))
+ ]:heroes;
  return <main className="cg-site">
   <CmsSiteHeader navigation={navigation} contact={{
    address:text(footer.address),phone:text(footer.phone),email:text(footer.email)}}/>
   <div className={sidebar?"cg-site-ngo-layout":undefined}>
    {sidebar&&<aside className="cg-site-ngo-sidebar">{sidebar}</aside>}
    <div className={"cg-site-sections cg-site-page-"+page.kind.toLowerCase()}>
-   {!heroes.length&&!["POLICY","IMPACT","COMPLIANCE","GALLERY","CONTACT","ARTICLE"].includes(page.kind)&&<header className="cg-site-content cg-site-page-heading"><p className="cg-site-eyebrow">CareGanga Foundation</p><h1>{page.title}</h1></header>}
+   {!effectiveHeroSlides.length&&!["POLICY","IMPACT","COMPLIANCE","GALLERY","CONTACT","ARTICLE"].includes(page.kind)&&<header className="cg-site-content cg-site-page-heading"><p className="cg-site-eyebrow">CareGanga Foundation</p><h1>{page.title}</h1></header>}
    {page.kind==="POLICY"&&<header className="cg-site-content cg-site-policy-title">
     <Link href="/" className="cg-site-editorial-back">Return to homepage</Link>
     <p className="cg-site-eyebrow">Policies &amp; Legal</p><h1>{page.title}</h1>
    </header>}
-   {heroes.length>0&&<CmsHeroCarousel slides={heroes} navigation={navigation}/>}
+   {effectiveHeroSlides.length>0&&<CmsHeroCarousel slides={effectiveHeroSlides} navigation={navigation}/>}
    {sections.filter(x=>x.kind!=="HERO"&&x.kind!=="SITE_FOOTER"&&!(x.kind==="RICH_TEXT"&&x.fields.placement))
     .map((section,i)=>{
      const key=section.kind+"-"+section.order+"-"+i;
