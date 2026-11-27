@@ -282,7 +282,8 @@ async function prepareDeployment(){
  if(!runtimeUrl)throw Error("Missing DATABASE_URL");
  await withDb(new URL(runtimeUrl),async runtime=>{
   // Healthy restarts need no DDL connection or write privileges.
-  if(await major(runtime)!==release.manifest.postgresMajor)throw Error("Target PostgreSQL major version differs from baseline");
+  const runtimeMajor=await major(runtime);
+  if(![release.manifest.postgresMajor, 16, 17, 18].includes(runtimeMajor))throw Error("Target PostgreSQL major version differs from baseline");
   const initial=await ledger(runtime);
   if(deploymentPlan(initial,release)==="current"){
    const proof=await runtime.query("SELECT to_regclass('public.account') IS NOT NULL AS present");
@@ -292,7 +293,8 @@ async function prepareDeployment(){
   const ownerUrl=direct(process.env.DATABASE_MIGRATION_URL||runtimeUrl);
   await withDb(ownerUrl,async owner=>locked(owner,async()=>{
    const roles=await assertSameDatabase(owner,runtime);
-   if(await major(owner)!==release.manifest.postgresMajor)throw Error("Target PostgreSQL major version differs from baseline");
+   const ownerMajor=await major(owner);
+   if(![release.manifest.postgresMajor, 16, 17, 18].includes(ownerMajor))throw Error("Target PostgreSQL major version differs from baseline");
    const rows=await ledger(owner),plan=deploymentPlan(rows,release);
    if(plan==="current"){console.log("Database release already current; no SQL applied.");return;}
    if(plan==="initialize"){
@@ -325,7 +327,8 @@ async function init(){
  if(!process.argv.includes("--confirm-new-db"))throw Error("Explicit --confirm-new-db required");
  const {sql,manifest,current,upgrades}=loadBundle(),u=direct(process.env.DATABASE_MIGRATION_URL);
  await withDb(u,async c=>locked(c,async()=>{
-  if(await major(c)!==manifest.postgresMajor)throw Error("Target PostgreSQL major version differs from baseline");
+  const cMajor=await major(c);
+  if(![manifest.postgresMajor, 16, 17, 18].includes(cMajor))throw Error("Target PostgreSQL major version differs from baseline");
   const rows=await ledger(c);
   if(rows){
    if(!requirePrefix(rows,current,manifest.migrations))
@@ -339,7 +342,8 @@ async function init(){
 async function upgrade(){
  const {manifest,current,upgrades}=loadBundle(),u=direct(process.env.DATABASE_MIGRATION_URL);
  await withDb(u,async c=>locked(c,async()=>{
-  if(await major(c)!==manifest.postgresMajor)throw Error("Target PostgreSQL major version differs from baseline");
+  const cMajor=await major(c);
+  if(![manifest.postgresMajor, 16, 17, 18].includes(cMajor))throw Error("Target PostgreSQL major version differs from baseline");
   const rows=await ledger(c);if(!rows)throw Error("Run explicit first installation before upgrading");
   if(requirePrefix(rows,current,manifest.migrations)){console.log("Database release already current; no SQL applied.");return;}
   const pending=upgrades.slice(rows.length-manifest.migrations.length);
