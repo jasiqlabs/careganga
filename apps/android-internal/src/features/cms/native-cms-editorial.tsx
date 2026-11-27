@@ -5,6 +5,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {IconArrowLeft,IconCheckCircle,IconClock,IconFileText,IconRefresh,IconSearch,IconSliders} from "../dashboard/dashboard-icons";
 import {NativeCmsMediaUploader} from "./native-cms-media-uploader";
 import {NativeCmsReviewer} from "./native-cms-reviewer";
 type Page={pageRef:string;kind:string;slug:string;title:string;
@@ -403,46 +404,85 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  };
  const locked=!canManage||busy||uncertain;
  const original=selected?.pageRef??"";
- return <SafeAreaView style={styles.page}>
+ return <SafeAreaView style={styles.page} edges={["top","bottom"]}>
   <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-   <Text accessibilityRole="header" style={styles.title}>Foundation Website Content</Text>
-   <Text style={styles.note}>Original CG18 pages and revisions. Drafts are not
-    public until independent approval and actual publication.</Text>
-   {button("Back to dashboard",()=>{
-    if(pending||uncertain||mediaActive){
-     Alert.alert("Original CMS action not confirmed",
-      "The last request may have committed. Leaving now loses its "+
-      "same-key retry on this screen. Check or retry the original request first.",[
-       {text:"Keep checking",style:"cancel"},
-       {text:"Leave without confirmation",onPress:onExit}
-      ]);
-    }else onExit();
-   },busy||loading)}
-   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-   {!!notice&&<Text accessibilityRole="alert" style={styles.note}>{notice}</Text>}
-   {loading&&<ActivityIndicator accessibilityLabel="Loading original CMS pages"/>}
+   {/* Standardized Mobile App Header */}
+   <View style={styles.headerBar}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Back to dashboard"
+     disabled={busy||loading}
+     onPress={()=>{
+      if(pending||uncertain||mediaActive){
+       Alert.alert("Original CMS action not confirmed",
+        "The last request may have committed. Leaving now loses its "+
+        "same-key retry on this screen. Check or retry the original request first.",[
+         {text:"Keep checking",style:"cancel"},
+         {text:"Leave without confirmation",onPress:onExit}
+        ]);
+      }else onExit();
+     }}
+     style={[styles.backBtn,(busy||loading)&&styles.disabled]}>
+     <IconArrowLeft size={18} color="#334155"/>
+    </Pressable>
+    <View style={styles.headerTextWrap}>
+     <Text accessibilityRole="header" style={styles.title}>Website CMS</Text>
+     <Text style={styles.headerSub}>Foundation Editorial &amp; Controls</Text>
+    </View>
+    <Pressable accessibilityRole="button" accessibilityLabel="Refresh original CMS pages"
+     disabled={busy}
+     onPress={()=>{
+      setLoading(true);setError("");
+      // A list GET is not proof that an earlier uncertain write was ours.
+      // Preserve the original request key until a same-key reply confirms it.
+      void list().catch(readFailure).finally(()=>setLoading(false));
+     }}
+     style={[styles.refreshBtn,busy&&styles.disabled]}>
+     <IconRefresh size={18} color="#4F46E5"/>
+    </Pressable>
+   </View>
+   {!!error&&<Text accessibilityRole="alert" style={styles.inlineError}>{error}</Text>}
+   {!!notice&&<Text accessibilityRole="alert" style={styles.noticeBanner}>{notice}</Text>}
+   {loading&&<ActivityIndicator accessibilityLabel="Loading original CMS pages" color="#4F46E5"/>}
    {canReview&&<NativeCmsReviewer token={token} onExpired={onExpired} onDone={list}/>}
-   {uncertain&&<Text style={styles.error}>The last save or publication may
+   {uncertain&&<Text style={styles.inlineError}>The last save or publication may
     have committed. Check the original page before trying another request.</Text>}
-   {button("Refresh original CMS pages",()=>{
-    setLoading(true);setError("");
-    // A list GET is not proof that an earlier uncertain write was ours.
-    // Preserve the original request key until a same-key reply confirms it.
-    void list().catch(readFailure).finally(()=>setLoading(false));
-   },busy)}
    {pending&&button("Retry same original request",()=>{
     setUncertain(false);void execute(pending);
    },busy)}
-   {/* Mobile Top 4 KPI Metrics */}
+   {/* Mobile Top 4 KPI Metrics with Pastel Vector Icon Badges */}
    <View style={styles.kpiRow}>
-    <View style={styles.kpiCard}><Text style={styles.kpiLabel}>Total Pages</Text><Text style={styles.kpiValue}>{pages.length}</Text></View>
-    <View style={styles.kpiCard}><Text style={styles.kpiLabel}>Published</Text><Text style={[styles.kpiValue,{color:"#16A34A"}]}>{pages.filter(p=>p.publicStatus!==null).length}</Text></View>
-    <View style={styles.kpiCard}><Text style={styles.kpiLabel}>Drafts</Text><Text style={[styles.kpiValue,{color:"#D97706"}]}>{pages.filter(p=>p.draftStatus==="DRAFT").length}</Text></View>
-    <View style={styles.kpiCard}><Text style={styles.kpiLabel}>In Review</Text><Text style={[styles.kpiValue,{color:"#2563EB"}]}>{pages.filter(p=>p.draftStatus==="SUBMITTED").length}</Text></View>
+    <View style={styles.kpiCard}>
+     <View style={styles.kpiTop}>
+      <View style={[styles.kpiIconBadge,{backgroundColor:"#EFF6FF"}]}><IconFileText size={16} color="#2563EB"/></View>
+      <Text style={styles.kpiLabel}>Total Pages</Text>
+     </View>
+     <Text style={styles.kpiValue}>{pages.length}</Text>
+    </View>
+    <View style={styles.kpiCard}>
+     <View style={styles.kpiTop}>
+      <View style={[styles.kpiIconBadge,{backgroundColor:"#ECFDF5"}]}><IconCheckCircle size={16} color="#059669"/></View>
+      <Text style={styles.kpiLabel}>Published</Text>
+     </View>
+     <Text style={[styles.kpiValue,{color:"#059669"}]}>{pages.filter(p=>p.publicStatus!==null).length}</Text>
+    </View>
+    <View style={styles.kpiCard}>
+     <View style={styles.kpiTop}>
+      <View style={[styles.kpiIconBadge,{backgroundColor:"#FFF7ED"}]}><IconSliders size={16} color="#D97706"/></View>
+      <Text style={styles.kpiLabel}>Drafts</Text>
+     </View>
+     <Text style={[styles.kpiValue,{color:"#D97706"}]}>{pages.filter(p=>p.draftStatus==="DRAFT").length}</Text>
+    </View>
+    <View style={styles.kpiCard}>
+     <View style={styles.kpiTop}>
+      <View style={[styles.kpiIconBadge,{backgroundColor:"#FAF5FF"}]}><IconClock size={16} color="#9333EA"/></View>
+      <Text style={styles.kpiLabel}>In Review</Text>
+     </View>
+     <Text style={[styles.kpiValue,{color:"#9333EA"}]}>{pages.filter(p=>p.draftStatus==="SUBMITTED").length}</Text>
+    </View>
    </View>
 
-   {/* Search Filter */}
+   {/* Search Filter with Inside Vector Icon */}
    <View style={styles.searchBar}>
+    <IconSearch size={18} color="#94A3B8"/>
     <TextInput style={styles.searchInput} placeholder="Search pages by title or slug..." placeholderTextColor="#94A3B8" value={search} onChangeText={setSearch}/>
    </View>
 
@@ -627,11 +667,19 @@ const styles=StyleSheet.create({
  disabled:{opacity:.45},
  error:{fontSize:13,color:"#DC2626",fontWeight:"600"},
  inlineError:{fontSize:13,color:"#DC2626",backgroundColor:"#FEF2F2",borderWidth:1,borderColor:"#FCA5A5",borderRadius:8,padding:10,fontWeight:"600",marginVertical:6},
+ noticeBanner:{fontSize:13,color:"#1E40AF",backgroundColor:"#EFF6FF",borderWidth:1,borderColor:"#BFDBFE",borderRadius:8,padding:10,fontWeight:"600",marginVertical:4},
+ headerBar:{flexDirection:"row",alignItems:"center",gap:12,marginBottom:4},
+ backBtn:{width:36,height:36,borderRadius:18,backgroundColor:"#F1F5F9",alignItems:"center",justifyContent:"center",borderWidth:1,borderColor:"#E2E8F0"},
+ headerTextWrap:{flex:1},
+ headerSub:{fontSize:12,color:"#64748B",fontWeight:"500"},
+ refreshBtn:{width:44,height:44,borderRadius:22,backgroundColor:"#EEF2FF",alignItems:"center",justifyContent:"center",borderWidth:1,borderColor:"#C7D2FE"},
  kpiRow:{flexDirection:"row",flexWrap:"wrap",gap:8},
- kpiCard:{flex:1,minWidth:"45%",backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#E2E8F0",borderRadius:10,padding:10,elevation:1},
- kpiLabel:{fontSize:11,color:"#64748B",fontWeight:"600",marginBottom:2},
- kpiValue:{fontSize:20,fontWeight:"800",color:"#0F172A",fontVariant:["tabular-nums"]},
- searchBar:{backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,paddingHorizontal:12,height:44,justifyContent:"center"},
- searchInput:{fontSize:14,color:"#0F172A",height:"100%"},
+ kpiCard:{flex:1,minWidth:"45%",backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#E2E8F0",borderRadius:12,padding:12,elevation:2,shadowColor:"#0F172A",shadowOpacity:0.04,shadowOffset:{width:0,height:1},gap:6},
+ kpiTop:{flexDirection:"row",alignItems:"center",gap:8},
+ kpiIconBadge:{width:28,height:28,borderRadius:14,alignItems:"center",justifyContent:"center"},
+ kpiLabel:{fontSize:12,color:"#64748B",fontWeight:"600"},
+ kpiValue:{fontSize:22,fontWeight:"800",color:"#0F172A",fontVariant:["tabular-nums"]},
+ searchBar:{flexDirection:"row",alignItems:"center",gap:8,backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,paddingHorizontal:12,height:44},
+ searchInput:{flex:1,fontSize:14,color:"#0F172A",height:"100%"},
  pageCardRow:{marginBottom:6}
 });

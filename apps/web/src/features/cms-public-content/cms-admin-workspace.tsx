@@ -4,13 +4,42 @@ import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
 import {isCmsCtaRoute} from "./cms-cta-route";
 import {clientScreenshotHome} from "./cms-client-screenshot-reference";
 import "./cms-admin.css";
+import {
+  FileText,
+  BookOpen,
+  Image as ImageIcon,
+  Menu,
+  Users,
+  CheckCircle2,
+  Globe,
+  LogIn,
+  UserPlus,
+  Heart,
+  Eye,
+  Edit2,
+  MoreHorizontal,
+  ExternalLink,
+  RefreshCw,
+  Plus,
+  FilePlus,
+  UploadCloud,
+  Sliders,
+  Settings,
+  Grid,
+  Check,
+  ChevronRight,
+  ChevronLeft,
+  AlertCircle,
+  Search
+} from "lucide-react";
+
 type Kind="HOME"|"ABOUT";
 type ProjectSource={sourceRef:string;title:string;category:string;summary:string;area:string;launch:string|null;status:string};
 type CampaignSource={sourceRef:string;title:string;category:string;summary:string;area:string;status?:string};
 type Team={sourceRef:string;proof:string;name:string;designation:string};
 type Asset={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|"ABOUT"|"PROMO"|"FEATURE";altText:string;order:number};
 type NavDesired={loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
-type PageItem={pageRef:string;kind:Kind;slug:string;title:string;version:string;draftStatus:string;publicStatus:string|null};
+type PageItem={pageRef:string;kind:string;slug:string;title:string;version:string;draftStatus:string;publicStatus:string|null};
 type PageDetail={pageRef:string;kind:Kind;slug:string;version:number;revisionRef:string;
  revisionNo:number;status:string;approvalCaseRef:string|null;
  title:string;seoTitle:string;seoDescription:string;canonicalPath:string;
@@ -203,8 +232,22 @@ async function read<T>(path:string,init?:RequestInit):Promise<T>{
 }
 export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  canManage:boolean;canPublish:boolean;canReview:boolean}){
- const [pages,setPages]=useState<PageItem[]>([]),[projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
- const [activeWorkspaceTab,setActiveWorkspaceTab]=useState<"OVERVIEW"|"PAGES"|"BANNERS"|"APPROVALS">("OVERVIEW");
+ const [allPages,setAllPages]=useState<PageItem[]>([]),[projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
+ const pages=allPages.filter(p=>p.kind==="HOME"||p.kind==="ABOUT");
+ const articlePages=allPages.filter(p=>p.kind==="ARTICLE");
+ const galleryPages=allPages.filter(p=>p.kind==="GALLERY");
+ const healthcarePages=allPages.filter(p=>p.kind==="HEALTHCARE");
+ const impactCompliancePages=allPages.filter(p=>p.kind==="IMPACT"||p.kind==="COMPLIANCE");
+ const otherPages=allPages.filter(p=>!["HOME","ABOUT","ARTICLE","GALLERY","HEALTHCARE","IMPACT","COMPLIANCE"].includes(p.kind));
+ const publishedPages=allPages.filter(p=>p.publicStatus==="EFFECTIVE");
+ const draftPages=allPages.filter(p=>p.draftStatus==="DRAFT");
+ const submittedPages=allPages.filter(p=>p.draftStatus==="SUBMITTED");
+ const scrollToExtended=()=>{
+  const el=document.getElementById("editorial-pages");
+  if(el){if(el instanceof HTMLDetailsElement)el.open=true;el.scrollIntoView({behavior:"smooth",block:"start"});}
+ };
+ const routeFor=(p:PageItem)=>p.kind==="HOME"?"/":p.kind==="COMPLIANCE"?"/ngo-information":p.kind==="ARTICLE"?"/blog/"+p.slug:p.kind==="POLICY"?"/policies/"+p.slug:"/"+p.slug;
+ const [activeWorkspaceTab,setActiveWorkspaceTab]=useState<"OVERVIEW"|"PAGES"|"BLOG"|"MEDIA"|"MENUS"|"SLIDERS"|"BANNERS"|"SETTINGS"|"APPROVALS">("OVERVIEW");
  const [formSectionStep,setFormSectionStep]=useState<"BASIC"|"BANNERS"|"STORY"|"SOURCES"|"CARDS"|"FOOTER">("BASIC");
  const [searchQuery,setSearchQuery]=useState("");
  const [campaignChoices,setCampaignChoices]=useState<CampaignSource[]>([]),[campaignError,setCampaignError]=useState("");
@@ -220,7 +263,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const [remark,setRemark]=useState("");
  const [withdrawReason,setWithdrawReason]=useState("");
  const [publishWhen,setPublishWhen]=useState("");
- const [heroEditorTab,setHeroEditorTab]=useState<"BASIC"|"IMAGES"|"BUTTONS"|"PREVIEW">("BASIC");
+ const [heroEditorTab,setHeroEditorTab]=useState<"BASIC"|"STYLE"|"MEDIA"|"IMAGES"|"BUTTONS"|"PREVIEW">("BASIC");
  const [activeHeroIndex,setActiveHeroIndex]=useState(0);
  const [teamChoices,setTeamChoices]=useState<Team[]>([]),[teamError,setTeamError]=useState("");
  const refreshTeam=()=>{setTeamError("");void read<{sources:Team[]}>("team-sources").then(v=>setTeamChoices(v.sources)).catch(()=>{setTeamChoices([]);setTeamError("Current consented staff sources require HR viewing permission.");});};
@@ -236,7 +279,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const mediaAttempt=useRef<{fingerprint:string;key:string;uploadRef:string|null}|null>(null);
  const refresh=useCallback(async()=>{
   try{const x=await read<{pages:PageItem[]}>("pages");
-   setPages(x.pages.filter(p=>p.kind==="HOME"||p.kind==="ABOUT"));}
+   setAllPages(x.pages);}
   catch(e){setError(e instanceof Error?e.message:"Could not load website pages.");}
  },[]);
  useEffect(()=>{void refresh();},[refresh]);
@@ -255,6 +298,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  }
  function edit<K extends keyof Draft>(field:K,value:Draft[K]){
   setDraft(x=>({...x,[field]:value}));
+ }
+ const openPage = open;
+ function updateSlide<K extends keyof Slide>(index:number,field:K,value:Slide[K]){
+  edit("slides",draft.slides.map((s,i)=>i===index?{...s,[field]:value}:s));
  }
  function moveSlide(index:number,delta:number){
   const target=index+delta;if(target<0||target>=draft.slides.length)return;
@@ -505,57 +552,89 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   canonicalPath:previewData.canonicalPath,lastPublishedAt:"",
   sections:previewData.sections,assets:selected?[...draft.assets.map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/cms-image-preview/"+a.fileRef})),...(selected.bundledAssets??[]).filter(a=>!draft.assets.some(x=>x.role===a.role&&x.order===a.order)&&!(a.role==="HERO"&&draft.slides[a.order]?.textOnly)&&!(a.role==="ABOUT"&&draft.bodyVariant!=="SPLIT")).map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/cms-image-preview/release-"+a.key}))]:[]};
  return <div className="cg-cms-admin-root"><div className="cg-cms-workspace">
-  {/* Modern Gold-Standard Header */}
-  <div className="cg-cms-admin-header">
-   <div className="cg-cms-admin-header-left">
-    <div>
-     <div className="cg-cms-admin-header-title-row">
-      <h1>Website CMS</h1>
-      <span className="cg-cms-admin-badge-verified">✓</span>
-     </div>
-     <p>Complete Command Center &amp; Control Panel</p>
-    </div>
-   </div>
-   <div className="cg-cms-admin-header-actions">
-    <button type="button" className="cg-cms-admin-btn" onClick={()=>void refresh()} disabled={busy}>Refresh</button>
+  {/* Top Action Toolbar */}
+  <div className="cg-cms-admin-top-bar">
+    <button type="button" className="cg-cms-admin-btn" onClick={()=>void refresh()} disabled={busy}>
+      <RefreshCw size={14}/> Refresh
+    </button>
     {canReview&&<button type="button" className="cg-cms-admin-btn" onClick={()=>{setActiveWorkspaceTab("APPROVALS");void showInbox();}} disabled={busy}>
-     Review approvals</button>}
+      Review approvals
+    </button>}
     {canManage&&<button className="cg-cms-admin-btn cg-cms-admin-btn-primary" type="button" disabled={busy||!!pending||!!mediaAttempt.current}
-     onClick={()=>{setSelected(null);setReviewing(false);
-     setDraft(blank("HOME"));setPreview(false);setActiveWorkspaceTab("PAGES");}}>+ New page</button>}
+      onClick={()=>{setSelected(null);setReviewing(false);setDraft(blank("HOME"));setPreview(false);setActiveWorkspaceTab("PAGES");}}>
+      <Plus size={14}/> New page
+    </button>}
     {canManage&&!selected&&!reviewing&&<button type="button" className="cg-cms-admin-btn" disabled={busy||!!mediaAttempt.current}
-     onClick={()=>{setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);}}>
-     Start with reference content</button>}
-    <a href="/" target="_blank" rel="noopener noreferrer" className="cg-cms-admin-btn">View Site ↗</a>
-   </div>
+      onClick={()=>{setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);}}>
+      Start with reference content
+    </button>}
+    <a href="/" target="_blank" rel="noopener noreferrer" className="cg-cms-admin-btn">
+      View Site <ExternalLink size={13}/>
+    </a>
   </div>
 
-  {/* Golden Reference Top 6 KPI Metric Cards */}
+  {/* Live 6 KPI Metric Cards — 100% Real Backend Data */}
   <div className="cg-cms-admin-kpi-grid">
-   <div className="cg-cms-admin-kpi-card">
-    <div className="cg-cms-admin-kpi-header"><span className="cg-cms-admin-kpi-label">Total Pages</span><span className="cg-cms-admin-kpi-trend up">↑ 9.09%</span></div>
-    <div className="cg-cms-admin-kpi-value">{pages.length}</div>
-   </div>
-   <div className="cg-cms-admin-kpi-card">
-    <div className="cg-cms-admin-kpi-header"><span className="cg-cms-admin-kpi-label">Blog Posts</span><span className="cg-cms-admin-kpi-trend up">↑ 12.5%</span></div>
-    <div className="cg-cms-admin-kpi-value">156</div>
-   </div>
-   <div className="cg-cms-admin-kpi-card">
-    <div className="cg-cms-admin-kpi-header"><span className="cg-cms-admin-kpi-label">Media Files</span><span className="cg-cms-admin-kpi-trend up">↑ 18.35%</span></div>
-    <div className="cg-cms-admin-kpi-value">1,248</div>
-   </div>
-   <div className="cg-cms-admin-kpi-card">
-    <div className="cg-cms-admin-kpi-header"><span className="cg-cms-admin-kpi-label">Menus</span><span className="cg-cms-admin-kpi-trend up">↑ 5.88%</span></div>
-    <div className="cg-cms-admin-kpi-value">18</div>
-   </div>
-   <div className="cg-cms-admin-kpi-card">
-    <div className="cg-cms-admin-kpi-header"><span className="cg-cms-admin-kpi-label">Working Drafts</span><span className="cg-cms-admin-kpi-trend up">Live</span></div>
-    <div className="cg-cms-admin-kpi-value" style={{color:"#D97706"}}>{pages.filter(p=>p.draftStatus==="DRAFT").length}</div>
-   </div>
-   <div className="cg-cms-admin-kpi-card">
-    <div className="cg-cms-admin-kpi-header"><span className="cg-cms-admin-kpi-label">Published Items</span><span className="cg-cms-admin-kpi-trend up">↑ 11.69%</span></div>
-    <div className="cg-cms-admin-kpi-value" style={{color:"#16A34A"}}>{pages.filter(p=>p.publicStatus==="EFFECTIVE").length}</div>
-   </div>
+    <div className="cg-cms-admin-kpi-card">
+      <div className="cg-cms-admin-kpi-top">
+        <div className="cg-cms-admin-kpi-icon cg-cms-admin-kpi-icon-blue">
+          <FileText size={18}/>
+        </div>
+        <span className="cg-cms-admin-kpi-label">Total Pages</span>
+      </div>
+      <div className="cg-cms-admin-kpi-value">{allPages.length}</div>
+      <div className="cg-cms-admin-kpi-trend">Live database pages</div>
+    </div>
+    <div className="cg-cms-admin-kpi-card">
+      <div className="cg-cms-admin-kpi-top">
+        <div className="cg-cms-admin-kpi-icon cg-cms-admin-kpi-icon-green">
+          <BookOpen size={18}/>
+        </div>
+        <span className="cg-cms-admin-kpi-label">Articles / Posts</span>
+      </div>
+      <div className="cg-cms-admin-kpi-value">{articlePages.length}</div>
+      <div className="cg-cms-admin-kpi-trend">{articlePages.filter(p=>p.publicStatus==="EFFECTIVE").length} published</div>
+    </div>
+    <div className="cg-cms-admin-kpi-card">
+      <div className="cg-cms-admin-kpi-top">
+        <div className="cg-cms-admin-kpi-icon cg-cms-admin-kpi-icon-purple">
+          <ImageIcon size={18}/>
+        </div>
+        <span className="cg-cms-admin-kpi-label">Gallery &amp; Media</span>
+      </div>
+      <div className="cg-cms-admin-kpi-value">{selected ? selected.assets.length + (selected.bundledAssets?.length ?? 0) : galleryPages.length}</div>
+      <div className="cg-cms-admin-kpi-trend">{selected ? "Current page media" : "Live gallery pages"}</div>
+    </div>
+    <div className="cg-cms-admin-kpi-card">
+      <div className="cg-cms-admin-kpi-top">
+        <div className="cg-cms-admin-kpi-icon cg-cms-admin-kpi-icon-orange">
+          <Sliders size={18}/>
+        </div>
+        <span className="cg-cms-admin-kpi-label">Working Drafts</span>
+      </div>
+      <div className="cg-cms-admin-kpi-value">{draftPages.length}</div>
+      <div className="cg-cms-admin-kpi-trend">Unpublished revisions</div>
+    </div>
+    <div className="cg-cms-admin-kpi-card">
+      <div className="cg-cms-admin-kpi-top">
+        <div className="cg-cms-admin-kpi-icon cg-cms-admin-kpi-icon-red">
+          <Users size={18}/>
+        </div>
+        <span className="cg-cms-admin-kpi-label">Pending Review</span>
+      </div>
+      <div className="cg-cms-admin-kpi-value">{submittedPages.length}</div>
+      <div className="cg-cms-admin-kpi-trend">Awaiting approval</div>
+    </div>
+    <div className="cg-cms-admin-kpi-card">
+      <div className="cg-cms-admin-kpi-top">
+        <div className="cg-cms-admin-kpi-icon cg-cms-admin-kpi-icon-emerald">
+          <CheckCircle2 size={18}/>
+        </div>
+        <span className="cg-cms-admin-kpi-label">Published Items</span>
+      </div>
+      <div className="cg-cms-admin-kpi-value" style={{color:"#059669"}}>{publishedPages.length}</div>
+      <div className="cg-cms-admin-kpi-trend">Live on public site</div>
+    </div>
   </div>
 
   {/* Retained Original Dashboard element for strict test verification */}
@@ -566,78 +645,599 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    <div><span>Submitted for review</span><strong>{pages.filter(p=>p.draftStatus==="SUBMITTED").length}</strong></div>
   </section>
 
-  {/* Frontend Website Visibility Controls */}
+  {/* Frontend Website Visibility Controls Card (Screenshot 2) */}
   <div className="cg-cms-admin-visibility-card">
-   <div className="cg-cms-admin-visibility-header">
-    <div>
-     <h3>Frontend Website Visibility Controls <span className="cg-cms-admin-badge" style={{background:"#DCFCE7",color:"#15803D"}}>Live Controls</span></h3>
-     <p>Instantly toggle login button, member join, and volunteer join options in the public header and navigation drawer.</p>
+    <div className="cg-cms-admin-visibility-header">
+      <div className="cg-cms-admin-visibility-title-row">
+        <div className="cg-cms-admin-visibility-globe">
+          <Globe size={20} />
+        </div>
+        <div>
+          <div style={{display:"flex",alignItems:"center"}}>
+            <h3 style={{fontSize:"1rem",fontWeight:700,margin:0,color:"#0F172A"}}>Frontend Website Visibility Controls</h3>
+            <span className="cg-cms-admin-badge-live">● Live Controls</span>
+          </div>
+          <p style={{fontSize:"0.8125rem",color:"#64748B",margin:"0.15rem 0 0 0"}}>
+            Instantly toggle the login button, member join, and volunteer join pages on the public website.
+          </p>
+        </div>
+      </div>
+      <a href="/" target="_blank" rel="noopener noreferrer" className="cg-cms-admin-btn">
+        Preview Website <ExternalLink size={13} />
+      </a>
     </div>
-   </div>
-   <div className="cg-cms-admin-visibility-grid">
-    <div className="cg-cms-admin-visibility-item">
-     <div>
-      <h4>Frontend Login Button</h4>
-      <p>Show or hide the Staff &amp; Member Login button on public website.</p>
-     </div>
-     <div className="cg-cms-admin-toggle-row">
-      <span className="cg-cms-admin-toggle-status" style={{color:draft.loginDesired?"#15803D":"#64748B"}}>{draft.loginDesired?"Visible":"Hidden"}</span>
-      <button type="button" role="switch" aria-checked={draft.loginDesired} className={`cg-cms-admin-toggle-switch ${draft.loginDesired?"active":""}`}
-       disabled={!canManage} onClick={()=>edit("loginDesired",!draft.loginDesired)}>
-       <span className="cg-cms-admin-toggle-slider"/>
-      </button>
-     </div>
+
+    <div className="cg-cms-admin-visibility-grid">
+      {/* Card 1 */}
+      <div className="cg-cms-admin-visibility-item">
+        <div className="cg-cms-admin-visibility-item-top">
+          <div className="cg-cms-admin-item-icon" style={{background:"#EFF6FF",color:"#2563EB",border:"1px solid #DBEAFE"}}>
+            <LogIn size={18} />
+          </div>
+          <span className={draft.loginDesired ? "cg-cms-admin-pill-green" : "cg-cms-admin-pill-grey"}>
+            {draft.loginDesired ? "● Login Button Visible" : "Hidden"}
+          </span>
+        </div>
+        <div>
+          <h4 className="cg-cms-admin-item-title">Frontend Login Button</h4>
+          <p className="cg-cms-admin-item-desc">
+            Show or hide the Member Profile &amp; Login button in the website header and mobile drawer.
+          </p>
+        </div>
+        <div className="cg-cms-admin-toggle-row">
+          <span style={{fontSize:"0.8125rem",color:"#64748B"}}>
+            Status: <strong style={{color: draft.loginDesired ? "#059669" : "#64748B"}}>{draft.loginDesired ? "Visible" : "Hidden"}</strong>
+          </span>
+          <button type="button" role="switch" aria-checked={draft.loginDesired}
+            className={`cg-cms-admin-toggle-switch ${draft.loginDesired ? "active" : ""}`}
+            disabled={!canManage} onClick={() => edit("loginDesired", !draft.loginDesired)}>
+            <span className="cg-cms-admin-toggle-slider" />
+          </button>
+        </div>
+      </div>
+
+      {/* Card 2 */}
+      <div className="cg-cms-admin-visibility-item">
+        <div className="cg-cms-admin-visibility-item-top">
+          <div className="cg-cms-admin-item-icon" style={{background:"#FFFBEB",color:"#D97706",border:"1px solid #FDE68A"}}>
+            <UserPlus size={18} />
+          </div>
+          <span className={draft.memberJoinDesired ? "cg-cms-admin-pill-green" : "cg-cms-admin-pill-grey"}>
+            {draft.memberJoinDesired ? "● Membership Open" : "Membership Closed"}
+          </span>
+        </div>
+        <div>
+          <h4 className="cg-cms-admin-item-title">Member Join &amp; Registration</h4>
+          <p className="cg-cms-admin-item-desc">
+            Show or hide "Become a Member" in the Join menu, and enable or close membership registration.
+          </p>
+        </div>
+        <div className="cg-cms-admin-toggle-row">
+          <span style={{fontSize:"0.8125rem",color:"#64748B"}}>
+            Status: <strong style={{color: draft.memberJoinDesired ? "#059669" : "#64748B"}}>{draft.memberJoinDesired ? "Visible" : "Off"}</strong>
+          </span>
+          <button type="button" role="switch" aria-checked={draft.memberJoinDesired}
+            className={`cg-cms-admin-toggle-switch ${draft.memberJoinDesired ? "active" : ""}`}
+            disabled={!canManage} onClick={() => edit("memberJoinDesired", !draft.memberJoinDesired)}>
+            <span className="cg-cms-admin-toggle-slider" />
+          </button>
+        </div>
+      </div>
+
+      {/* Card 3 */}
+      <div className="cg-cms-admin-visibility-item">
+        <div className="cg-cms-admin-visibility-item-top">
+          <div className="cg-cms-admin-item-icon" style={{background:"#F0FDFA",color:"#0D9488",border:"1px solid #CCFBF1"}}>
+            <Heart size={18} />
+          </div>
+          <span className={draft.volunteerJoinDesired ? "cg-cms-admin-pill-green" : "cg-cms-admin-pill-grey"}>
+            {draft.volunteerJoinDesired ? "● Volunteer Open" : "Volunteer Closed"}
+          </span>
+        </div>
+        <div>
+          <h4 className="cg-cms-admin-item-title">Volunteer Join &amp; Registration</h4>
+          <p className="cg-cms-admin-item-desc">
+            Show or hide "Become a Volunteer" in the Join menu, and enable or close volunteer applications.
+          </p>
+        </div>
+        <div className="cg-cms-admin-toggle-row">
+          <span style={{fontSize:"0.8125rem",color:"#64748B"}}>
+            Status: <strong style={{color: draft.volunteerJoinDesired ? "#059669" : "#64748B"}}>{draft.volunteerJoinDesired ? "Visible" : "Off"}</strong>
+          </span>
+          <button type="button" role="switch" aria-checked={draft.volunteerJoinDesired}
+            className={`cg-cms-admin-toggle-switch ${draft.volunteerJoinDesired ? "active" : ""}`}
+            disabled={!canManage} onClick={() => edit("volunteerJoinDesired", !draft.volunteerJoinDesired)}>
+            <span className="cg-cms-admin-toggle-slider" />
+          </button>
+        </div>
+      </div>
     </div>
-    <div className="cg-cms-admin-visibility-item">
-     <div>
-      <h4>Member Join &amp; Registration</h4>
-      <p>Show or hide "Become a Member" link when active.</p>
-     </div>
-     <div className="cg-cms-admin-toggle-row">
-      <span className="cg-cms-admin-toggle-status" style={{color:draft.memberJoinDesired?"#15803D":"#64748B"}}>{draft.memberJoinDesired?"Visible":"Hidden"}</span>
-      <button type="button" role="switch" aria-checked={draft.memberJoinDesired} className={`cg-cms-admin-toggle-switch ${draft.memberJoinDesired?"active":""}`}
-       disabled={!canManage} onClick={()=>edit("memberJoinDesired",!draft.memberJoinDesired)}>
-       <span className="cg-cms-admin-toggle-slider"/>
-      </button>
-     </div>
-    </div>
-    <div className="cg-cms-admin-visibility-item">
-     <div>
-      <h4>Volunteer Join &amp; Registration</h4>
-      <p>Show or hide "Become a Volunteer" link when active.</p>
-     </div>
-     <div className="cg-cms-admin-toggle-row">
-      <span className="cg-cms-admin-toggle-status" style={{color:draft.volunteerJoinDesired?"#15803D":"#64748B"}}>{draft.volunteerJoinDesired?"Visible":"Hidden"}</span>
-      <button type="button" role="switch" aria-checked={draft.volunteerJoinDesired} className={`cg-cms-admin-toggle-switch ${draft.volunteerJoinDesired?"active":""}`}
-       disabled={!canManage} onClick={()=>edit("volunteerJoinDesired",!draft.volunteerJoinDesired)}>
-       <span className="cg-cms-admin-toggle-slider"/>
-      </button>
-     </div>
-    </div>
-   </div>
   </div>
 
-  {/* Segmented Tab Navigation Row */}
+  {/* Segmented Horizontal Tab Navigation Bar (Screenshot 2) */}
   <div className="cg-cms-admin-tabs" role="tablist">
-   <button type="button" className={`cg-cms-admin-tab-btn ${activeWorkspaceTab==="OVERVIEW"&&!reviewing?"active":""}`}
-    onClick={()=>{setActiveWorkspaceTab("OVERVIEW");setReviewing(false);}}>Overview</button>
-   <button type="button" className={`cg-cms-admin-tab-btn ${activeWorkspaceTab==="PAGES"&&!reviewing?"active":""}`}
-    onClick={()=>{setActiveWorkspaceTab("PAGES");setReviewing(false);}}>Pages &amp; Content ({pages.length})</button>
-   <button type="button" className={`cg-cms-admin-tab-btn ${activeWorkspaceTab==="BANNERS"&&!reviewing?"active":""}`}
-    onClick={()=>{setActiveWorkspaceTab("BANNERS");setReviewing(false);}}>Hero Banners / Sliders</button>
-   {canReview && (
-    <button type="button" className={`cg-cms-admin-tab-btn ${reviewing||activeWorkspaceTab==="APPROVALS"?"active":""}`}
-     onClick={()=>{setActiveWorkspaceTab("APPROVALS");void showInbox();}}>Approvals {reviews.length>0?`(${reviews.length})`:""}</button>
-   )}
+    <button type="button" className={`cg-cms-admin-tab-btn ${activeWorkspaceTab === "OVERVIEW" && !reviewing ? "active" : ""}`}
+      onClick={() => { setActiveWorkspaceTab("OVERVIEW"); setReviewing(false); }}>
+      Overview
+    </button>
+    <button type="button" className={`cg-cms-admin-tab-btn ${activeWorkspaceTab === "PAGES" && !reviewing ? "active" : ""}`}
+      onClick={() => { setActiveWorkspaceTab("PAGES"); setReviewing(false); }}>
+      Pages
+    </button>
+    <button type="button" className={`cg-cms-admin-tab-btn ${activeWorkspaceTab === "BLOG" && !reviewing ? "active" : ""}`}
+      onClick={() => { setActiveWorkspaceTab("BLOG"); setReviewing(false); }}>
+      Blog / Posts
+    </button>
+    <button type="button" className={`cg-cms-admin-tab-btn ${activeWorkspaceTab === "MEDIA" && !reviewing ? "active" : ""}`}
+      onClick={() => { setActiveWorkspaceTab("MEDIA"); setReviewing(false); }}>
+      Media Library
+    </button>
+    <button type="button" className={`cg-cms-admin-tab-btn ${activeWorkspaceTab === "MENUS" && !reviewing ? "active" : ""}`}
+      onClick={() => { setActiveWorkspaceTab("MENUS"); setReviewing(false); }}>
+      Menus
+    </button>
+    <button type="button" className={`cg-cms-admin-tab-btn ${activeWorkspaceTab === "SLIDERS" && !reviewing ? "active" : ""}`}
+      onClick={() => { setActiveWorkspaceTab("SLIDERS"); setReviewing(false); }}>
+      Sliders
+    </button>
+    <button type="button" className={`cg-cms-admin-tab-btn ${activeWorkspaceTab === "BANNERS" && !reviewing ? "active" : ""}`}
+      onClick={() => { setActiveWorkspaceTab("BANNERS"); setReviewing(false); }}>
+      Banners
+    </button>
+    <button type="button" className={`cg-cms-admin-tab-btn ${activeWorkspaceTab === "SETTINGS" && !reviewing ? "active" : ""}`}
+      onClick={() => { setActiveWorkspaceTab("SETTINGS"); setReviewing(false); }}>
+      Settings
+    </button>
+    {canReview && (
+      <button type="button" className={`cg-cms-admin-tab-btn ${reviewing || activeWorkspaceTab === "APPROVALS" ? "active" : ""}`}
+        onClick={() => { setActiveWorkspaceTab("APPROVALS"); void showInbox(); }}>
+        Approvals {reviews.length > 0 ? `(${reviews.length})` : ""}
+      </button>
+    )}
   </div>
-  {!!error&&<p role="alert" className="cg-cms-error">{error}</p>}
-  {!!notice&&<p role="status" className="cg-cms-notice">{notice}</p>}
-  {pending&&<div className="cg-cms-notice" role="status"><p>Result not confirmed.
-   Refresh the record first; retry only the original request.</p>
-   <button type="button" disabled={busy} onClick={()=>void send(pending)}>Retry original action</button>
-   <button type="button" disabled={busy} onClick={()=>void refresh()}>Check current records</button>
-  </div>}
-  {reviewing?<section className="cg-cms-card">
+
+  {/* Localized Inline Error Alert */}
+  {!!error && (
+    <div className="cg-cms-admin-inline-error" role="alert">
+      <AlertCircle size={16} /> {error}
+    </div>
+  )}
+  {!!notice && <p role="status" className="cg-cms-notice">{notice}</p>}
+  {pending && (
+    <div className="cg-cms-notice" role="status">
+      <p>Result not confirmed. Refresh the record first; retry only the original request.</p>
+      <button type="button" disabled={busy} onClick={() => void send(pending)}>Retry original action</button>
+      <button type="button" disabled={busy} onClick={() => void refresh()}>Check current records</button>
+    </div>
+  )}
+
+  {/* TAB 1: OVERVIEW DASHBOARD — 100% Live Database Data */}
+  {activeWorkspaceTab === "OVERVIEW" && !reviewing && (() => {
+    const total = Math.max(allPages.length, 1);
+    const pct = (n: number) => Math.round((n / total) * 100);
+    const pCore = pct(pages.length);
+    const pArt = pct(articlePages.length);
+    const pImp = pct(impactCompliancePages.length);
+    const pGal = pct(galleryPages.length + healthcarePages.length);
+    const pOth = Math.max(0, 100 - pCore - pArt - pImp - pGal);
+
+    const sPub = pct(publishedPages.length);
+    const sDrf = pct(draftPages.length);
+    const sSub = pct(submittedPages.length);
+    const sOth = Math.max(0, 100 - sPub - sDrf - sSub);
+
+    return (
+    <div className="cg-cms-admin-overview-grid">
+      <div className="cg-cms-admin-overview-col">
+        {/* Row 1: Live Charts & Activity */}
+        <div className="cg-cms-admin-row-3">
+          <div className="cg-cms-admin-card">
+            <div className="cg-cms-admin-card-header">
+              <span className="cg-cms-admin-card-title">Content Overview</span>
+            </div>
+            <div className="cg-cms-admin-donut-wrap">
+              <svg width="110" height="110" viewBox="0 0 42 42">
+                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#E2E8F0" strokeWidth="4"></circle>
+                {allPages.length > 0 && <>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#2563EB" strokeWidth="4.5" strokeDasharray={`${pCore} ${100 - pCore}`} strokeDashoffset="25"></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#16A34A" strokeWidth="4.5" strokeDasharray={`${pArt} ${100 - pArt}`} strokeDashoffset={25 - pCore}></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#F59E0B" strokeWidth="4.5" strokeDasharray={`${pImp} ${100 - pImp}`} strokeDashoffset={25 - pCore - pArt}></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#8B5CF6" strokeWidth="4.5" strokeDasharray={`${pGal} ${100 - pGal}`} strokeDashoffset={25 - pCore - pArt - pImp}></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#06B6D4" strokeWidth="4.5" strokeDasharray={`${pOth} ${100 - pOth}`} strokeDashoffset={25 - pCore - pArt - pImp - pGal}></circle>
+                </>}
+                <text x="21" y="19" textAnchor="middle" style={{fontSize:"6px",fontWeight:800,fontFamily:"'Roboto Slab',serif",fill:"#0F172A"}}>{allPages.length}</text>
+                <text x="21" y="24" textAnchor="middle" style={{fontSize:"2.6px",fill:"#64748B"}}>Total Pages</text>
+              </svg>
+            </div>
+            <div className="cg-cms-admin-donut-legend">
+              <div className="cg-cms-admin-legend-item">
+                <span><span className="cg-cms-admin-dot" style={{background:"#2563EB"}}/>Home &amp; About</span>
+                <span><strong>{pages.length}</strong> ({allPages.length ? pCore : 0}%)</span>
+              </div>
+              <div className="cg-cms-admin-legend-item">
+                <span><span className="cg-cms-admin-dot" style={{background:"#16A34A"}}/>Articles</span>
+                <span><strong>{articlePages.length}</strong> ({allPages.length ? pArt : 0}%)</span>
+              </div>
+              <div className="cg-cms-admin-legend-item">
+                <span><span className="cg-cms-admin-dot" style={{background:"#F59E0B"}}/>Impact &amp; 80G</span>
+                <span><strong>{impactCompliancePages.length}</strong> ({allPages.length ? pImp : 0}%)</span>
+              </div>
+              <div className="cg-cms-admin-legend-item">
+                <span><span className="cg-cms-admin-dot" style={{background:"#8B5CF6"}}/>Gallery &amp; Health</span>
+                <span><strong>{galleryPages.length + healthcarePages.length}</strong> ({allPages.length ? pGal : 0}%)</span>
+              </div>
+              <div className="cg-cms-admin-legend-item">
+                <span><span className="cg-cms-admin-dot" style={{background:"#06B6D4"}}/>Contact &amp; Policy</span>
+                <span><strong>{otherPages.length}</strong> ({allPages.length ? pOth : 0}%)</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="cg-cms-admin-card">
+            <div className="cg-cms-admin-card-header">
+              <span className="cg-cms-admin-card-title">Content Status</span>
+            </div>
+            <div className="cg-cms-admin-donut-wrap">
+              <svg width="110" height="110" viewBox="0 0 42 42">
+                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#E2E8F0" strokeWidth="4"></circle>
+                {allPages.length > 0 && <>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#10B981" strokeWidth="4.5" strokeDasharray={`${sPub} ${100 - sPub}`} strokeDashoffset="25"></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#F59E0B" strokeWidth="4.5" strokeDasharray={`${sDrf} ${100 - sDrf}`} strokeDashoffset={25 - sPub}></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#3B82F6" strokeWidth="4.5" strokeDasharray={`${sSub} ${100 - sSub}`} strokeDashoffset={25 - sPub - sDrf}></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#6366F1" strokeWidth="4.5" strokeDasharray={`${sOth} ${100 - sOth}`} strokeDashoffset={25 - sPub - sDrf - sSub}></circle>
+                </>}
+                <text x="21" y="19" textAnchor="middle" style={{fontSize:"6px",fontWeight:800,fontFamily:"'Roboto Slab',serif",fill:"#0F172A"}}>{allPages.length}</text>
+                <text x="21" y="24" textAnchor="middle" style={{fontSize:"2.6px",fill:"#64748B"}}>Total</text>
+              </svg>
+            </div>
+            <div className="cg-cms-admin-donut-legend">
+              <div className="cg-cms-admin-legend-item">
+                <span><span className="cg-cms-admin-dot" style={{background:"#10B981"}}/>Published</span>
+                <span><strong>{publishedPages.length}</strong> ({allPages.length ? sPub : 0}%)</span>
+              </div>
+              <div className="cg-cms-admin-legend-item">
+                <span><span className="cg-cms-admin-dot" style={{background:"#F59E0B"}}/>Draft</span>
+                <span><strong>{draftPages.length}</strong> ({allPages.length ? sDrf : 0}%)</span>
+              </div>
+              <div className="cg-cms-admin-legend-item">
+                <span><span className="cg-cms-admin-dot" style={{background:"#3B82F6"}}/>Pending Review</span>
+                <span><strong>{submittedPages.length}</strong> ({allPages.length ? sSub : 0}%)</span>
+              </div>
+              <div className="cg-cms-admin-legend-item">
+                <span><span className="cg-cms-admin-dot" style={{background:"#6366F1"}}/>Other / Approved</span>
+                <span><strong>{Math.max(0, allPages.length - publishedPages.length - draftPages.length - submittedPages.length)}</strong> ({allPages.length ? sOth : 0}%)</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="cg-cms-admin-card">
+            <div className="cg-cms-admin-card-header">
+              <span className="cg-cms-admin-card-title">Live Pages Summary</span>
+              <span className="cg-cms-admin-link" onClick={()=>{setActiveWorkspaceTab("PAGES");}}>View All</span>
+            </div>
+            <div className="cg-cms-admin-activity-list">
+              {allPages.slice(0, 5).map(p => (
+                <div key={p.pageRef} className="cg-cms-admin-activity-item">
+                  <div className="cg-cms-admin-activity-icon" style={{background: p.publicStatus === "EFFECTIVE" ? "#ECFDF5" : "#EFF6FF", color: p.publicStatus === "EFFECTIVE" ? "#059669" : "#2563EB"}}>
+                    <FileText size={14}/>
+                  </div>
+                  <div style={{minWidth:0}}>
+                    <div className="cg-cms-admin-activity-text" style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      <strong>{p.title}</strong> ({p.kind})
+                    </div>
+                    <div className="cg-cms-admin-activity-meta">
+                      {p.publicStatus === "EFFECTIVE" ? "Published" : "Not published"} · Draft {p.draftStatus.replaceAll("_"," ")}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {allPages.length === 0 && (
+                <div style={{fontSize:"0.8125rem",color:"#64748B",padding:"0.5rem 0"}}>
+                  No CMS pages found in database yet.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Live All Seeded Pages & Live Articles Tables */}
+        <div className="cg-cms-admin-row-2">
+          <div className="cg-cms-admin-card">
+            <div className="cg-cms-admin-card-header">
+              <span className="cg-cms-admin-card-title">All Website Pages ({allPages.length})</span>
+              <span className="cg-cms-admin-link" onClick={()=>{setActiveWorkspaceTab("PAGES");}}>Manage</span>
+            </div>
+            <div className="cg-cms-admin-table-wrap">
+            <table className="cg-cms-admin-table">
+              <thead>
+                <tr>
+                  <th>Page Title</th>
+                  <th>Type</th>
+                  <th>Route</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allPages.slice(0, 10).map(p => (
+                  <tr key={p.pageRef}>
+                    <td style={{fontWeight:600,color:"#0F172A"}}>{p.title}</td>
+                    <td style={{color:"#64748B",fontSize:"0.75rem"}}>{p.kind}</td>
+                    <td style={{color:"#64748B"}}>{routeFor(p)}</td>
+                    <td>
+                      <span className={`cg-cms-admin-status-pill ${p.publicStatus === "EFFECTIVE" ? "cg-cms-admin-status-published" : "cg-cms-admin-status-draft"}`}>
+                        {p.publicStatus === "EFFECTIVE" ? "Published" : p.draftStatus.replaceAll("_"," ")}
+                      </span>
+                    </td>
+                    <td>
+                      <button type="button" className="cg-cms-admin-action-btn" title="View Public Page" onClick={()=>{window.open(routeFor(p),"_blank");}}>
+                        <Eye size={12}/>
+                      </button>
+                      <button type="button" className="cg-cms-admin-action-btn" title="Edit Page" onClick={()=>{
+                        if(p.kind==="HOME"||p.kind==="ABOUT"){void openPage(p.pageRef);setActiveWorkspaceTab("PAGES");}
+                        else{scrollToExtended();}
+                      }}>
+                        <Edit2 size={12}/>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {allPages.length === 0 && (
+                  <tr>
+                    <td colSpan={5} style={{textAlign:"center",padding:"1.5rem",color:"#64748B"}}>
+                      No pages found in database.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:"0.75rem",fontSize:"0.75rem",color:"#64748B"}}>
+              <span>Showing 1 to {Math.min(10, allPages.length)} of {allPages.length} live entries</span>
+            </div>
+          </div>
+
+          <div className="cg-cms-admin-card">
+            <div className="cg-cms-admin-card-header">
+              <span className="cg-cms-admin-card-title">Live Articles / Posts ({articlePages.length})</span>
+              <span className="cg-cms-admin-link" onClick={scrollToExtended}>Manage Articles</span>
+            </div>
+            <div className="cg-cms-admin-table-wrap">
+            <table className="cg-cms-admin-table">
+              <thead>
+                <tr>
+                  <th>Article Title</th>
+                  <th>Slug</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {articlePages.slice(0, 10).map(b => (
+                  <tr key={b.pageRef}>
+                    <td style={{fontWeight:600,color:"#0F172A"}}>{b.title}</td>
+                    <td style={{color:"#64748B"}}>/blog/{b.slug}</td>
+                    <td>
+                      <span className={`cg-cms-admin-status-pill ${b.publicStatus === "EFFECTIVE" ? "cg-cms-admin-status-published" : "cg-cms-admin-status-draft"}`}>
+                        {b.publicStatus === "EFFECTIVE" ? "Published" : b.draftStatus.replaceAll("_"," ")}
+                      </span>
+                    </td>
+                    <td>
+                      <button type="button" className="cg-cms-admin-action-btn" title="View Article" onClick={()=>{window.open("/blog/"+b.slug,"_blank");}}><Eye size={12}/></button>
+                      <button type="button" className="cg-cms-admin-action-btn" title="Edit Article" onClick={scrollToExtended}><Edit2 size={12}/></button>
+                    </td>
+                  </tr>
+                ))}
+                {articlePages.length === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{textAlign:"center",padding:"1.5rem",color:"#64748B"}}>
+                      No articles created in database yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:"0.75rem",fontSize:"0.75rem",color:"#64748B"}}>
+              <span>Showing 1 to {Math.min(10, articlePages.length)} of {articlePages.length} live articles</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3: Live CMS Breakdown & Platform Information */}
+        <div className="cg-cms-admin-row-2">
+          <div className="cg-cms-admin-card">
+            <div className="cg-cms-admin-card-header">
+              <span className="cg-cms-admin-card-title">Live Content Breakdown</span>
+              <span className="cg-cms-admin-link" onClick={scrollToExtended}>Open Editor</span>
+            </div>
+            <div className="cg-cms-admin-media-summary-grid">
+              <div className="cg-cms-admin-media-summary-item">
+                <div style={{color:"#10B981"}}><ImageIcon size={18}/></div>
+                <strong style={{fontSize:"0.8125rem",color:"#0F172A"}}>{galleryPages.length} Pages</strong>
+                <span style={{fontSize:"0.7rem",color:"#64748B"}}>Gallery</span>
+              </div>
+              <div className="cg-cms-admin-media-summary-item">
+                <div style={{color:"#2563EB"}}><FileText size={18}/></div>
+                <strong style={{fontSize:"0.8125rem",color:"#0F172A"}}>{impactCompliancePages.length} Pages</strong>
+                <span style={{fontSize:"0.7rem",color:"#64748B"}}>Impact &amp; 80G</span>
+              </div>
+              <div className="cg-cms-admin-media-summary-item">
+                <div style={{color:"#8B5CF6"}}><Sliders size={18}/></div>
+                <strong style={{fontSize:"0.8125rem",color:"#0F172A"}}>{healthcarePages.length} Pages</strong>
+                <span style={{fontSize:"0.7rem",color:"#64748B"}}>Healthcare</span>
+              </div>
+              <div className="cg-cms-admin-media-summary-item">
+                <div style={{color:"#F59E0B"}}><UploadCloud size={18}/></div>
+                <strong style={{fontSize:"0.8125rem",color:"#0F172A"}}>{selected?.assets.length ?? 0} Files</strong>
+                <span style={{fontSize:"0.7rem",color:"#64748B"}}>Active Uploads</span>
+              </div>
+              <div className="cg-cms-admin-media-summary-item">
+                <div style={{color:"#64748B"}}><Grid size={18}/></div>
+                <strong style={{fontSize:"0.8125rem",color:"#0F172A"}}>{otherPages.length} Pages</strong>
+                <span style={{fontSize:"0.7rem",color:"#64748B"}}>Contact &amp; Legal</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="cg-cms-admin-card">
+            <div className="cg-cms-admin-card-header">
+              <span className="cg-cms-admin-card-title">Platform Information</span>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3, minmax(0, 1fr))",gap:"0.75rem",fontSize:"0.8125rem"}}>
+              <div>
+                <span style={{color:"#64748B",fontSize:"0.75rem"}}>CMS Module</span>
+                <div style={{fontWeight:600,color:"#0F172A"}}>CG-18 Editorial</div>
+              </div>
+              <div>
+                <span style={{color:"#64748B",fontSize:"0.75rem"}}>Media Vault</span>
+                <div style={{fontWeight:600,color:"#0F172A"}}>CG-19 Private</div>
+              </div>
+              <div>
+                <span style={{color:"#64748B",fontSize:"0.75rem"}}>Approvals</span>
+                <div style={{fontWeight:600,color:"#0F172A"}}>CG-03 Workflow</div>
+              </div>
+              <div>
+                <span style={{color:"#64748B",fontSize:"0.75rem"}}>Frontend</span>
+                <div style={{fontWeight:600,color:"#0F172A"}}>Next.js Web</div>
+              </div>
+              <div>
+                <span style={{color:"#64748B",fontSize:"0.75rem"}}>Database</span>
+                <div style={{fontWeight:600,color:"#0F172A"}}>PostgreSQL</div>
+              </div>
+              <div>
+                <span style={{color:"#64748B",fontSize:"0.75rem"}}>Timezone</span>
+                <div style={{fontWeight:600,color:"#0F172A"}}>Asia/Kolkata</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column: Quick Actions & Live Status Cards */}
+      <div className="cg-cms-admin-overview-col">
+        <div className="cg-cms-admin-card">
+          <div className="cg-cms-admin-card-header">
+            <span className="cg-cms-admin-card-title">Quick Actions</span>
+          </div>
+          <div className="cg-cms-admin-quick-grid">
+            <button type="button" className="cg-cms-admin-quick-btn" onClick={()=>{setSelected(null);setReviewing(false);setDraft(blank("HOME"));setActiveWorkspaceTab("PAGES");}}>
+              <div style={{color:"#8B5CF6"}}><FilePlus size={18}/></div>
+              <span>Home / About</span>
+            </button>
+            <button type="button" className="cg-cms-admin-quick-btn" onClick={scrollToExtended}>
+              <div style={{color:"#10B981"}}><BookOpen size={18}/></div>
+              <span>Articles</span>
+            </button>
+            <button type="button" className="cg-cms-admin-quick-btn" onClick={scrollToExtended}>
+              <div style={{color:"#2563EB"}}><UploadCloud size={18}/></div>
+              <span>Gallery Media</span>
+            </button>
+            <button type="button" className="cg-cms-admin-quick-btn" onClick={scrollToExtended}>
+              <div style={{color:"#06B6D4"}}><Menu size={18}/></div>
+              <span>Impact &amp; 80G</span>
+            </button>
+            <button type="button" className="cg-cms-admin-quick-btn" onClick={()=>{setActiveWorkspaceTab("PAGES");}}>
+              <div style={{color:"#F59E0B"}}><Sliders size={18}/></div>
+              <span>Hero Banners</span>
+            </button>
+            <button type="button" className="cg-cms-admin-quick-btn" onClick={scrollToExtended}>
+              <div style={{color:"#EF4444"}}><ImageIcon size={18}/></div>
+              <span>Contact &amp; Legal</span>
+            </button>
+            <button type="button" className="cg-cms-admin-quick-btn" onClick={()=>{if(canReview){setActiveWorkspaceTab("APPROVALS");void showInbox();}}}>
+              <div style={{color:"#0D9488"}}><CheckCircle2 size={18}/></div>
+              <span>Approvals</span>
+            </button>
+            <button type="button" className="cg-cms-admin-quick-btn" onClick={()=>{void refresh();}}>
+              <div style={{color:"#64748B"}}><RefreshCw size={18}/></div>
+              <span>Sync Live Data</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="cg-cms-admin-card">
+          <div className="cg-cms-admin-card-header">
+            <span className="cg-cms-admin-card-title">Website Status</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:"0.65rem",fontSize:"0.8125rem"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{color:"#64748B"}}>Public Site</span>
+              <a href="/" target="_blank" rel="noopener noreferrer" style={{color:"#2563EB",textDecoration:"none",fontWeight:600,display:"inline-flex",alignItems:"center",gap:"4px"}}>
+                Open Live Site <ExternalLink size={12}/>
+              </a>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{color:"#64748B"}}>Published Pages</span>
+              <span style={{background:"#ECFDF5",color:"#059669",fontSize:"0.725rem",fontWeight:600,padding:"0.15rem 0.5rem",borderRadius:"9999px"}}>
+                {publishedPages.length} Active
+              </span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{color:"#64748B"}}>Pending Approvals</span>
+              <span style={{fontWeight:600,color:"#0F172A"}}>{submittedPages.length}</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{color:"#64748B"}}>Consented Staff</span>
+              <span style={{fontWeight:600,color:"#0F172A"}}>{teamChoices.length}</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{color:"#64748B"}}>Approved Projects</span>
+              <span style={{fontWeight:600,color:"#0F172A"}}>{projectChoices.length}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="cg-cms-admin-card">
+          <div className="cg-cms-admin-card-header">
+            <span className="cg-cms-admin-card-title">Live Public Routes</span>
+            <span className="cg-cms-admin-link" onClick={()=>{setActiveWorkspaceTab("PAGES");}}>View All</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:"0.55rem",fontSize:"0.8125rem"}}>
+            {allPages.slice(0, 6).map(p => (
+              <div key={p.pageRef} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"0.5rem"}}>
+                <span style={{fontWeight:600,color:"#0F172A",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.title}</span>
+                <a href={routeFor(p)} target="_blank" rel="noopener noreferrer" style={{color:"#2563EB",textDecoration:"none",fontSize:"0.75rem",flexShrink:0}}>{routeFor(p)}</a>
+              </div>
+            ))}
+            {allPages.length === 0 && (
+              <span style={{color:"#64748B"}}>No routes loaded yet.</span>
+            )}
+          </div>
+        </div>
+
+        <div className="cg-cms-admin-card">
+          <div className="cg-cms-admin-card-header">
+            <span className="cg-cms-admin-card-title">Publication Progress</span>
+            <span style={{fontSize:"0.75rem",color:"#64748B"}}>{publishedPages.length} / {allPages.length} ({allPages.length ? sPub : 0}%)</span>
+          </div>
+          <div style={{height:"8px",borderRadius:"9999px",background:"#E2E8F0",overflow:"hidden",margin:"0.5rem 0"}}>
+            <div style={{width:`${allPages.length ? sPub : 0}%`,height:"100%",background:"#4F46E5",borderRadius:"9999px"}}/>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:"0.45rem",fontSize:"0.75rem",marginTop:"0.65rem"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span><span className="cg-cms-admin-dot" style={{background:"#10B981"}}/>Published</span>
+              <span style={{color:"#64748B"}}>{publishedPages.length}</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span><span className="cg-cms-admin-dot" style={{background:"#F59E0B"}}/>Working Drafts</span>
+              <span style={{color:"#64748B"}}>{draftPages.length}</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span><span className="cg-cms-admin-dot" style={{background:"#3B82F6"}}/>In Review</span>
+              <span style={{color:"#64748B"}}>{submittedPages.length}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    );
+  })()}
+
+  {/* TAB 2+: PAGES, BANNERS, APPROVALS, ETC. */}
+  {(activeWorkspaceTab !== "OVERVIEW" || reviewing) && (
+    <>
+      {reviewing?<section className="cg-cms-card">
    <h3>Website publication approvals</h3>
    <div className="cg-cms-list">{reviews.map(v=><button type="button" key={v.caseRef}
     aria-pressed={review?.caseRef===v.caseRef} disabled={busy}
@@ -678,8 +1278,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      <label>Current reviewer password<input type="password" autoComplete="current-password"
       value={reviewPassword} onChange={e=>setReviewPassword(e.target.value)}/></label>
      {!!error && (
-     <div className="cg-cms-admin-inline-error" role="alert" style={{margin:"0.75rem 0",padding:"0.75rem 1rem",background:"#FEF2F2",border:"1px solid #FCA5A5",borderRadius:"8px",color:"#DC2626",fontWeight:600,fontSize:"0.875rem"}}>
-      ⚠ {error}
+     <div className="cg-cms-admin-inline-error" role="alert">
+      <AlertCircle size={16}/> {error}
      </div>
     )}
     <div className="cg-cms-actions">
@@ -696,157 +1296,133 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    <button type="button" disabled={busy||!!pending}
      onClick={()=>setReviewing(false)}>Back to pages</button>
   </section>:<>
+   <div className="cg-cms-admin-search-wrapper" style={{marginBottom:"0.75rem"}}>
+    <Search size={16} className="cg-cms-admin-search-icon" aria-hidden="true"/>
+    <input type="search" className="cg-cms-admin-search-input"
+     placeholder="Search website pages by title or slug..."
+     aria-label="Search website pages"
+     value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}/>
+   </div>
    <section className="cg-cms-list" aria-label="Foundation website pages">
-    {pages.map(v=><button type="button" key={v.pageRef} disabled={busy}
-     aria-pressed={selected?.pageRef===v.pageRef} onClick={()=>void open(v.pageRef)}>
-     <strong>{v.title}</strong><span>{v.kind==="HOME"?"Homepage":"About"} · {v.draftStatus.replaceAll("_"," ")}
-      {v.publicStatus?" · "+v.publicStatus.replaceAll("_"," "):""}</span></button>)}
-    {!pages.length&&<p>No Foundation website pages have been created.</p>}
+    {allPages.filter(v=>!searchQuery.trim()||v.title.toLowerCase().includes(searchQuery.toLowerCase())||v.slug.toLowerCase().includes(searchQuery.toLowerCase())||v.kind.toLowerCase().includes(searchQuery.toLowerCase())).map(v=><button type="button" key={v.pageRef} disabled={busy}
+     aria-pressed={selected?.pageRef===v.pageRef}
+     onClick={()=>{
+      if(v.kind==="HOME"||v.kind==="ABOUT"){void openPage(v.pageRef);}
+      else{scrollToExtended();}
+     }}>
+     <strong>{v.title}</strong>
+     <span>{v.kind} · {routeFor(v)} · draft {v.draftStatus.replaceAll("_"," ")} · {v.publicStatus?"public "+v.publicStatus.replaceAll("_"," "):"Not published"}</span>
+    </button>)}
    </section>
-   {(canManage||selected)&&<section className="cg-cms-card">
-    <div className="cg-cms-toolbar"><h3>{selected?"Edit original website page":"Create website page"}</h3>
-     <button type="button" onClick={()=>setPreview(v=>!v)}>
-      {preview?"Back to editor":"Preview draft"}</button></div>
-    {preview?<div className="cg-cms-preview">
-     <p>Private draft preview — not published. Verified images load only for authorized Foundation staff; live visitors never see this draft.</p>
-     <CmsPublicPage page={previewPage}/>
-    </div>:<div className="cg-cms-form">
-     <p>The original site's visible words are a drafting reference. Confirm all
-        impact, tax and partnership claims, link destinations and photo rights before publication.</p>
-      <label>Page<select disabled={!!selected||!canManage} value={draft.kind}
-      onChange={e=>setDraft(blank(e.target.value as Kind))}>
-      <option value="HOME">Homepage</option><option value="ABOUT">About the Foundation</option>
-     </select></label>
-     <label>Page title<input disabled={!canManage} value={draft.title} maxLength={180}
-      onChange={e=>edit("title",e.target.value)} placeholder="Enter the actual page title"/></label>
-     <label>Search title<input disabled={!canManage} value={draft.seoTitle} maxLength={180}
-      onChange={e=>edit("seoTitle",e.target.value)} placeholder="Optional — uses page title"/></label>
-     <label>Search description<textarea disabled={!canManage} value={draft.seoDescription}
-      maxLength={300} onChange={e=>edit("seoDescription",e.target.value)}/></label>
-     {draft.kind==="HOME"&&<fieldset><legend>Public navigation (original C50)</legend>
-      <p>These choices are reviewed with the homepage. Member and volunteer links
-       remain hidden until registration is genuinely delivered.</p>
-      <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage}
-       checked={draft.loginDesired} onChange={e=>edit("loginDesired",e.target.checked)}/>
-       Show Foundation staff login</label>
-      <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage}
-       checked={draft.memberJoinDesired} onChange={e=>edit("memberJoinDesired",e.target.checked)}/>
-       Request member registration link when available</label>
-      <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage}
-       checked={draft.volunteerJoinDesired} onChange={e=>edit("volunteerJoinDesired",e.target.checked)}/>
-       Request volunteer registration link when available</label>
-     </fieldset>}
-     <fieldset><legend>Approved operational projects</legend><p>Select current CG-05 reviewed sources. Saving or submitting does not publish them.</p>
-      <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage||busy||!!pending||draft.projectSources.length>0} checked={draft.projectEnabled||draft.projectSources.length>0} onChange={e=>edit("projectEnabled",e.target.checked)}/>Keep project directory available, including when empty</label>
-      <label>Heading<input maxLength={160} value={draft.projectHeading} disabled={!canManage||busy||!!pending} onChange={e=>edit("projectHeading",e.target.value)}/></label>
-      <button type="button" disabled={!canManage||busy||!!pending} onClick={refreshProjects}>Refresh approved projects</button>
-      {projectError&&<p role="alert">{projectError}</p>}{!projectChoices.length&&!projectError&&<p>No current eligible projects.</p>}
-      {projectChoices.map(p=><label className="cg-cms-consent" key={p.sourceRef}><input type="checkbox" disabled={!canManage||busy||!!pending||(!draft.projectSources.includes(p.sourceRef)&&draft.projectSources.length>=12)} checked={draft.projectSources.includes(p.sourceRef)} onChange={e=>edit("projectSources",e.target.checked?[...draft.projectSources,p.sourceRef]:draft.projectSources.filter(x=>x!==p.sourceRef))}/>{p.title} · {p.category} · {p.area}</label>)}
-      {draft.projectSources.filter(x=>!projectChoices.some(p=>p.sourceRef===x)).map(x=><button key={x} type="button" disabled={!canManage||busy||!!pending} onClick={()=>edit("projectSources",draft.projectSources.filter(y=>y!==x))}>Remove unavailable project selection</button>)}
-     </fieldset>
-     <fieldset><legend>Independent campaign publication (CG-07)</legend>
-      <p>Only actual CG-03-approved campaigns can be selected. Saving the page does not make them public: a different reviewer must approve this CG-18 editorial revision, then a publisher must make it effective.</p>
-      <label>Heading<input maxLength={160} value={draft.campaignHeading} disabled={!canManage||busy||!!pending}
-       onChange={e=>edit("campaignHeading",e.target.value)}/></label>
-      <button type="button" disabled={!canManage||busy||!!pending} onClick={refreshCampaigns}>Refresh currently approved campaigns</button>
-      {campaignError&&<p role="alert">{campaignError}</p>}
-      {!campaignChoices.length&&!campaignError&&<p>No independently approved campaign is eligible yet.</p>}
-      {campaignChoices.map(c=><label className="cg-cms-consent" key={c.sourceRef}>
-       <input type="checkbox" disabled={!canManage||busy||!!pending||(!draft.campaignSources.includes(c.sourceRef)&&draft.campaignSources.length>=12)}
-        checked={draft.campaignSources.includes(c.sourceRef)}
-        onChange={e=>edit("campaignSources",e.target.checked?[...draft.campaignSources,c.sourceRef]:draft.campaignSources.filter(x=>x!==c.sourceRef))}/>
-       {c.title} · {c.category} · {c.area||"Foundation-wide"}
-      </label>)}
-      {draft.campaignSources.filter(x=>!campaignChoices.some(c=>c.sourceRef===x)).map(x=>
-       <button type="button" key={x} disabled={!canManage||busy||!!pending}
-        onClick={()=>edit("campaignSources",draft.campaignSources.filter(v=>v!==x))}>Remove unavailable campaign selection</button>)}
-     </fieldset>
-     <div className="cg-cms-editor-grid">
-      <fieldset><legend>Hero banners — original C22–C24</legend>
-        <p>Each slide has independent text, buttons and approved desktop/mobile images.
-         The current slide order is saved with the draft and subject to independent review.</p>
-        <div className="cg-cms-banner-summary" aria-label="Homepage banner list">
+   {selected&&<section className="cg-cms-card" aria-label="Draft review and actions">
+    <div className="cg-cms-toolbar">
+     <h3>{selected.title}</h3>
+     <div className="cg-cms-actions">
+      <button type="button" disabled={busy} onClick={()=>setPreview(!preview)}>
+       {preview?"Back to editor":"Preview draft"}</button>
+      {canPublish&&selected.publicationStatus&&<a href={selected.canonicalPath}
+       target="_blank" rel="noopener noreferrer">View public page</a>}
+     </div>
+    </div>
+    {preview?<div className="cg-cms-preview"><CmsPublicPage page={previewPage}/></div>:
+    <div className="cg-cms-form">
+     <label>Page title<input disabled={!canManage} value={draft.title}
+      maxLength={120} onChange={e=>edit("title",e.target.value)}/></label>
+     <label>Search-engine title<input disabled={!canManage} value={draft.seoTitle}
+      maxLength={120} onChange={e=>edit("seoTitle",e.target.value)}/></label>
+     <label>Search-engine description<textarea disabled={!canManage}
+      value={draft.seoDescription} maxLength={300}
+      onChange={e=>edit("seoDescription",e.target.value)}/></label>
+     <div className="cg-cms-grid">
+      <fieldset><legend>Website banners</legend>
+        <p>Verified banner photos are scanned by CG-19 antivirus and stored privately. Draft banners do not alter the public website until approved.</p>
+        <div className="cg-cms-banner-summary" role="tablist" aria-label="Banners in this draft">
          {draft.slides.map((slide,index)=>{
-          const desktop=draft.assets.find(asset=>asset.role==="HERO"&&asset.order===index);
-          const mobile=draft.assets.some(asset=>asset.role==="MOBILE_HERO"&&asset.order===index);
           const active=index===Math.min(activeHeroIndex,draft.slides.length-1);
-          return <button type="button" key={index} className="cg-cms-banner-row"
-           aria-pressed={active} onClick={()=>setActiveHeroIndex(index)}>
-           {desktop?<img alt={desktop.altText} loading="lazy"
-            src={"/api/cms-image-preview/"+desktop.fileRef}/>:
-            <span className="cg-cms-banner-no-image">Add image</span>}
-           <span className="cg-cms-banner-description"><strong>{slide.heading||"Untitled banner"}</strong>
-            <small>Banner {index+1} · {slide.visible?"Visible":"Hidden"} ·
-             {mobile?"Mobile image":"No mobile image"}</small></span>
-           <span className="cg-cms-banner-edit">{active?"Editing":"Edit"}</span>
+          const desktop=draft.assets.find(a=>a.role==="HERO"&&a.order===index);
+          const mobile=draft.assets.find(a=>a.role==="MOBILE_HERO"&&a.order===index);
+          return <button type="button" key={index} role="tab" aria-selected={active}
+           aria-pressed={active} onClick={()=>setActiveHeroIndex(index)}
+           className={"cg-cms-banner-row"+(active?" active":"")}>
+           <div className="cg-cms-banner-row-thumb">
+            {desktop?<img src={"/api/cms-image-preview/"+desktop.fileRef} alt="" aria-hidden="true"/>:
+             <span className="cg-cms-banner-thumb-empty">{slide.textOnly?"Text-only":"No photo"}</span>}
+           </div>
+           <div className="cg-cms-banner-row-text">
+            <strong>Slide {index+1}: {slide.heading.trim()||"(Untitled heading)"}</strong>
+            <span>{slide.textOnly?"Text-only slide":desktop?"Verified photo attached":"Photo missing"} · {slide.visible?"Visible":"Hidden"}{mobile?" · Mobile photo attached":""}</span>
+           </div>
           </button>;
          })}
         </div>
-        <div className="cg-cms-tabs" role="tablist" aria-label="Hero banner editor">
-         {([["BASIC","Basic Information"],["IMAGES","Images"],
-           ["BUTTONS","Button Settings"],["PREVIEW","Preview"]] as const)
-          .map(([value,label])=><button key={value} type="button" role="tab"
-           aria-selected={heroEditorTab===value} className={heroEditorTab===value?"is-active":""}
-           onClick={()=>setHeroEditorTab(value)}>{label}</button>)}
-        </div>
-        {heroEditorTab==="PREVIEW"&&<div className="cg-cms-preview">
-         <CmsPublicPage page={previewPage}/>
-        </div>}
-        {heroEditorTab!=="PREVIEW"&&draft.slides.map((slide,index)=>
-         index===Math.min(activeHeroIndex,draft.slides.length-1)?<div className="cg-cms-team" key={index}>
-         <h4>Slide {index+1}</h4>
+        {draft.slides.map((slide,index)=>index===Math.min(activeHeroIndex,draft.slides.length-1)?<div key={index} className="cg-cms-slide-editor">
+         <div className="cg-cms-slide-editor-header">
+          <strong>Editing slide {index+1} of {draft.slides.length}</strong>
+          <div className="cg-cms-slide-tabs" role="tablist">
+           <button type="button" className={heroEditorTab==="BASIC"?"active":""}
+            onClick={()=>setHeroEditorTab("BASIC")}>Slide text &amp; buttons</button>
+           <button type="button" className={heroEditorTab==="STYLE"?"active":""}
+            onClick={()=>setHeroEditorTab("STYLE")}>Colors &amp; layout</button>
+           <button type="button" className={heroEditorTab==="MEDIA"?"active":""}
+            onClick={()=>setHeroEditorTab("MEDIA")}>Verified photos</button>
+          </div>
+         </div>
          {heroEditorTab==="BASIC"&&<>
-         <label className="cg-cms-consent"><input type="checkbox"
-          disabled={!canManage} checked={slide.visible}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>
-           i===index?{...x,visible:e.target.checked}:x))}/>
-          Show this banner on the public website and Android app</label>
-         <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage} checked={slide.textOnly===true} onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,textOnly:e.target.checked}:x))}/>Text-only banner (remove image placements before saving; add approved media when available)</label>
-         <label>Eyebrow<input disabled={!canManage} maxLength={100} value={slide.eyebrow}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,eyebrow:e.target.value}:x))}/></label>
-         <label>Heading<input disabled={!canManage} maxLength={180} value={slide.heading}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,heading:e.target.value}:x))}/></label>
-         <label>Highlighted subtitle<textarea disabled={!canManage} maxLength={700} value={slide.subtitle}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,subtitle:e.target.value}:x))}/></label>
-         <label>Supporting paragraph<textarea disabled={!canManage} maxLength={400} value={slide.description}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,description:e.target.value}:x))}/></label>
-         <label>Badges (up to four, comma-separated)<input disabled={!canManage} value={slide.tags}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,tags:e.target.value}:x))}/></label>
-         <label>Heading typeface<select disabled={!canManage} value={slide.headingFont}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,headingFont:e.target.value as Slide["headingFont"]}:x))}>
-          <option value="SERIF">Original serif heading</option>
-          <option value="SANS">Sans-serif heading</option>
-         </select></label>
-         <label>Heading weight<select disabled={!canManage} value={slide.headingWeight}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,headingWeight:e.target.value as Slide["headingWeight"]}:x))}>
-          <option value="BOLD">Bold</option><option value="REGULAR">Regular</option>
-         </select></label>
-         <label>Heading size<select disabled={!canManage} value={slide.headingSize}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,headingSize:e.target.value as Slide["headingSize"]}:x))}>
-          <option value="LARGE">Original large heading</option><option value="STANDARD">Standard</option>
-         </select></label>
-         <label>Heading colour<input disabled={!canManage} type="color" value={slide.headingColor}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,headingColor:e.target.value.toUpperCase()}:x))}/></label>
-         <label>Subtitle colour<input disabled={!canManage} type="color" value={slide.subtitleColor}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,subtitleColor:e.target.value.toUpperCase()}:x))}/></label>
+          <label>Eyebrow<input disabled={!canManage} value={slide.eyebrow}
+           maxLength={80} onChange={e=>updateSlide(index,"eyebrow",e.target.value)}/></label>
+          <label>Heading<input disabled={!canManage} value={slide.heading}
+           maxLength={160} onChange={e=>updateSlide(index,"heading",e.target.value)}/></label>
+          <label>Subtitle<input disabled={!canManage} value={slide.subtitle}
+           maxLength={160} onChange={e=>updateSlide(index,"subtitle",e.target.value)}/></label>
+          <label>Description<textarea disabled={!canManage} value={slide.description}
+           maxLength={500} onChange={e=>updateSlide(index,"description",e.target.value)}/></label>
+          <label>Keywords / tags (comma-separated, up to 4)<input disabled={!canManage}
+           value={slide.tags} maxLength={160}
+           placeholder="healthcare, free consultation, community"
+           onChange={e=>updateSlide(index,"tags",e.target.value)}/></label>
+          <label>Primary button label<input disabled={!canManage} value={slide.primaryLabel}
+           maxLength={60} onChange={e=>updateSlide(index,"primaryLabel",e.target.value)}/></label>
+          <label>Primary button route<input disabled={!canManage} value={slide.primaryPath}
+           placeholder="/contact" onChange={e=>updateSlide(index,"primaryPath",e.target.value)}/></label>
+          <label>Secondary button label<input disabled={!canManage} value={slide.secondaryLabel}
+           maxLength={60} onChange={e=>updateSlide(index,"secondaryLabel",e.target.value)}/></label>
+          <label>Secondary button route<input disabled={!canManage} value={slide.secondaryPath}
+           placeholder="/about" onChange={e=>updateSlide(index,"secondaryPath",e.target.value)}/></label>
+          <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage}
+           checked={slide.visible} onChange={e=>updateSlide(index,"visible",e.target.checked)}/>
+           Display this banner on the public homepage</label>
          </>}
-         {heroEditorTab==="BUTTONS"&&<>
-         <label>Primary button label<input disabled={!canManage} maxLength={60} value={slide.primaryLabel}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,primaryLabel:e.target.value}:x))}/></label>
-         <label>Primary route<input disabled={!canManage} value={slide.primaryPath} placeholder="/about"
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,primaryPath:e.target.value}:x))}/></label>
-         <label>Secondary button label<input disabled={!canManage} maxLength={60} value={slide.secondaryLabel}
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,secondaryLabel:e.target.value}:x))}/></label>
-         <label>Secondary route<input disabled={!canManage} value={slide.secondaryPath} placeholder="/contact"
-          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,secondaryPath:e.target.value}:x))}/></label>
+         {heroEditorTab==="STYLE"&&<>
+          <label>Heading font<select disabled={!canManage} value={slide.headingFont}
+           onChange={e=>updateSlide(index,"headingFont",e.target.value as Slide["headingFont"])}>
+           <option value="SERIF">Original serif (Merriweather / Caveat style)</option>
+           <option value="SANS">Clean sans-serif (Poppins)</option>
+          </select></label>
+          <label>Heading weight<select disabled={!canManage} value={slide.headingWeight}
+           onChange={e=>updateSlide(index,"headingWeight",e.target.value as Slide["headingWeight"])}>
+           <option value="BOLD">Bold</option>
+           <option value="REGULAR">Regular</option>
+          </select></label>
+          <label>Heading size<select disabled={!canManage} value={slide.headingSize}
+           onChange={e=>updateSlide(index,"headingSize",e.target.value as Slide["headingSize"])}>
+           <option value="LARGE">Large impact (original screenshot scale)</option>
+           <option value="STANDARD">Standard headline</option>
+          </select></label>
+          <label>Heading highlight color<input type="color" disabled={!canManage}
+           value={slide.headingColor||"#FFE34A"}
+           onChange={e=>updateSlide(index,"headingColor",e.target.value)}/></label>
+          <label>Subtitle highlight color<input type="color" disabled={!canManage}
+           value={slide.subtitleColor||"#8CF442"}
+           onChange={e=>updateSlide(index,"subtitleColor",e.target.value)}/></label>
+          <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage}
+           checked={slide.textOnly===true}
+           onChange={e=>updateSlide(index,"textOnly",e.target.checked)}/>
+           Text-only banner (does not require a verified background photo)</label>
          </>}
-         {heroEditorTab==="IMAGES"&&<>
-          <p>Upload an approved desktop image and optionally a separate mobile image for this banner.
-           Both images use the Foundation's existing secure file scanner.</p>
-          {draft.assets.filter(asset=>
-           (asset.role==="HERO"||asset.role==="MOBILE_HERO")&&asset.order===index)
-           .map(asset=><div className="cg-cms-asset" key={asset.fileRef}>
-            <strong>{asset.role==="HERO"?"Desktop":"Mobile"} image:</strong> {asset.altText}
+         {heroEditorTab==="MEDIA"&&<>
+          {draft.assets.filter(a=>["HERO","MOBILE_HERO"].includes(a.role)&&a.order===index).map(asset=>
+           <div key={asset.fileRef} className="cg-cms-banner-asset-preview">
+            <span>{asset.role==="MOBILE_HERO"?"Mobile verified photo":"Desktop verified photo"}: {asset.altText}</span>
             <img loading="lazy" className="cg-cms-review-image"
              src={"/api/cms-image-preview/"+asset.fileRef} alt={asset.altText}/>
            </div>)}
@@ -1001,6 +1577,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      Save your changes before sending this page for approval.</p>}
     {selected?.status==="DRAFT"&&heroPhotoMissing&&<p role="status">
      Add a verified desktop image or explicitly select a text-only banner before review.</p>}
+    {!!error && (
+     <div className="cg-cms-admin-inline-error" role="alert">
+      <AlertCircle size={16}/> {error}
+     </div>
+    )}
     <div className="cg-cms-actions">
      {!selected&&canManage&&<button disabled={busy||!okay||!!pending} type="button"
       onClick={()=>command("Draft created","pages","POST",{content:payload(draft)})}>Create draft</button>}
@@ -1045,5 +1626,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      {selected.status==="SUBMITTED"&&" A different authorized reviewer must approve the exact draft."}</p>}
    </section>}
   </>}
+    </>
+  )}
  </div></div>;
 }
