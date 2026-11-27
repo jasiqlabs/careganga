@@ -148,7 +148,29 @@ export function CmsCompliance({section,assets}:{
      </dl>
     </div>
    </div>
-   <aside className="cg-site-ngo-80g-aside" aria-label="Donate and tax benefit">
+   <aside className="cg-site-ngo-80g-aside" aria-label="Tax benefit illustration and donate">
+    <div className="cg-site-ngo-80g-illus-card" aria-hidden="true">
+     <svg viewBox="0 0 240 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="44" y="14" width="152" height="132" rx="12" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth="2"/>
+      <rect x="90" y="6" width="60" height="16" rx="6" fill="#64748B"/>
+      <text x="120" y="40" textAnchor="middle" fill="#14452F" fontSize="13" fontWeight="800" fontFamily="sans-serif">TAX BENEFIT 80G</text>
+      <rect x="62" y="52" width="16" height="16" rx="4" fill="#DCFCE7"/>
+      <path d="M66 60l3 3 5-6" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <text x="86" y="64" fill="#1E293B" fontSize="10" fontWeight="700" fontFamily="sans-serif">Section 80G</text>
+      <rect x="62" y="75" width="16" height="16" rx="4" fill="#DCFCE7"/>
+      <path d="M66 83l3 3 5-6" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <text x="86" y="87" fill="#1E293B" fontSize="10" fontWeight="700" fontFamily="sans-serif">Deduction Claim</text>
+      <rect x="62" y="98" width="16" height="16" rx="4" fill="#DCFCE7"/>
+      <path d="M66 106l3 3 5-6" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <text x="86" y="110" fill="#1E293B" fontSize="10" fontWeight="700" fontFamily="sans-serif">Donation Receipt</text>
+      <rect x="62" y="121" width="16" height="16" rx="4" fill="#DCFCE7"/>
+      <path d="M66 129l3 3 5-6" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <text x="86" y="133" fill="#1E293B" fontSize="10" fontWeight="700" fontFamily="sans-serif">Tax Savings</text>
+      <circle cx="204" cy="126" r="14" fill="#FACC15"/>
+      <circle cx="204" cy="118" r="14" fill="#EAB308"/>
+      <text x="204" y="122" textAnchor="middle" fill="#14452F" fontSize="12" fontWeight="800" fontFamily="sans-serif">₹</text>
+     </svg>
+    </div>
     <div className="cg-site-ngo-donate-card">
      <div className="cg-site-ngo-donate-icon"><Gift size={22} aria-hidden="true"/></div>
      <h3>DONATE &amp; GET TAX BENEFIT</h3>
@@ -165,11 +187,11 @@ export function CmsCompliance({section,assets}:{
      <span className="cg-site-ngo-info-icon cg-site-ngo-info-icon-green"><ShieldCheck size={16} aria-hidden="true"/></span>
      <h3>DONOR TAX BENEFIT</h3>
     </div>
-    <ul className="cg-site-ngo-check-list">
-     <li><CheckCircle2 size={14} aria-hidden="true"/><span>{supported?"Eligible donors may claim the applicable deduction subject to prevailing Income-tax law and conditions.":"Tax benefit applies only when current 80G approval is verified and active."}</span></li>
-     <li><CheckCircle2 size={14} aria-hidden="true"/><span>The actual deduction percentage and qualifying limits depend on applicable provisions and donation mode.</span></li>
-     <li><CheckCircle2 size={14} aria-hidden="true"/><span>Donors should retain the official donation receipt and relevant tax documents.</span></li>
-    </ul>
+    {text(f.summary).trim()?<ul className="cg-site-ngo-check-list">
+     {text(f.summary).split(/\n+|(?<=\.)\s+/).map(s=>s.trim()).filter(Boolean).map((line,idx)=>
+      <li key={idx}><CheckCircle2 size={14} aria-hidden="true"/><span>{line}</span></li>
+     )}
+    </ul>:<p className="cg-site-ngo-empty-note">No donor tax benefit details published yet.</p>}
    </article>
    <article className="cg-site-ngo-info-card">
     <div className="cg-site-ngo-info-head">
@@ -215,15 +237,16 @@ export function CmsCompliance({section,assets}:{
      <span className="cg-site-ngo-info-icon cg-site-ngo-info-icon-amber"><AlertTriangle size={16} aria-hidden="true"/></span>
      <h3>IMPORTANT</h3>
     </div>
-    <ul className="cg-site-ngo-bullet-list">
-     {text(f.importantNote)&&<li>{text(f.importantNote)}</li>}
-     {text(f.disclaimer)&&<li>{text(f.disclaimer)}</li>}
-     <li>80G tax benefit is subject to applicable law, the Foundation&apos;s valid approval status, and donor eligibility.</li>
-    </ul>
+    {(text(f.importantNote).trim()||text(f.disclaimer).trim())?<ul className="cg-site-ngo-bullet-list">
+     {text(f.importantNote).trim()&&<li>{text(f.importantNote)}</li>}
+     {text(f.disclaimer).trim()&&<li>{text(f.disclaimer)}</li>}
+    </ul>:<p className="cg-site-ngo-empty-note">No additional notes published.</p>}
    </article>
   </div>
-  <p className="cg-site-provenance" style={{marginTop:"1.15rem"}}>Only the current Foundation-published information is shown.
-   Confirm tax applicability with the issuing authority.</p>
+  <div className="cg-site-ngo-disclaimer-bar">
+   {text(f.verifiedAsOf)&&<span><Calendar size={13} aria-hidden="true" style={{verticalAlign:"-2px",marginRight:"0.3rem"}}/><strong>Last Updated:</strong> {text(f.verifiedAsOf)}</span>}
+   <span><ShieldCheck size={13} aria-hidden="true" style={{verticalAlign:"-2px",marginRight:"0.3rem"}}/><strong>Disclaimer:</strong> Only the current Foundation-published information is shown. Confirm tax applicability with the issuing authority.</span>
+  </div>
  </section>;
 }
 export function CmsGallery({section,assets,mediaScope="PHOTO",embedded=false}:{

@@ -215,11 +215,10 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
     <Text style={{color:"#D1FAE5",fontSize:12,textAlign:"center"}}>Subject to applicable law and eligibility</Text>
     <Action title="Donate Now" onPress={onContact}/>
    </View>
-   <View style={styles.item}>
+   {!!text(f.summary).trim()&&<View style={styles.item}>
     <Text style={styles.itemTitle}>DONOR TAX BENEFIT</Text>
-    <Text style={styles.body}>• Eligible donors may claim applicable deduction subject to prevailing Income-tax law.</Text>
-    <Text style={styles.body}>• Donors should retain the official donation receipt and relevant tax documents.</Text>
-   </View>
+    <Text style={styles.body}>{text(f.summary)}</Text>
+   </View>}
    {!!text(f.importantNote)&&<View style={styles.item}>
     <Text style={styles.itemTitle}>IMPORTANT</Text>
     <Text style={styles.body}>{text(f.importantNote)}</Text>
