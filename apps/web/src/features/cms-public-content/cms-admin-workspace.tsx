@@ -662,7 +662,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
         <span className="cg-cms-admin-kpi-label">Working Drafts</span>
       </div>
       <div className="cg-cms-admin-kpi-value">{draftPages.length}</div>
-      <div className="cg-cms-admin-kpi-trend">Draft revisions (including published pages)</div>
+      <div className="cg-cms-admin-kpi-trend">Draft revisions</div>
     </div>
     <div className="cg-cms-admin-kpi-card">
       <div className="cg-cms-admin-kpi-top">

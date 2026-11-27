@@ -250,11 +250,11 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    publicationsEmptyText:str(x.publicationsEmptyText??"","publicationsEmptyText",300),
    items:x.items.map((v,i)=>{
     const f="items["+i+"]",item=obj(v,f,
-     ["title","caption","category","mediaType","source","asOfDate","visible"]);
+     ["title","caption","category","mediaType","source","asOfDate","visible","date"]);
     const mediaType=str(item.mediaType,f+".mediaType",12,3);
     if(!["PHOTO","VIDEO","PUBLICATION"].includes(mediaType))
      return error(f+".mediaType");
-    const asOfDate=date(item.asOfDate,f+".asOfDate");
+    const asOfDate=date(item.asOfDate??item.date,f+".asOfDate");
     if(asOfDate>istToday())return error(f+".asOfDate");
     if(item.visible!==undefined&&typeof item.visible!=="boolean")
      return error(f+".visible");
