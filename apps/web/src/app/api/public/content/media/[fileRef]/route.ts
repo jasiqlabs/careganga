@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from "next/server";
 export const dynamic="force-dynamic";
 type Context={params:Promise<{fileRef:string}>};
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const MIME=new Set(["image/png","image/jpeg","image/webp","application/pdf","video/mp4"]);
 const cap=(mime:string)=>mime==="video/mp4"?26214400:10485760;
 const NO_STORE={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"};

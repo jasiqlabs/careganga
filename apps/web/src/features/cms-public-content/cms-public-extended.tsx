@@ -9,11 +9,16 @@ import {
   Clock,
   Landmark,
   FileText,
-  Download
+  Download,
+  Gift,
+  AlertTriangle,
+  ArrowRight,
+  Heart
 } from "lucide-react";
 import type {PublicCmsPage,PublicCmsSection} from "./cms-public-page";
 import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsGalleryGridClient,type CmsMediaType} from "./cms-gallery-grid-client";
+import {CmsNgoDocModalButton} from "./cms-ngo-doc-modal";
 type Asset=PublicCmsPage["assets"][number];
 const text=(v:unknown)=>typeof v==="string"?v:"";
 const records=(v:unknown)=>Array.isArray(v)?v.filter(x=>!!x&&typeof x==="object"&&!Array.isArray(x))
@@ -116,59 +121,108 @@ export function CmsCompliance({section,assets}:{
   </div>
   {text(f.subtitle)&&<h2 className="cg-site-legal-subtitle cg-site-ngo-orange-sub">{text(f.subtitle)}</h2>}
   <p className="cg-site-ngo-lead">{text(f.summary)}</p>
-  <div className="cg-site-ngo-cert-split">
-   <div className="cg-site-ngo-navy-brand">
-    <div className="cg-site-ngo-navy-emblem"><ShieldCheck size={28} aria-hidden="true"/></div>
-    <strong>CareGanga Foundation</strong>
-    <span>{supported?"Eligible Charitable Organisation":"Foundation disclosure"}</span>
-   </div>
-   <dl className="cg-site-ngo-kv-list cg-site-ngo-kv-card">
-    <div>
-     <dt><ShieldCheck size={15} aria-hidden="true"/> 80G Status</dt>
-     <dd><span className={supported?"cg-site-ngo-status-active":"cg-site-ngo-status-pending"}>{supported?"● Active":"Not verified"}</span></dd>
-    </div>
-    {([
-     ["Approval / Registration No.",f.approvalNumber||f.registrationNumber,Award],
-     ["PAN",f.pan,CreditCard],
-     ["Valid From",f.validFrom,Calendar],
-     ["Validity",f.validUntil,Clock],
-     ["Issuing Authority",f.issuer,Landmark],
-     ["Source",f.source,FileText],
-     ["Reviewed On",text(f.source)?f.verifiedAsOf:"",Calendar]
-    ] as [string,unknown,typeof Award][]).filter(([,v])=>!!text(v)).map(([key,value,Icon])=><div key={key}>
-     <dt><Icon size={15} aria-hidden="true"/> {key}</dt><dd>{text(value)}</dd>
-    </div>)}
-   </dl>
-  </div>
-  <p className="cg-site-legal-status">{supported?
-   "Document-supported Foundation declaration":"Not currently verified — no tax eligibility is promised"}</p>
-  {documents.length>0&&<section aria-label="Published original reports" style={{marginTop:"1.25rem"}}>
-   <h2 style={{fontSize:"1.1rem",marginBottom:"0.75rem"}}>{supported?"Verified source documents and annual reports":"Published disclosures and annual reports"}</h2>
-   <div className="cg-site-ngo-cert-grid">{documents.map(({record,document},i)=>{
-    if(!document)return null;
-    return <article key={i} className="cg-site-ngo-cert-card">
-     <div className="cg-site-ngo-cert-head">
-      <div className="cg-site-ngo-cert-icon"><FileText size={18} aria-hidden="true"/></div>
-      <div className="cg-site-ngo-cert-title-wrap">
-       <h3>{text(record.title)}</h3>
-       <span className="cg-site-ngo-cert-meta">{text(record.type).replaceAll("_"," ")} · {text(record.asOfDate)}</span>
+  <div className="cg-site-ngo-80g-top-grid">
+   <div className="cg-site-ngo-80g-main">
+    <div className="cg-site-ngo-cert-split">
+     <div className="cg-site-ngo-navy-brand">
+      <div className="cg-site-ngo-navy-emblem"><ShieldCheck size={28} aria-hidden="true"/></div>
+      <strong>CareGanga Foundation</strong>
+      <span>{supported?"Eligible Charitable Organisation":"Foundation disclosure"}</span>
+     </div>
+     <dl className="cg-site-ngo-kv-list cg-site-ngo-kv-card">
+      <div>
+       <dt><ShieldCheck size={15} aria-hidden="true"/> 80G Status</dt>
+       <dd><span className={supported?"cg-site-ngo-status-active":"cg-site-ngo-status-pending"}>{supported?"● Active":"Not verified"}</span></dd>
       </div>
-      <span className="cg-site-ngo-active-pill">Published</span>
+      {([
+       ["Approval / Registration No.",f.approvalNumber||f.registrationNumber,Award],
+       ["PAN",f.pan,CreditCard],
+       ["Valid From",f.validFrom,Calendar],
+       ["Validity",f.validUntil,Clock],
+       ["Issuing Authority",f.issuer,Landmark],
+       ["Source",f.source,FileText],
+       ["Reviewed On",text(f.source)?f.verifiedAsOf:"",Calendar]
+      ] as [string,unknown,typeof Award][]).filter(([,v])=>!!text(v)).map(([key,value,Icon])=><div key={key}>
+       <dt><Icon size={15} aria-hidden="true"/> {key}</dt><dd>{text(value)}</dd>
+      </div>)}
+     </dl>
+    </div>
+   </div>
+   <aside className="cg-site-ngo-80g-aside" aria-label="Donate and tax benefit">
+    <div className="cg-site-ngo-donate-card">
+     <div className="cg-site-ngo-donate-icon"><Gift size={22} aria-hidden="true"/></div>
+     <h3>DONATE &amp; GET TAX BENEFIT</h3>
+     <p>Subject to applicable law and eligibility</p>
+     <Link href="/contact" className="cg-site-ngo-donate-cta">
+      <Heart size={14} aria-hidden="true"/> DONATE NOW <ArrowRight size={14} aria-hidden="true"/>
+     </Link>
+    </div>
+   </aside>
+  </div>
+  <div className="cg-site-ngo-3col">
+   <article className="cg-site-ngo-info-card">
+    <div className="cg-site-ngo-info-head">
+     <span className="cg-site-ngo-info-icon cg-site-ngo-info-icon-green"><ShieldCheck size={16} aria-hidden="true"/></span>
+     <h3>DONOR TAX BENEFIT</h3>
+    </div>
+    <ul className="cg-site-ngo-check-list">
+     <li><CheckCircle2 size={14} aria-hidden="true"/><span>{supported?"Eligible donors may claim the applicable deduction subject to prevailing Income-tax law and conditions.":"Tax benefit applies only when current 80G approval is verified and active."}</span></li>
+     <li><CheckCircle2 size={14} aria-hidden="true"/><span>The actual deduction percentage and qualifying limits depend on applicable provisions and donation mode.</span></li>
+     <li><CheckCircle2 size={14} aria-hidden="true"/><span>Donors should retain the official donation receipt and relevant tax documents.</span></li>
+    </ul>
+   </article>
+   <article className="cg-site-ngo-info-card">
+    <div className="cg-site-ngo-info-head">
+     <span className="cg-site-ngo-info-icon cg-site-ngo-info-icon-green"><FileText size={16} aria-hidden="true"/></span>
+     <h3>DOCUMENTS</h3>
+    </div>
+    {documents.length>0?<div className="cg-site-ngo-doc-stack">
+     {documents.map(({record,document},i)=>document?<div key={i} className="cg-site-ngo-doc-item">
+      <div className="cg-site-ngo-doc-item-title">
+       <FileText size={15} aria-hidden="true"/>
+       <div>
+        <strong>{text(record.title)}</strong>
+        <span>{text(record.type).replaceAll("_"," ")} · {text(record.asOfDate)}</span>
+       </div>
+      </div>
+      <CmsNgoDocModalButton
+       title={text(record.title)}
+       meta={`${text(record.type).replaceAll("_"," ")} · ${text(record.asOfDate)}`}
+       src={document.src}
+       verifiedBy={text(f.source)||undefined}
+       active={supported}
+       buttonLabel="VIEW DOCUMENT"
+      />
+     </div>:null)}
+    </div>:supported&&proof?.src?<div className="cg-site-ngo-doc-stack">
+     <div className="cg-site-ngo-doc-item">
+      <div className="cg-site-ngo-doc-item-title">
+       <FileText size={15} aria-hidden="true"/>
+       <div><strong>80G Approval / Supporting Document</strong></div>
+      </div>
+      <CmsNgoDocModalButton
+       title="80G Approval / Supporting Document"
+       src={proof.src}
+       verifiedBy={text(f.source)||undefined}
+       active={supported}
+       buttonLabel="VIEW DOCUMENT"
+      />
      </div>
-     <div className="cg-site-ngo-cert-actions">
-      <a className="cg-site-ngo-doc-btn" href={document.src} download><Download size={14} aria-hidden="true"/> View approved source document</a>
-     </div>
-    </article>;
-   })}</div>
-  </section>}
-  {supported&&proof?.src&&(f.documents===undefined||Array.isArray(f.documents)&&f.documents.length===0)&&
-   <div style={{marginTop:"1rem"}}><a className="cg-site-ngo-doc-btn" href={proof.src} download>
-    <Download size={14} aria-hidden="true"/> View approved supporting document</a></div>}
-  {text(f.importantNote)&&<aside className="cg-site-legal-important">
-   <strong>Important</strong><p>{text(f.importantNote)}</p>
-  </aside>}
-  {text(f.disclaimer)&&<p className="cg-site-legal-notice">{text(f.disclaimer)}</p>}
-  <p className="cg-site-provenance">Only the current Foundation-published information is shown.
+    </div>:<p className="cg-site-ngo-empty-note">No published 80G supporting documents attached yet.</p>}
+   </article>
+   <article className="cg-site-ngo-info-card">
+    <div className="cg-site-ngo-info-head">
+     <span className="cg-site-ngo-info-icon cg-site-ngo-info-icon-amber"><AlertTriangle size={16} aria-hidden="true"/></span>
+     <h3>IMPORTANT</h3>
+    </div>
+    <ul className="cg-site-ngo-bullet-list">
+     {text(f.importantNote)&&<li>{text(f.importantNote)}</li>}
+     {text(f.disclaimer)&&<li>{text(f.disclaimer)}</li>}
+     <li>80G tax benefit is subject to applicable law, the Foundation&apos;s valid approval status, and donor eligibility.</li>
+    </ul>
+   </article>
+  </div>
+  <p className="cg-site-provenance" style={{marginTop:"1.15rem"}}>Only the current Foundation-published information is shown.
    Confirm tax applicability with the issuing authority.</p>
  </section>;
 }

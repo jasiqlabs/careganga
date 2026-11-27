@@ -210,8 +210,18 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    })}
    {supported&&url&&(f.documents===undefined||Array.isArray(f.documents)&&f.documents.length===0)&&
     <Action title="Open approved proof" onPress={()=>open(url)}/>}
+   <View style={{backgroundColor:"#0F4229",borderRadius:12,padding:16,alignItems:"center",gap:8}}>
+    <Text style={{color:"#FACC15",fontWeight:"800",fontSize:14,textAlign:"center"}}>DONATE &amp; GET TAX BENEFIT</Text>
+    <Text style={{color:"#D1FAE5",fontSize:12,textAlign:"center"}}>Subject to applicable law and eligibility</Text>
+    <Action title="Donate Now" onPress={onContact}/>
+   </View>
+   <View style={styles.item}>
+    <Text style={styles.itemTitle}>DONOR TAX BENEFIT</Text>
+    <Text style={styles.body}>• Eligible donors may claim applicable deduction subject to prevailing Income-tax law.</Text>
+    <Text style={styles.body}>• Donors should retain the official donation receipt and relevant tax documents.</Text>
+   </View>
    {!!text(f.importantNote)&&<View style={styles.item}>
-    <Text style={styles.itemTitle}>Important</Text>
+    <Text style={styles.itemTitle}>IMPORTANT</Text>
     <Text style={styles.body}>{text(f.importantNote)}</Text>
    </View>}
    <Text style={styles.source}>{text(f.disclaimer)}</Text>
