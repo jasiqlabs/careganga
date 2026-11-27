@@ -283,6 +283,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  const [schedule,setSchedule]=useState("");
  const [pending,setPending]=useState<Command|null>(null);
  const [mediaActive,setMediaActive]=useState(false);
+ const [search,setSearch]=useState("");
  const turn=useRef(0);
  const fail=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
@@ -432,10 +433,23 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
    {pending&&button("Retry same original request",()=>{
     setUncertain(false);void execute(pending);
    },busy)}
+   {/* Mobile Top 4 KPI Metrics */}
+   <View style={styles.kpiRow}>
+    <View style={styles.kpiCard}><Text style={styles.kpiLabel}>Total Pages</Text><Text style={styles.kpiValue}>{pages.length}</Text></View>
+    <View style={styles.kpiCard}><Text style={styles.kpiLabel}>Published</Text><Text style={[styles.kpiValue,{color:"#16A34A"}]}>{pages.filter(p=>p.publicStatus!==null).length}</Text></View>
+    <View style={styles.kpiCard}><Text style={styles.kpiLabel}>Drafts</Text><Text style={[styles.kpiValue,{color:"#D97706"}]}>{pages.filter(p=>p.draftStatus==="DRAFT").length}</Text></View>
+    <View style={styles.kpiCard}><Text style={styles.kpiLabel}>In Review</Text><Text style={[styles.kpiValue,{color:"#2563EB"}]}>{pages.filter(p=>p.draftStatus==="SUBMITTED").length}</Text></View>
+   </View>
+
+   {/* Search Filter */}
+   <View style={styles.searchBar}>
+    <TextInput style={styles.searchInput} placeholder="Search pages by title or slug..." placeholderTextColor="#94A3B8" value={search} onChangeText={setSearch}/>
+   </View>
+
    <Text style={styles.heading}>Managed public pages</Text>
    {!pages.length&&!loading&&<Text style={styles.note}>
     No original Foundation editorial pages recorded.</Text>}
-   {pages.map(p=><View key={p.pageRef}>
+   {pages.filter(p=>!search.trim()||p.title.toLowerCase().includes(search.toLowerCase())||p.slug.toLowerCase().includes(search.toLowerCase())).map(p=><View key={p.pageRef} style={styles.pageCardRow}>
     {button(p.title+" · "+title(p.kind)+" · Draft "+title(p.draftStatus)+
      " · Public "+title(p.publicStatus??"Not published"),()=>{
       if(busy)return;
@@ -536,6 +550,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
       assets={draft.assets} onExpired={onExpired} disabled={locked}
       onChange={assets=>change("assets",assets)}/>}
 
+    {!!error&&<Text accessibilityRole="alert" style={styles.inlineError}>⚠ {error}</Text>}
     {canManage&&button(selected.status==="DRAFT"?
      "Save original unpublished draft":"Create next unpublished revision",()=>{
      if(!draft||!selected)return;
@@ -594,20 +609,29 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  </SafeAreaView>;
 }
 const styles=StyleSheet.create({
- page:{flex:1,backgroundColor:t.adminCanvas},
- content:{padding:15,paddingBottom:90,gap:12},
- title:{fontSize:21,fontWeight:"700",color:t.text},
- heading:{fontSize:16,fontWeight:"700",color:t.text},
- text:{fontSize:13,fontWeight:"600",color:t.text},
- note:{fontSize:13,color:t.mutedText,lineHeight:19},
- panel:{borderWidth:1,borderColor:t.border,backgroundColor:t.surface,
-  borderRadius:12,padding:11,gap:8},
- nested:{gap:8,padding:8,borderWidth:1,borderColor:t.border,borderRadius:9},
+ page:{flex:1,backgroundColor:"#F8FAFC"},
+ content:{padding:16,paddingBottom:90,gap:12},
+ title:{fontSize:22,fontWeight:"800",color:"#0F172A",letterSpacing:-0.5},
+ heading:{fontSize:15,fontWeight:"700",color:"#0F172A"},
+ text:{fontSize:13,fontWeight:"600",color:"#0F172A"},
+ note:{fontSize:13,color:"#64748B",lineHeight:18},
+ panel:{borderWidth:1,borderColor:"#E2E8F0",backgroundColor:"#FFFFFF",
+  borderRadius:12,padding:14,gap:10,elevation:2,shadowColor:"#0F172A",shadowOpacity:0.04,shadowOffset:{width:0,height:1}},
+ nested:{gap:8,padding:10,borderWidth:1,borderColor:"#E2E8F0",borderRadius:8,backgroundColor:"#F8FAFC"},
  row:{flexDirection:"row",flexWrap:"wrap",gap:6},
  field:{gap:4},
- input:{borderWidth:1,borderColor:t.border,borderRadius:9,
-  backgroundColor:t.surface,padding:10,color:t.text,minHeight:44},
- button:{borderWidth:1,borderColor:t.border,borderRadius:9,
-  minHeight:45,padding:10,justifyContent:"center"},
- disabled:{opacity:.45},error:{fontSize:13,color:"#A52626"}
+ input:{borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,
+  backgroundColor:"#FFFFFF",paddingHorizontal:12,paddingVertical:8,color:"#0F172A",minHeight:44,fontSize:14},
+ button:{borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,
+  backgroundColor:"#FFFFFF",minHeight:44,paddingHorizontal:14,paddingVertical:10,justifyContent:"center"},
+ disabled:{opacity:.45},
+ error:{fontSize:13,color:"#DC2626",fontWeight:"600"},
+ inlineError:{fontSize:13,color:"#DC2626",backgroundColor:"#FEF2F2",borderWidth:1,borderColor:"#FCA5A5",borderRadius:8,padding:10,fontWeight:"600",marginVertical:6},
+ kpiRow:{flexDirection:"row",flexWrap:"wrap",gap:8},
+ kpiCard:{flex:1,minWidth:"45%",backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#E2E8F0",borderRadius:10,padding:10,elevation:1},
+ kpiLabel:{fontSize:11,color:"#64748B",fontWeight:"600",marginBottom:2},
+ kpiValue:{fontSize:20,fontWeight:"800",color:"#0F172A",fontVariant:["tabular-nums"]},
+ searchBar:{backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,paddingHorizontal:12,height:44,justifyContent:"center"},
+ searchInput:{fontSize:14,color:"#0F172A",height:"100%"},
+ pageCardRow:{marginBottom:6}
 });

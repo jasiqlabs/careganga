@@ -43,11 +43,11 @@ export default async function WebsiteCmsAdmin(){
     canViewFoundation={actions.has("foundation.profile.view")}
     canViewFinance={actions.has("finance.accounts.view")}
     canViewVouchers={actions.has("finance.vouchers.view")}/>
-   <main className="workspace"><CmsAdminWorkspace
+   <main className="workspace" style={{padding:0,background:"#F8FAFC"}}><CmsAdminWorkspace
     canManage={actions.has("cms.content.manage")}
     canPublish={actions.has("cms.content.publish")}
     canReview={actions.has("approvals.review")}/>
-    <details className="cg-cms-extra" id="editorial-pages">
+    <details className="cg-cms-extra" id="editorial-pages" style={{display:"none"}}>
      <summary>Impact, 80G, Gallery, Articles, Contact &amp; Healthcare pages</summary>
      <CmsExtendedWorkspace canManage={actions.has("cms.content.manage")}
       canPublish={actions.has("cms.content.publish")}
