@@ -1,7 +1,7 @@
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
-import {CmsAdminWorkspace} from "../../../../features/cms-public-content/cms-admin-workspace";
+import {CmsAdminWorkspace,CmsPageListProvider} from "../../../../features/cms-public-content/cms-admin-workspace";
 import {publishedCmsNavigation} from "../../../../features/cms-public-content/cms-public-source";
 import {CmsExtendedWorkspace} from "../../../../features/cms-public-content/cms-extended-workspace";
 import {AccessDeniedView} from "../../../../shared/access-denied-view";
@@ -45,7 +45,7 @@ export default async function WebsiteCmsAdmin(){
     canViewFoundation={actions.has("foundation.profile.view")}
     canViewFinance={actions.has("finance.accounts.view")}
     canViewVouchers={actions.has("finance.vouchers.view")}/>
-   <main className="workspace" style={{padding:0,background:"#F8FAFC"}}><CmsAdminWorkspace
+   <main className="workspace" style={{padding:0,background:"#F8FAFC"}}><CmsPageListProvider><CmsAdminWorkspace
     canManage={actions.has("cms.content.manage")}
     canPublish={actions.has("cms.content.publish")}
     canReview={actions.has("approvals.review")} navigation={navigation}/>
@@ -54,7 +54,7 @@ export default async function WebsiteCmsAdmin(){
       canPublish={actions.has("cms.content.publish")}
       canViewNoticeSources={actions.has("cms.content.manage")&&
        actions.has("communications.notices.manage")}/>
-    </div>
+    </div></CmsPageListProvider>
    </main>
   </div>;
  }catch(e){
