@@ -147,7 +147,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    <View style={styles.ngoHeadRow}>
     <Text accessibilityRole="header" style={styles.title}>
      {ngoScope==="annual-reports"?"Annual Reports":"Registration Certificates"}</Text>
-    {ngoScope==="registration-certificate"&&<View style={styles.verifiedBadge}><Text style={styles.verifiedBadgeText}>AUTHENTICATED</Text></View>}
+    {ngoScope==="registration-certificate"&&active.length>0&&<View style={styles.verifiedBadge}><Text style={styles.verifiedBadgeText}>PUBLISHED</Text></View>}
    </View>
    {ngoScope==="annual-reports"&&<><Text style={styles.body}>Document year</Text><View style={styles.filterRow}
      accessibilityLabel="Annual reports year filter">
@@ -163,7 +163,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    {active.map(({record,index,url})=><View style={styles.ngoCertCard} key={index}>
     <View style={styles.ngoHeadRow}>
      <Text style={[styles.itemTitle,{flex:1}]}>{text(record.title)}</Text>
-     <View style={styles.verifiedBadge}><Text style={styles.verifiedBadgeText}>Active</Text></View>
+     <View style={styles.verifiedBadge}><Text style={styles.verifiedBadgeText}>Published</Text></View>
     </View>
     <Text style={styles.source}>Document date: {text(record.asOfDate)}</Text>
     {url&&<Action title="View Document" onPress={()=>open(url)}/>}
@@ -187,7 +187,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    <Text style={styles.body}>{text(f.summary)}</Text>
    <View style={styles.panCard}>
     <Text style={styles.panEntity}>CareGanga Foundation</Text>
-    <Text style={styles.panLabel}>Eligible Charitable Organisation</Text>
+    <Text style={styles.panLabel}>{supported?"Eligible Charitable Organisation":"Foundation disclosure"}</Text>
    </View>
    <View style={styles.ngoProfileCard}>
     <View style={styles.kvRow}>
