@@ -4449,8 +4449,16 @@ button:disabled {
   align-content: start
 }
 
+.cg-cms-list button strong {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: #0F172A;
+  line-height: 1.35;
+}
+
 .cg-cms-list span {
   font-size: .8rem;
+  font-weight: 400;
   color: var(--cg-muted)
 }
 
@@ -5137,8 +5145,44 @@ button:disabled {
   justify-content: flex-start
 }
 
-.cg-cms-drawer .cg-cms-preview {
-  overflow: hidden
+.cg-cms-card.cg-cms-drawer.cg-cms-drawer-preview {
+  width: min(96vw, 78rem);
+}
+
+.cg-cms-preview-desktop {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  background: #FFFFFF;
+}
+
+.cg-cms-preview-mobile {
+  width: 100%;
+  max-width: 390px;
+  margin: 0 auto;
+  border: 2px solid #CBD5E1;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #FFFFFF;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+}
+
+.cg-cms-preview-mobile .cg-site-footer-grid,
+.cg-cms-preview-mobile .cg-site-footer-cols {
+  grid-template-columns: 1fr !important;
+  display: grid !important;
+  gap: 1.25rem !important;
+}
+
+.cg-cms-preview-mobile .cg-site-nav {
+  display: none !important;
+}
+
+.cg-cms-preview-mobile .cg-site-topbar-inner,
+.cg-cms-preview-mobile .cg-site-header-inner {
+  flex-wrap: wrap !important;
+  gap: 0.5rem !important;
 }
 
 .cg-cms-drawer .cg-site {
@@ -17807,22 +17851,24 @@ button:disabled {
 .cg-cms-admin-tabs {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  border-bottom: 1px solid #E2E8F0;
+  gap: 0.45rem;
+  border: 1px solid #E2E8F0;
   background: #FFFFFF;
-  border-radius: 12px 12px 0 0;
-  padding: 0.5rem 1.25rem 0 1.25rem;
+  border-radius: 12px;
+  padding: 0.55rem 0.85rem;
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .cg-cms-admin-tab-btn {
-  background: none;
-  border: none;
-  border-bottom: 3px solid transparent;
-  padding: 0.65rem 0.25rem;
-  font-size: 0.875rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0.48rem 0.9rem;
+  font-size: 0.84rem;
   font-weight: 600;
   color: #64748B;
   cursor: pointer;
@@ -17831,17 +17877,20 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  margin-bottom: -1px;
+  flex-shrink: 0;
 }
 
 .cg-cms-admin-tab-btn:hover {
   color: #0F172A;
+  background: #F8FAFC;
 }
 
 .cg-cms-admin-tab-btn.active {
-  color: #2563EB !important;
-  border-bottom-color: #2563EB !important;
-  font-weight: 700;
+  background: #4F46E5 !important;
+  border-color: #4338CA !important;
+  color: #FFFFFF !important;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
 }
 
 /* Overview 2-Column Layout */

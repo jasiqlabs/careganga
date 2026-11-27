@@ -13,7 +13,9 @@ import {
   Edit2,
   Eye,
   X,
-  AlertCircle
+  AlertCircle,
+  Monitor,
+  Smartphone
 } from "lucide-react";
 
 type Kind="IMPACT"|"COMPLIANCE"|"GALLERY"|"ARTICLE"|"CONTACT"|"HEALTHCARE"|"POLICY"|"PARTNERS";
@@ -162,6 +164,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
  const [withdrawReason,setWithdrawReason]=useState("");
  const [publishWhen,setPublishWhen]=useState("");
+ const [previewDevice,setPreviewDevice]=useState<"DESKTOP"|"MOBILE">("DESKTOP");
  const refresh=useCallback(async()=>{
   const data=await api<{pages:Item[]}>("pages");
   setPages(data.pages.filter(p=>kinds.includes(p.kind as Kind)));
@@ -580,7 +583,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   {editorOpen&&(canManage||selected)&&<>
    <button type="button" className="cg-cms-drawer-backdrop" disabled={busy}
     aria-label="Close editorial drawer" onClick={close}/>
-   <section className="cg-cms-card cg-cms-drawer" role="dialog" aria-modal="true"
+   <section className={`cg-cms-card cg-cms-drawer${preview?" cg-cms-drawer-preview":""}`} role="dialog" aria-modal="true"
     style={{borderRadius:"16px 0 0 16px",boxShadow:"0 25px 50px -12px rgba(15, 23, 42, 0.25)"}}
     aria-label={selected?"Edit Foundation editorial content":"Create Foundation editorial content"}>
    <div className="cg-cms-toolbar" style={{borderBottom:"1px solid #E2E8F0",paddingBottom:"0.85rem",alignItems:"center"}}>
@@ -614,7 +617,17 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       Discard edits and close</button></div>
    </div>}
    {preview?<div className="cg-cms-preview">
-    <p>Private preview; no publication or public media URL is implied.</p>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"0.5rem",marginBottom:"0.75rem",padding:"0.5rem 0.75rem",background:"#F8FAFC",borderRadius:"8px",border:"1px solid #E2E8F0"}}>
+     <span style={{fontSize:"0.8rem",color:"#64748B",fontWeight:500}}>Private preview — matches public website layout (unpublished draft).</span>
+     <div style={{display:"flex",gap:"0.4rem"}}>
+      <button type="button" className={`cg-cms-admin-btn${previewDevice==="DESKTOP"?" cg-cms-admin-btn-primary":""}`} style={{minHeight:"32px",padding:"0.25rem 0.65rem",fontSize:"0.75rem"}} onClick={()=>setPreviewDevice("DESKTOP")}>
+       <Monitor size={13}/> Desktop
+      </button>
+      <button type="button" className={`cg-cms-admin-btn${previewDevice==="MOBILE"?" cg-cms-admin-btn-primary":""}`} style={{minHeight:"32px",padding:"0.25rem 0.65rem",fontSize:"0.75rem"}} onClick={()=>setPreviewDevice("MOBILE")}>
+       <Smartphone size={13}/> Mobile (390px)
+      </button>
+     </div>
+    </div>
     {draft.kind==="GALLERY"&&<div className="cg-cms-actions" role="group"
       aria-label="Preview the three original public media URLs">
      {([["PHOTO","Gallery /gallery"],["VIDEO","Videos /videos"],
@@ -623,8 +636,10 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
        aria-pressed={previewMediaScope===mode}
        onClick={()=>setPreviewMediaScope(mode)}>{label}</button>)}
     </div>}
-    <CmsPublicPage page={previewPage} mediaScope={
-     draft.kind==="GALLERY"?previewMediaScope:undefined}/></div>:<div className="cg-cms-form">
+    <div className={previewDevice==="MOBILE"?"cg-cms-preview-mobile":"cg-cms-preview-desktop"}>
+     <CmsPublicPage page={previewPage} mediaScope={
+      draft.kind==="GALLERY"?previewMediaScope:undefined}/>
+    </div></div>:<div className="cg-cms-form">
     {draft.kind==="IMPACT"&&<section className="cg-cms-impact-facts"
      aria-label="Original U23 Page Facts, from current unsaved editorial draft">
       <h4>Page Facts</h4>

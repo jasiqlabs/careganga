@@ -567,7 +567,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       <Plus size={14}/> New page
     </button>}
     {canManage&&!selected&&!reviewing&&<button type="button" className="cg-cms-admin-btn" disabled={busy||!!mediaAttempt.current}
-      onClick={()=>{setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);}}>
+      onClick={()=>{setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);setActiveWorkspaceTab("PAGES");setNotice("Reference starter content loaded into the Home draft editor. Edit if needed and click 'Create draft' to save.");}}>
       Start with reference content
     </button>}
     <a href="/" target="_blank" rel="noopener noreferrer" className="cg-cms-admin-btn">
@@ -1295,8 +1295,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      </div>
     </>}
    </section>}
-   <button type="button" disabled={busy||!!pending}
-     onClick={()=>setReviewing(false)}>Back to pages</button>
+   <button type="button" className="cg-cms-admin-btn" style={{width:"fit-content"}} disabled={busy||!!pending}
+     onClick={()=>{setReviewing(false);setActiveWorkspaceTab("PAGES");}}>Back to pages</button>
   </section>:<>
    <div className="cg-cms-admin-search-wrapper" style={{marginBottom:"0.75rem"}}>
     <Search size={16} className="cg-cms-admin-search-icon" aria-hidden="true"/>
