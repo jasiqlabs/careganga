@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import type {PublicCmsPage} from "./cms-public-page";
 import {CmsPublicShell} from "./cms-public-page";
-import {publishedCmsNavigation,publishedCmsPage,publishedPublicIntro} from "./cms-public-source";
+import {publishedCmsNavigation,publishedCmsPage,publishedPublicIntro,type PublicCmsNavigation} from "./cms-public-source";
 import {CmsNgoAnnualReports,type ApprovedAnnualReport} from "./cms-ngo-annual-client";
 import {UnavailablePage} from "../../shared/unavailable-page";
 
@@ -63,8 +63,8 @@ const canShow=(page:PublicCmsPage,key:Child)=>{
  * scans are current vetted CG19 placements, not cloned master records.
  * Financial report files are separately reviewed public publications; private CG09/CG20 records never enter this page.
  */
-export function CmsNgoSidebar({page,selected="80g"}:{
- page:PublicCmsPage;selected?:Child|"80g"}){
+export function CmsNgoSidebar({page,selected="80g",navigation=null}:{
+ page:PublicCmsPage;selected?:Child|"80g";navigation?:PublicCmsNavigation|null}){
  const menu=[
   {key:"80g",label:"80G Registration",href:"/ngo-information",icon:Award},
   {key:"pan-details",label:"PAN Details",href:"/ngo-information/pan-details",icon:CreditCard},
@@ -90,11 +90,11 @@ export function CmsNgoSidebar({page,selected="80g"}:{
   })}
   <div className="cg-site-ngo-secondary">
    <Link href="/contact" className="cg-site-ngo-item"><Users size={16} aria-hidden="true" style={{flexShrink:0}}/> <span className="cg-site-ngo-item-label">Join Us</span><ChevronDown size={14} aria-hidden="true" style={{marginLeft:"auto",flexShrink:0,color:"#64748B"}}/></Link>
-   <Link href="/campaigns" className="cg-site-ngo-item"><Megaphone size={16} aria-hidden="true" style={{flexShrink:0}}/> <span className="cg-site-ngo-item-label">Campaigns</span><ChevronDown size={14} aria-hidden="true" style={{marginLeft:"auto",flexShrink:0,color:"#64748B"}}/></Link>
+   {navigation?.publishedRoutes?.some(r=>r.path==="/campaigns")&&<Link href="/campaigns" className="cg-site-ngo-item"><Megaphone size={16} aria-hidden="true" style={{flexShrink:0}}/> <span className="cg-site-ngo-item-label">Campaigns</span><ChevronDown size={14} aria-hidden="true" style={{marginLeft:"auto",flexShrink:0,color:"#64748B"}}/></Link>}
   </div>
   <div className="cg-site-ngo-cta-stack">
-   <Link href="/contact" className="cg-site-ngo-cta-donate"><Heart size={15} aria-hidden="true"/> DONATE NOW</Link>
-   <Link href="/admin/login" className="cg-site-ngo-cta-login"><User size={15} aria-hidden="true"/> LOGIN</Link>
+   {navigation?.publishedRoutes?.some(r=>r.path==="/donate")?<Link href="/donate" className="cg-site-ngo-cta-donate"><Heart size={15} aria-hidden="true"/> DONATE NOW</Link>:<Link href="/contact" className="cg-site-ngo-cta-donate"><Heart size={15} aria-hidden="true"/> CONTACT TO DONATE</Link>}
+   {navigation?.login.visible&&navigation.login.path==="/admin/login"&&<Link href={navigation.login.path} className="cg-site-ngo-cta-login"><User size={15} aria-hidden="true"/> STAFF LOGIN</Link>}
   </div>
  </nav>;
 }
@@ -149,7 +149,7 @@ export async function CmsNgoChildRoute({section}:{section:string}){
       <Landmark size={18} aria-hidden="true"/>
       <div><strong>INCOME TAX DEPARTMENT</strong><span>GOVT. OF INDIA</span></div>
      </div>
-     <span className="cg-site-ngo-navy-tag">SECTION 8 COMPANY / TRUST</span>
+     <span className="cg-site-ngo-navy-tag">FOUNDATION RECORD</span>
     </div>
     <div className="cg-site-ngo-navy-pan-body">
      <span className="cg-site-ngo-navy-label">PERMANENT ACCOUNT NUMBER</span>
@@ -158,7 +158,7 @@ export async function CmsNgoChildRoute({section}:{section:string}){
     </div>
     <div className="cg-site-ngo-navy-pan-foot">
      <span>{words(fact.verifiedAsOf)?"Source Reviewed: "+words(fact.verifiedAsOf):"Official Foundation Record"}</span>
-     <span className="cg-site-ngo-navy-valid"><CheckCircle2 size={13} aria-hidden="true"/> Verified Valid</span>
+     <span className="cg-site-ngo-navy-valid"><CheckCircle2 size={13} aria-hidden="true"/> Published record</span>
     </div>
    </article>
    {hasTaxDetails&&<section className="cg-site-pan-profile cg-site-ngo-profile-card"><h2>Tax Profile Information</h2><dl className="cg-site-ngo-kv-list">
@@ -181,7 +181,7 @@ export async function CmsNgoChildRoute({section}:{section:string}){
       <h2>{words(d.title)}</h2>
       <span className="cg-site-ngo-cert-meta"><Calendar size={12} aria-hidden="true"/> Document date: {words(d.asOfDate)}</span>
      </div>
-     <span className="cg-site-ngo-active-pill">Active</span>
+     <span className="cg-site-ngo-active-pill">Published</span>
     </div>
     <div className="cg-site-ngo-cert-actions">
      <a className="cg-site-ngo-doc-btn" href={d.file!.src} download><Download size={14} aria-hidden="true"/> View Document</a>
@@ -198,7 +198,7 @@ export async function CmsNgoChildRoute({section}:{section:string}){
  return <CmsPublicShell navigation={navigation} siteFooter={footer}>
   <div className="cg-site-ngo-layout">
    <aside className="cg-site-ngo-sidebar">
-    <CmsNgoSidebar page={result.page} selected={key}/>
+    <CmsNgoSidebar page={result.page} selected={key} navigation={navigation}/>
    </aside>
    {info}
   </div>
