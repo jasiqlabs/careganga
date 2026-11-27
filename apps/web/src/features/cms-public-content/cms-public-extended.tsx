@@ -1,5 +1,16 @@
 import Link from "next/link";
 import {Suspense,type ReactNode} from "react";
+import {
+  CheckCircle2,
+  ShieldCheck,
+  Award,
+  CreditCard,
+  Calendar,
+  Clock,
+  Landmark,
+  FileText,
+  Download
+} from "lucide-react";
 import type {PublicCmsPage,PublicCmsSection} from "./cms-public-page";
 import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsGalleryGridClient,type CmsMediaType} from "./cms-gallery-grid-client";
@@ -97,37 +108,62 @@ export function CmsCompliance({section,assets}:{
   const document=assets.find(a=>a.order===i&&safeDocument(a));
   return document?[{record,document}]:[];
  }):[];
- return <section className="cg-site-content cg-site-legal">
-  <p className="cg-site-eyebrow">Registration &amp; public disclosures</p>
-  <h1>{text(f.heading)}</h1>
-  {supported&&text(f.badgeText)&&<span className="cg-site-legal-badge">
-   {text(f.badgeText)}</span>}
-  {text(f.subtitle)&&<h2 className="cg-site-legal-subtitle">{text(f.subtitle)}</h2>}
-  <p>{text(f.summary)}</p>
+ return <section className="cg-site-content cg-site-legal cg-site-ngo-child">
+  <nav className="cg-site-ngo-child-breadcrumb" aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true"> › </span><span>NGO Information</span><span aria-hidden="true"> › </span><span>Legal &amp; Registration</span><span aria-hidden="true"> › </span><span aria-current="page">80G Tax Benefit</span></nav>
+  <div className="cg-site-ngo-heading-row">
+   <h1>{text(f.heading)||"80G TAX BENEFIT"}</h1>
+   {supported&&<span className="cg-site-ngo-verified-pill"><CheckCircle2 size={14} aria-hidden="true"/> {text(f.badgeText)||"VERIFIED / ACTIVE"}</span>}
+  </div>
+  {text(f.subtitle)&&<h2 className="cg-site-legal-subtitle cg-site-ngo-orange-sub">{text(f.subtitle)}</h2>}
+  <p className="cg-site-ngo-lead">{text(f.summary)}</p>
+  <div className="cg-site-ngo-cert-split">
+   <div className="cg-site-ngo-navy-brand">
+    <div className="cg-site-ngo-navy-emblem"><ShieldCheck size={28} aria-hidden="true"/></div>
+    <strong>CareGanga Foundation</strong>
+    <span>{supported?"Eligible Charitable Organisation":"Foundation disclosure"}</span>
+   </div>
+   <dl className="cg-site-ngo-kv-list cg-site-ngo-kv-card">
+    <div>
+     <dt><ShieldCheck size={15} aria-hidden="true"/> 80G Status</dt>
+     <dd><span className={supported?"cg-site-ngo-status-active":"cg-site-ngo-status-pending"}>{supported?"● Active":"Not verified"}</span></dd>
+    </div>
+    {([
+     ["Approval / Registration No.",f.approvalNumber||f.registrationNumber,Award],
+     ["PAN",f.pan,CreditCard],
+     ["Valid From",f.validFrom,Calendar],
+     ["Validity",f.validUntil,Clock],
+     ["Issuing Authority",f.issuer,Landmark],
+     ["Source",f.source,FileText],
+     ["Reviewed On",text(f.source)?f.verifiedAsOf:"",Calendar]
+    ] as [string,unknown,typeof Award][]).filter(([,v])=>!!text(v)).map(([key,value,Icon])=><div key={key}>
+     <dt><Icon size={15} aria-hidden="true"/> {key}</dt><dd>{text(value)}</dd>
+    </div>)}
+   </dl>
+  </div>
   <p className="cg-site-legal-status">{supported?
    "Document-supported Foundation declaration":"Not currently verified — no tax eligibility is promised"}</p>
-  {([f.issuer,f.pan,f.registrationNumber,f.approvalNumber,f.validFrom,f.validUntil,f.source].some(v=>!!text(v)))&&<dl className="cg-site-legal-data">
-   {([["Issuing authority",f.issuer],["PAN",f.pan],["Registration",f.registrationNumber],
-    ["Approval reference",f.approvalNumber],["Valid from",f.validFrom],
-    ["Valid until",f.validUntil],["Source",f.source],
-    ["Reviewed on",text(f.source)?f.verifiedAsOf:""]] as [string,unknown][])
-    .filter(([,v])=>!!text(v)).map(([key,value])=><div key={key}>
-     <dt>{key}</dt><dd>{text(value)}</dd></div>)}
-  </dl>}
-  {documents.length>0&&<section aria-label="Published original reports">
-   <h2>{supported?"Verified source documents and annual reports":"Published disclosures and annual reports"}</h2>
-   <div className="cg-site-impact-grid">{documents.map(({record,document},i)=>{
+  {documents.length>0&&<section aria-label="Published original reports" style={{marginTop:"1.25rem"}}>
+   <h2 style={{fontSize:"1.1rem",marginBottom:"0.75rem"}}>{supported?"Verified source documents and annual reports":"Published disclosures and annual reports"}</h2>
+   <div className="cg-site-ngo-cert-grid">{documents.map(({record,document},i)=>{
     if(!document)return null;
-    return <article key={i} className="cg-site-impact-card">
-     <p className="cg-site-eyebrow">{text(record.type).replaceAll("_"," ")}</p>
-     <h3>{text(record.title)}</h3><p>Document date: {text(record.asOfDate)}</p>
-     <a href={document.src} download>View approved source document</a>
+    return <article key={i} className="cg-site-ngo-cert-card">
+     <div className="cg-site-ngo-cert-head">
+      <div className="cg-site-ngo-cert-icon"><FileText size={18} aria-hidden="true"/></div>
+      <div className="cg-site-ngo-cert-title-wrap">
+       <h3>{text(record.title)}</h3>
+       <span className="cg-site-ngo-cert-meta">{text(record.type).replaceAll("_"," ")} · {text(record.asOfDate)}</span>
+      </div>
+      <span className="cg-site-ngo-active-pill">Published</span>
+     </div>
+     <div className="cg-site-ngo-cert-actions">
+      <a className="cg-site-ngo-doc-btn" href={document.src} download><Download size={14} aria-hidden="true"/> View approved source document</a>
+     </div>
     </article>;
    })}</div>
   </section>}
   {supported&&proof?.src&&(f.documents===undefined||Array.isArray(f.documents)&&f.documents.length===0)&&
-   <a className="cg-site-action" href={proof.src} download>
-    View approved supporting document</a>}
+   <div style={{marginTop:"1rem"}}><a className="cg-site-ngo-doc-btn" href={proof.src} download>
+    <Download size={14} aria-hidden="true"/> View approved supporting document</a></div>}
   {text(f.importantNote)&&<aside className="cg-site-legal-important">
    <strong>Important</strong><p>{text(f.importantNote)}</p>
   </aside>}

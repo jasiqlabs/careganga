@@ -1,9 +1,28 @@
 import Link from "next/link";
 import {notFound} from "next/navigation";
 import type {Metadata} from "next";
+import {
+  Award,
+  CreditCard,
+  FileCheck,
+  BarChart2,
+  IndianRupee,
+  ShieldCheck,
+  FolderOpen,
+  Users,
+  Megaphone,
+  CheckCircle2,
+  FileText,
+  Download,
+  Landmark,
+  Calendar,
+  ChevronDown,
+  Heart,
+  User
+} from "lucide-react";
 import type {PublicCmsPage} from "./cms-public-page";
 import {CmsPublicShell} from "./cms-public-page";
-import {publishedCmsNavigation,publishedCmsPage,publishedPublicIntro} from "./cms-public-source";
+import {publishedCmsNavigation,publishedCmsPage,publishedPublicIntro,type PublicCmsNavigation} from "./cms-public-source";
 import {CmsNgoAnnualReports,type ApprovedAnnualReport} from "./cms-ngo-annual-client";
 import {UnavailablePage} from "../../shared/unavailable-page";
 
@@ -44,35 +63,38 @@ const canShow=(page:PublicCmsPage,key:Child)=>{
  * scans are current vetted CG19 placements, not cloned master records.
  * Financial report files are separately reviewed public publications; private CG09/CG20 records never enter this page.
  */
-export function CmsNgoSidebar({page,selected="80g"}:{
- page:PublicCmsPage;selected?:Child|"80g"}){
+export function CmsNgoSidebar({page,selected="80g",navigation=null}:{
+ page:PublicCmsPage;selected?:Child|"80g";navigation?:PublicCmsNavigation|null}){
  const menu=[
-  {key:"80g",label:"80G Registration",href:"/ngo-information"},
-  {key:"pan-details",label:"PAN Details",href:"/ngo-information/pan-details"},
+  {key:"80g",label:"80G Registration",href:"/ngo-information",icon:Award},
+  {key:"pan-details",label:"PAN Details",href:"/ngo-information/pan-details",icon:CreditCard},
   {key:"registration-certificate",label:"Registration Certificate",
-   href:"/ngo-information/registration-certificate"},
+   href:"/ngo-information/registration-certificate",icon:FileCheck},
   {key:"annual-reports",label:"Annual Reports",
-   href:"/ngo-information/annual-reports"},
-  {key:"financial-reports",label:"Financial Reports",href:"/ngo-information/financial-reports"},
-  {key:"transparency",label:"Transparency & Compliance"},
-  {key:"policies",label:"Policies & Documents"}
+   href:"/ngo-information/annual-reports",icon:BarChart2},
+  {key:"financial-reports",label:"Financial Reports",href:"/ngo-information/financial-reports",icon:IndianRupee},
+  {key:"transparency",label:"Transparency & Compliance",icon:ShieldCheck},
+  {key:"policies",label:"Policies & Documents",icon:FolderOpen}
  ];
- return <nav aria-label="Original NGO Information sections">
-  <p className="cg-site-ngo-breadcrumb"><Link href="/">Home</Link> / NGO Information</p>
-  <h2>NGO Information</h2>
+ return <nav aria-label="Original NGO Information sections" className="cg-site-ngo-nav">
   {menu.map(item=>{
+   const Icon=item.icon;
    const valid=item.key==="80g"||
     (allowed.has(item.key as Child)&&canShow(page,item.key as Child));
    return valid&&item.href?<Link className={
-     item.key===selected?"cg-site-ngo-selected":undefined}
+     item.key===selected?"cg-site-ngo-selected":"cg-site-ngo-item"}
     aria-current={item.key===selected?"page":undefined}
-    href={item.href} key={item.key}>{item.label}</Link>:
-    <span className="cg-site-unavailable" aria-disabled="true" key={item.key}
-     title="No current approved public original is available">{item.label}<small>Not published yet</small></span>;
+    href={item.href} key={item.key}><Icon size={16} aria-hidden="true" style={{flexShrink:0}}/> <span className="cg-site-ngo-item-label">{item.label}</span></Link>:
+    <span className="cg-site-unavailable cg-site-ngo-item" aria-disabled="true" key={item.key}
+     title="No current approved public original is available"><Icon size={16} aria-hidden="true" style={{flexShrink:0}}/> <span className="cg-site-ngo-item-label">{item.label}</span></span>;
   })}
   <div className="cg-site-ngo-secondary">
-   <Link href="/contact">Join Us — contact the Foundation</Link>
-   <Link href="/campaigns">Campaigns</Link>
+   <Link href="/contact" className="cg-site-ngo-item"><Users size={16} aria-hidden="true" style={{flexShrink:0}}/> <span className="cg-site-ngo-item-label">Join Us</span><ChevronDown size={14} aria-hidden="true" style={{marginLeft:"auto",flexShrink:0,color:"#64748B"}}/></Link>
+   {navigation?.publishedRoutes?.some(r=>r.path==="/campaigns")&&<Link href="/campaigns" className="cg-site-ngo-item"><Megaphone size={16} aria-hidden="true" style={{flexShrink:0}}/> <span className="cg-site-ngo-item-label">Campaigns</span><ChevronDown size={14} aria-hidden="true" style={{marginLeft:"auto",flexShrink:0,color:"#64748B"}}/></Link>}
+  </div>
+  <div className="cg-site-ngo-cta-stack">
+   {navigation?.publishedRoutes?.some(r=>r.path==="/donate")?<Link href="/donate" className="cg-site-ngo-cta-donate"><Heart size={15} aria-hidden="true"/> DONATE NOW</Link>:<Link href="/contact" className="cg-site-ngo-cta-donate"><Heart size={15} aria-hidden="true"/> CONTACT TO DONATE</Link>}
+   {navigation?.login.visible&&navigation.login.path==="/admin/login"&&<Link href={navigation.login.path} className="cg-site-ngo-cta-login"><User size={15} aria-hidden="true"/> STAFF LOGIN</Link>}
   </div>
  </nav>;
 }
@@ -112,27 +134,58 @@ export async function CmsNgoChildRoute({section}:{section:string}){
  })):[];
  const hasTaxDetails=[fact.registrationNumber,fact.issuer,fact.verifiedAsOf].some(v=>words(v).trim());
  const info=<section className="cg-site-content cg-site-legal cg-site-ngo-child" data-ngo-section={key}>
-  <nav className="cg-site-ngo-child-breadcrumb" aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true"> / </span><Link href="/ngo-information">NGO Information</Link><span aria-hidden="true"> / </span><span aria-current="page">{chapter[key]}</span></nav>
-  <p className="cg-site-eyebrow">{intro?.eyebrow||"Foundation official information"}</p>
-  <h1>{intro?.heading??chapter[key]}</h1>
-  {intro?.body&&<p>{intro.body}</p>}
+  <nav className="cg-site-ngo-child-breadcrumb" aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true"> › </span><Link href="/ngo-information">NGO Information</Link><span aria-hidden="true"> › </span><span>Legal &amp; Registration</span><span aria-hidden="true"> › </span><span aria-current="page">{chapter[key]}</span></nav>
+  <div className="cg-site-ngo-heading-row">
+   <h1>{intro?.heading??chapter[key]}</h1>
+   {fact.verification==="VERIFIED"&&<span className="cg-site-ngo-verified-pill"><CheckCircle2 size={14} aria-hidden="true"/> VERIFIED / ACTIVE</span>}
+  </div>
+  {intro?.body&&<p className="cg-site-ngo-lead">{intro.body}</p>}
   <p className="cg-site-provenance">Current Foundation-published records only.
    Check the relevant issuing authority for legal or tax applicability.</p>
-  {key==="pan-details"&&<div className="cg-site-pan-grid">
-   <article className="cg-site-pan-card"><p>CareGanga Foundation</p><dl><dt>Published Permanent Account Number</dt><dd>{words(fact.pan)}</dd></dl>{words(fact.source)&&<p className="cg-site-pan-source">Source: {words(fact.source)}</p>}</article>
-   {hasTaxDetails&&<section className="cg-site-pan-profile"><h2>Published tax profile information</h2><dl className="cg-site-legal-data">
-   {words(fact.registrationNumber)&&<div><dt>Foundation registration</dt>
+  {key==="pan-details"&&<div className="cg-site-pan-grid cg-site-ngo-pan-split">
+   <article className="cg-site-ngo-navy-pan">
+    <div className="cg-site-ngo-navy-pan-top">
+     <div className="cg-site-ngo-navy-pan-issuer">
+      <Landmark size={18} aria-hidden="true"/>
+      <div><strong>INCOME TAX DEPARTMENT</strong><span>GOVT. OF INDIA</span></div>
+     </div>
+     <span className="cg-site-ngo-navy-tag">FOUNDATION RECORD</span>
+    </div>
+    <div className="cg-site-ngo-navy-pan-body">
+     <span className="cg-site-ngo-navy-label">PERMANENT ACCOUNT NUMBER</span>
+     <strong className="cg-site-ngo-navy-number">{words(fact.pan)}</strong>
+     <span className="cg-site-ngo-navy-entity">CAREGANGA FOUNDATION</span>
+    </div>
+    <div className="cg-site-ngo-navy-pan-foot">
+     <span>{words(fact.verifiedAsOf)?"Source Reviewed: "+words(fact.verifiedAsOf):"Official Foundation Record"}</span>
+     <span className="cg-site-ngo-navy-valid"><CheckCircle2 size={13} aria-hidden="true"/> Published record</span>
+    </div>
+   </article>
+   {hasTaxDetails&&<section className="cg-site-pan-profile cg-site-ngo-profile-card"><h2>Tax Profile Information</h2><dl className="cg-site-ngo-kv-list">
+   <div><dt>Legal Entity Name</dt><dd>CAREGANGA FOUNDATION</dd></div>
+   {words(fact.registrationNumber)&&<div><dt>Foundation Registration</dt>
     <dd>{words(fact.registrationNumber)}</dd></div>}
-   {words(fact.issuer)&&<div><dt>Issuing authority</dt>
+   {words(fact.issuer)&&<div><dt>Tax Jurisdiction / Authority</dt>
     <dd>{words(fact.issuer)}</dd></div>}
-   {words(fact.verifiedAsOf)&&<div><dt>Source reviewed on</dt>
+   {words(fact.source)&&<div><dt>Published Source</dt>
+    <dd>{words(fact.source)}</dd></div>}
+   {words(fact.verifiedAsOf)&&<div><dt>Source Reviewed On</dt>
     <dd>{words(fact.verifiedAsOf)}</dd></div>}
   </dl></section>}
   </div>}
-  {key==="registration-certificate"&&<div className="cg-site-impact-grid cg-site-certificate-grid">
-   {matches.map((d,i)=><article className="cg-site-impact-card" key={i}>
-    <h2>{words(d.title)}</h2><p className="cg-site-certificate-date">Document date: <strong>{words(d.asOfDate)}</strong></p>
-    <a href={d.file!.src} download>View current approved certificate</a>
+  {key==="registration-certificate"&&<div className="cg-site-impact-grid cg-site-certificate-grid cg-site-ngo-cert-grid">
+   {matches.map((d,i)=><article className="cg-site-ngo-cert-card" key={i}>
+    <div className="cg-site-ngo-cert-head">
+     <div className="cg-site-ngo-cert-icon"><FileText size={18} aria-hidden="true"/></div>
+     <div className="cg-site-ngo-cert-title-wrap">
+      <h2>{words(d.title)}</h2>
+      <span className="cg-site-ngo-cert-meta"><Calendar size={12} aria-hidden="true"/> Document date: {words(d.asOfDate)}</span>
+     </div>
+     <span className="cg-site-ngo-active-pill">Published</span>
+    </div>
+    <div className="cg-site-ngo-cert-actions">
+     <a className="cg-site-ngo-doc-btn" href={d.file!.src} download><Download size={14} aria-hidden="true"/> View Document</a>
+    </div>
    </article>)}
   </div>}
   {key==="annual-reports"&&<CmsNgoAnnualReports reports={annual}/>}
@@ -145,7 +198,7 @@ export async function CmsNgoChildRoute({section}:{section:string}){
  return <CmsPublicShell navigation={navigation} siteFooter={footer}>
   <div className="cg-site-ngo-layout">
    <aside className="cg-site-ngo-sidebar">
-    <CmsNgoSidebar page={result.page} selected={key}/>
+    <CmsNgoSidebar page={result.page} selected={key} navigation={navigation}/>
    </aside>
    {info}
   </div>

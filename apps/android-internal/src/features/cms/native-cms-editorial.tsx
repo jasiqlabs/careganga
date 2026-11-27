@@ -1,10 +1,12 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View}
+import {ActivityIndicator,Alert,KeyboardAvoidingView,Platform,Pressable,ScrollView,StyleSheet,Text,TextInput,useWindowDimensions,View}
  from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeCustomDropdown} from "../../shared/native-custom-dropdown";
+import {IconArrowLeft,IconCheckCircle,IconClock,IconFileText,IconRefresh,IconSearch,IconSliders} from "../dashboard/dashboard-icons";
 import {NativeCmsMediaUploader} from "./native-cms-media-uploader";
 import {NativeCmsReviewer} from "./native-cms-reviewer";
 type Page={pageRef:string;kind:string;slug:string;title:string;
@@ -262,6 +264,8 @@ function CampaignSelection({sections,choices,error,locked,refresh,onChange}:{sec
 }
 export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  onExpired}:Props){
+ const {width}=useWindowDimensions();
+ const kpiWidth=width<360?"100%":width>=768?"23%":"47%";
  const [pages,setPages]=useState<Page[]>([]),[projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
  const [teamChoices,setTeamChoices]=useState<TeamSource[]>([]),[teamError,setTeamError]=useState("");
  const refreshTeam=()=>{setTeamError("");void api<{sources:TeamSource[]}>(token,"team-sources").then(v=>setTeamChoices(v.sources)).catch(e=>{setTeamChoices([]);setTeamError("Current consented staff sources require HR viewing permission.");if(e?.status===401)onExpired();});};
@@ -283,6 +287,8 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  const [schedule,setSchedule]=useState("");
  const [pending,setPending]=useState<Command|null>(null);
  const [mediaActive,setMediaActive]=useState(false);
+ const [search,setSearch]=useState("");
+ const [mobileStep,setMobileStep]=useState<"BASIC"|"SECTIONS"|"MEDIA">("BASIC");
  const turn=useRef(0);
  const fail=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
@@ -402,40 +408,93 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  };
  const locked=!canManage||busy||uncertain;
  const original=selected?.pageRef??"";
- return <SafeAreaView style={styles.page}>
+ return <SafeAreaView style={styles.page} edges={["top","bottom"]}>
+  <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==="ios"?"padding":undefined}>
   <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-   <Text accessibilityRole="header" style={styles.title}>Foundation Website Content</Text>
-   <Text style={styles.note}>Original CG18 pages and revisions. Drafts are not
-    public until independent approval and actual publication.</Text>
-   {button("Back to dashboard",()=>{
-    if(pending||uncertain||mediaActive){
-     Alert.alert("Original CMS action not confirmed",
-      "The last request may have committed. Leaving now loses its "+
-      "same-key retry on this screen. Check or retry the original request first.",[
-       {text:"Keep checking",style:"cancel"},
-       {text:"Leave without confirmation",onPress:onExit}
-      ]);
-    }else onExit();
-   },busy||loading)}
-   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-   {!!notice&&<Text accessibilityRole="alert" style={styles.note}>{notice}</Text>}
-   {loading&&<ActivityIndicator accessibilityLabel="Loading original CMS pages"/>}
+   {/* Standardized Mobile App Header */}
+   <View style={styles.headerBar}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Back to dashboard"
+     disabled={busy||loading}
+     onPress={()=>{
+      if(pending||uncertain||mediaActive){
+       Alert.alert("Original CMS action not confirmed",
+        "The last request may have committed. Leaving now loses its "+
+        "same-key retry on this screen. Check or retry the original request first.",[
+         {text:"Keep checking",style:"cancel"},
+         {text:"Leave without confirmation",onPress:onExit}
+        ]);
+      }else onExit();
+     }}
+     style={[styles.backBtn,(busy||loading)&&styles.disabled]}>
+     <IconArrowLeft size={18} color="#334155"/>
+    </Pressable>
+    <View style={styles.headerTextWrap}>
+     <Text accessibilityRole="header" style={styles.title}>Website CMS</Text>
+     <Text style={styles.headerSub}>Foundation Editorial &amp; Controls</Text>
+    </View>
+    <Pressable accessibilityRole="button" accessibilityLabel="Refresh original CMS pages"
+     disabled={busy}
+     onPress={()=>{
+      setLoading(true);setError("");
+      // A list GET is not proof that an earlier uncertain write was ours.
+      // Preserve the original request key until a same-key reply confirms it.
+      void list().catch(readFailure).finally(()=>setLoading(false));
+     }}
+     style={[styles.refreshBtn,busy&&styles.disabled]}>
+     <IconRefresh size={18} color="#4F46E5"/>
+    </Pressable>
+   </View>
+   {!!error&&<Text accessibilityRole="alert" style={styles.inlineError}>{error}</Text>}
+   {!!notice&&<Text accessibilityRole="alert" style={styles.noticeBanner}>{notice}</Text>}
+   {loading&&<ActivityIndicator accessibilityLabel="Loading original CMS pages" color="#4F46E5"/>}
    {canReview&&<NativeCmsReviewer token={token} onExpired={onExpired} onDone={list}/>}
-   {uncertain&&<Text style={styles.error}>The last save or publication may
+   {uncertain&&<Text style={styles.inlineError}>The last save or publication may
     have committed. Check the original page before trying another request.</Text>}
-   {button("Refresh original CMS pages",()=>{
-    setLoading(true);setError("");
-    // A list GET is not proof that an earlier uncertain write was ours.
-    // Preserve the original request key until a same-key reply confirms it.
-    void list().catch(readFailure).finally(()=>setLoading(false));
-   },busy)}
    {pending&&button("Retry same original request",()=>{
     setUncertain(false);void execute(pending);
    },busy)}
+   {/* Mobile Top 4 KPI Metrics with Pastel Vector Icon Badges */}
+   <View style={styles.kpiRow}>
+    <View style={[styles.kpiCard,{minWidth:kpiWidth}]}>
+     <View style={styles.kpiTop}>
+      <View style={[styles.kpiIconBadge,{backgroundColor:"#EFF6FF"}]}><IconFileText size={16} color="#2563EB"/></View>
+      <Text style={styles.kpiLabel}>Loaded Pages</Text>
+     </View>
+     <Text style={styles.kpiValue}>{pages.length}</Text>
+    </View>
+    <View style={[styles.kpiCard,{minWidth:kpiWidth}]}>
+     <View style={styles.kpiTop}>
+      <View style={[styles.kpiIconBadge,{backgroundColor:"#ECFDF5"}]}><IconCheckCircle size={16} color="#059669"/></View>
+      <Text style={styles.kpiLabel}>Published</Text>
+     </View>
+     <Text style={[styles.kpiValue,{color:"#059669"}]}>{pages.filter(p=>p.publicStatus==="EFFECTIVE").length}</Text>
+    </View>
+    <View style={[styles.kpiCard,{minWidth:kpiWidth}]}>
+     <View style={styles.kpiTop}>
+      <View style={[styles.kpiIconBadge,{backgroundColor:"#FFF7ED"}]}><IconSliders size={16} color="#D97706"/></View>
+      <Text style={styles.kpiLabel}>Drafts</Text>
+     </View>
+     <Text style={[styles.kpiValue,{color:"#D97706"}]}>{pages.filter(p=>p.draftStatus==="DRAFT").length}</Text>
+    </View>
+    <View style={[styles.kpiCard,{minWidth:kpiWidth}]}>
+     <View style={styles.kpiTop}>
+      <View style={[styles.kpiIconBadge,{backgroundColor:"#FAF5FF"}]}><IconClock size={16} color="#9333EA"/></View>
+      <Text style={styles.kpiLabel}>In Review</Text>
+     </View>
+     <Text style={[styles.kpiValue,{color:"#9333EA"}]}>{pages.filter(p=>p.draftStatus==="SUBMITTED").length}</Text>
+    </View>
+   </View>
+
+   {/* Search Filter with Inside Vector Icon */}
+   <View style={styles.searchBar}>
+    <IconSearch size={18} color="#94A3B8"/>
+    <TextInput style={styles.searchInput} placeholder="Search pages by title or slug..." placeholderTextColor="#94A3B8" value={search} onChangeText={setSearch}/>
+   </View>
+
    <Text style={styles.heading}>Managed public pages</Text>
    {!pages.length&&!loading&&<Text style={styles.note}>
     No original Foundation editorial pages recorded.</Text>}
-   {pages.map(p=><View key={p.pageRef}>
+   {pages.filter(p=>!search.trim()||p.title.toLowerCase().includes(search.toLowerCase())||p.slug.toLowerCase().includes(search.toLowerCase())).map(p=><View key={p.pageRef} style={styles.pageCardRow}>
     {button(p.title+" · "+title(p.kind)+" · Draft "+title(p.draftStatus)+
      " · Public "+title(p.publicStatus??"Not published"),()=>{
       if(busy)return;
@@ -450,46 +509,77 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     <Text style={styles.heading}>Create an unpublished original CMS draft</Text>
     <Text style={styles.note}>Uses the original Web CMS page kinds and strict
      server template validation. A new draft is never automatically public.</Text>
-    <Text style={styles.heading}>Existing page type</Text>
-    <View style={styles.row}>{newKinds.map(k=>
-     <View key={k}>{button((newPage.kind===k?"✓ ":"")+title(k),()=>{
-      setNewPage(initialKind(k));setError("");},busy||uncertain)}</View>)}</View>
-    {newPage.kind==="POLICY"&&<View style={styles.panel}>
-     <Text style={styles.heading}>Existing legal-page type</Text>
-     {legalPages.map(([slug,heading])=>button(
-      (newPage.slug===slug?"✓ ":"")+heading,()=>changeNew({
-       slug,title:heading,sections:newPage.sections.map(x=>({
-        ...x,fields:{...x.fields,heading}}))}),busy||uncertain))}
-    </View>}
-    <EditField name="Public page slug" value={newPage.slug} locked={locked}
-     onChange={v=>changeNew({slug:String(v).trim().toLowerCase()})}/>
-    <EditField name="Page title" value={newPage.title} locked={locked}
-     onChange={v=>changeNew({title:String(v)})}/>
-    <EditField name="Search title" value={newPage.seoTitle} locked={locked}
-     onChange={v=>changeNew({seoTitle:String(v)})}/>
-    <EditField name="Search description" value={newPage.seoDescription}
-     locked={locked} onChange={v=>changeNew({seoDescription:String(v)})}/>
-    {newPage.kind==="HOME"&&newPage.navigation&&
-     <EditField name="Approved original navigation choices" value={newPage.navigation}
-      locked={locked} onChange={v=>changeNew({navigation:v as Navigation})}/>}
-    {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<TeamSelection sections={newPage.sections} choices={teamChoices} error={teamError} locked={locked} refresh={refreshTeam} onChange={sections=>changeNew({sections})}/>}
-    {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<ProjectSelection sections={newPage.sections} choices={projectChoices} error={projectError} locked={locked} refresh={refreshProjects} onChange={sections=>changeNew({sections})}/>}
-    {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<CampaignSelection sections={newPage.sections} choices={campaignChoices} error={campaignError} locked={locked} refresh={refreshCampaigns} onChange={sections=>changeNew({sections})}/>}
-    {newPage.kind==="ARTICLE"&&<EventSelection sections={newPage.sections} choices={eventChoices} error={eventError} locked={locked} refresh={refreshEvents} onSelect={v=>changeNew({slug:v.slug.slice(0,70),title:v.title,seoTitle:(v.title+" | CareGanga Foundation").slice(0,180),seoDescription:v.summary.slice(0,300),assets:[],sections:eventFields(v)})}/>}
-    {newPage.sections.map((sec,i)=>["PROJECT_TEASER","CAMPAIGN_TEASER","TEAM"].includes(sec.kind)?null:<View key={sec.kind+"-"+i} style={styles.panel}>
-     <Text style={styles.heading}>{title(sec.kind)}</Text>
-     {sec.kind==="IMPACT_GROUP"&&sec.fields.group==="STATS"&&canManage&&button("Use verified beneficiary impact",()=>void api<{fields:Record<string,unknown>|null}>(token,"beneficiary-impact-source").then(v=>{if(!v.fields){setError("No publishable beneficiary aggregate for the last completed year.");return;}setNewPage(old=>old?{...old,sections:old.sections.map(x=>x.order===sec.order&&x.kind===sec.kind?{...x,fields:v.fields!}:x)}:null);}).catch(()=>setError("Current role or source cannot provide beneficiary impact.")),locked)}
-     {typeof sec.fields.sourceEventRef==="string"?<><Text>{String(sec.fields.heading)} · {String(sec.fields.category)}</Text><Text>{String(sec.fields.body)}</Text></>:<EditField name="Source content" value={sec.fields} locked={locked}
-      sectionKind={sec.kind}
-      impactGroup={typeof sec.fields.group==="string"?sec.fields.group:""}
-      onChange={v=>setNewPage(old=>old?{...old,
-       sections:old.sections.map((x,j)=>i===j?{...x,
-        fields:v as Record<string,unknown>}:x)}:null)}/>}
-    </View>)}
-    {button("Create original unpublished page draft",create,
-     locked||newPage.title.trim().length<(newPage.sections.some(s=>typeof s.fields.sourceEventRef==="string")?2:3))}
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stepperRow}>
+     {([["BASIC","1. Type & SEO"],["SECTIONS","2. Content"],["MEDIA","3. Review & Save"]] as const).map(([k,lbl])=>(
+      <Pressable key={k} accessibilityRole="tab" accessibilityState={{selected:mobileStep===k}}
+       onPress={()=>setMobileStep(k)}
+       style={[styles.stepChip,mobileStep===k&&styles.stepChipActive]}>
+       <Text style={[styles.stepChipText,mobileStep===k&&styles.stepChipTextActive]}>{lbl}</Text>
+      </Pressable>
+     ))}
+    </ScrollView>
+    {mobileStep==="BASIC"&&<>
+     <NativeCustomDropdown
+      label="Existing page type"
+      value={newPage.kind}
+      disabled={busy||uncertain}
+      searchable
+      onChange={val=>{setNewPage(initialKind(val as NewKind));setError("");}}
+      options={newKinds.map(k=>({value:k,label:title(k)}))}
+     />
+     {newPage.kind==="POLICY"&&<NativeCustomDropdown
+      label="Existing legal-page type"
+      value={newPage.slug}
+      disabled={busy||uncertain}
+      onChange={slug=>{
+       const heading=legalPages.find(p=>p[0]===slug)?.[1]??"";
+       changeNew({
+        slug,title:heading,sections:newPage.sections.map(x=>({
+         ...x,fields:{...x.fields,heading}}))});
+      }}
+      options={legalPages.map(([slug,heading])=>({value:slug,label:heading}))}
+     />}
+     <EditField name="Public page slug" value={newPage.slug} locked={locked}
+      onChange={v=>changeNew({slug:String(v).trim().toLowerCase()})}/>
+     <EditField name="Page title" value={newPage.title} locked={locked}
+      onChange={v=>changeNew({title:String(v)})}/>
+     <EditField name="Search title" value={newPage.seoTitle} locked={locked}
+      onChange={v=>changeNew({seoTitle:String(v)})}/>
+     <EditField name="Search description" value={newPage.seoDescription}
+      locked={locked} onChange={v=>changeNew({seoDescription:String(v)})}/>
+     {button("Next: Content →",()=>setMobileStep("SECTIONS"),false)}
+    </>}
+    {mobileStep==="SECTIONS"&&<>
+     {newPage.kind==="HOME"&&newPage.navigation&&
+      <EditField name="Approved original navigation choices" value={newPage.navigation}
+       locked={locked} onChange={v=>changeNew({navigation:v as Navigation})}/>}
+     {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<TeamSelection sections={newPage.sections} choices={teamChoices} error={teamError} locked={locked} refresh={refreshTeam} onChange={sections=>changeNew({sections})}/>}
+     {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<ProjectSelection sections={newPage.sections} choices={projectChoices} error={projectError} locked={locked} refresh={refreshProjects} onChange={sections=>changeNew({sections})}/>}
+     {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<CampaignSelection sections={newPage.sections} choices={campaignChoices} error={campaignError} locked={locked} refresh={refreshCampaigns} onChange={sections=>changeNew({sections})}/>}
+     {newPage.kind==="ARTICLE"&&<EventSelection sections={newPage.sections} choices={eventChoices} error={eventError} locked={locked} refresh={refreshEvents} onSelect={v=>changeNew({slug:v.slug.slice(0,70),title:v.title,seoTitle:(v.title+" | CareGanga Foundation").slice(0,180),seoDescription:v.summary.slice(0,300),assets:[],sections:eventFields(v)})}/>}
+     {newPage.sections.map((sec,i)=>["PROJECT_TEASER","CAMPAIGN_TEASER","TEAM"].includes(sec.kind)?null:<View key={sec.kind+"-"+i} style={styles.panel}>
+      <Text style={styles.heading}>{title(sec.kind)}</Text>
+      {sec.kind==="IMPACT_GROUP"&&sec.fields.group==="STATS"&&canManage&&button("Use verified beneficiary impact",()=>void api<{fields:Record<string,unknown>|null}>(token,"beneficiary-impact-source").then(v=>{if(!v.fields){setError("No publishable beneficiary aggregate for the last completed year.");return;}setNewPage(old=>old?{...old,sections:old.sections.map(x=>x.order===sec.order&&x.kind===sec.kind?{...x,fields:v.fields!}:x)}:null);}).catch(()=>setError("Current role or source cannot provide beneficiary impact.")),locked)}
+      {typeof sec.fields.sourceEventRef==="string"?<><Text>{String(sec.fields.heading)} · {String(sec.fields.category)}</Text><Text>{String(sec.fields.body)}</Text></>:<EditField name="Source content" value={sec.fields} locked={locked}
+       sectionKind={sec.kind}
+       impactGroup={typeof sec.fields.group==="string"?sec.fields.group:""}
+       onChange={v=>setNewPage(old=>old?{...old,
+        sections:old.sections.map((x,j)=>i===j?{...x,
+         fields:v as Record<string,unknown>}:x)}:null)}/>}
+     </View>)}
+     <View style={styles.row}>
+      {button("← Basic",()=>setMobileStep("BASIC"),false)}
+      {button("Next: Review & Save →",()=>setMobileStep("MEDIA"),false)}
+     </View>
+    </>}
+    {mobileStep==="MEDIA"&&<>
+     <Text style={styles.note}>Title: {newPage.title||"(Not set)"} · Type: {title(newPage.kind)} · Slug: /{newPage.slug}</Text>
+     {button("← Content",()=>setMobileStep("SECTIONS"),false)}
+     {button("Create original unpublished page draft",create,
+      locked||newPage.title.trim().length<(newPage.sections.some(s=>typeof s.fields.sourceEventRef==="string")?2:3))}
+    </>}
     {button("Cancel page creation",()=>{
-     setNewPage(null);setError("");},busy)}
+     setNewPage(null);setMobileStep("BASIC");setError("");},busy)}
    </View>}
    {draft&&selected&&<View style={styles.panel}>
     <Text style={styles.heading}>{draft.title}</Text>
@@ -536,6 +626,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
       assets={draft.assets} onExpired={onExpired} disabled={locked}
       onChange={assets=>change("assets",assets)}/>}
 
+    {!!error&&<Text accessibilityRole="alert" style={styles.inlineError}>⚠ {error}</Text>}
     {canManage&&button(selected.status==="DRAFT"?
      "Save original unpublished draft":"Create next unpublished revision",()=>{
      if(!draft||!selected)return;
@@ -591,23 +682,46 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
      </>}
    </View>}
   </ScrollView>
+  </KeyboardAvoidingView>
  </SafeAreaView>;
 }
 const styles=StyleSheet.create({
- page:{flex:1,backgroundColor:t.adminCanvas},
- content:{padding:15,paddingBottom:90,gap:12},
- title:{fontSize:21,fontWeight:"700",color:t.text},
- heading:{fontSize:16,fontWeight:"700",color:t.text},
- text:{fontSize:13,fontWeight:"600",color:t.text},
- note:{fontSize:13,color:t.mutedText,lineHeight:19},
- panel:{borderWidth:1,borderColor:t.border,backgroundColor:t.surface,
-  borderRadius:12,padding:11,gap:8},
- nested:{gap:8,padding:8,borderWidth:1,borderColor:t.border,borderRadius:9},
+ page:{flex:1,backgroundColor:"#F8FAFC"},
+ content:{padding:16,paddingBottom:90,gap:12},
+ title:{fontSize:20,fontWeight:"800",color:"#0F172A",letterSpacing:-0.4},
+ heading:{fontSize:14,fontWeight:"700",color:"#0F172A"},
+ text:{fontSize:13,fontWeight:"600",color:"#0F172A"},
+ note:{fontSize:13,fontWeight:"500",color:"#64748B",lineHeight:18},
+ panel:{borderWidth:1,borderColor:"#E2E8F0",backgroundColor:"#FFFFFF",
+  borderRadius:12,padding:14,gap:10,elevation:2,shadowColor:"#0F172A",shadowOpacity:0.04,shadowOffset:{width:0,height:1}},
+ nested:{gap:8,padding:10,borderWidth:1,borderColor:"#E2E8F0",borderRadius:8,backgroundColor:"#F8FAFC"},
  row:{flexDirection:"row",flexWrap:"wrap",gap:6},
  field:{gap:4},
- input:{borderWidth:1,borderColor:t.border,borderRadius:9,
-  backgroundColor:t.surface,padding:10,color:t.text,minHeight:44},
- button:{borderWidth:1,borderColor:t.border,borderRadius:9,
-  minHeight:45,padding:10,justifyContent:"center"},
- disabled:{opacity:.45},error:{fontSize:13,color:"#A52626"}
+ input:{borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,
+  backgroundColor:"#FFFFFF",paddingHorizontal:12,paddingVertical:8,color:"#0F172A",minHeight:44,fontSize:14},
+ button:{borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,
+  backgroundColor:"#FFFFFF",minHeight:44,paddingHorizontal:14,paddingVertical:10,justifyContent:"center"},
+ disabled:{opacity:.45},
+ error:{fontSize:13,color:"#DC2626",fontWeight:"600"},
+ inlineError:{fontSize:13,color:"#DC2626",backgroundColor:"#FEF2F2",borderWidth:1,borderColor:"#FCA5A5",borderRadius:8,padding:10,fontWeight:"600",marginVertical:6},
+ noticeBanner:{fontSize:13,color:"#1E40AF",backgroundColor:"#EFF6FF",borderWidth:1,borderColor:"#BFDBFE",borderRadius:8,padding:10,fontWeight:"600",marginVertical:4},
+ headerBar:{flexDirection:"row",alignItems:"center",gap:12,marginBottom:4},
+ backBtn:{width:36,height:36,borderRadius:18,backgroundColor:"#F1F5F9",alignItems:"center",justifyContent:"center",borderWidth:1,borderColor:"#E2E8F0"},
+ headerTextWrap:{flex:1},
+ headerSub:{fontSize:12,color:"#64748B",fontWeight:"500"},
+ refreshBtn:{width:44,height:44,borderRadius:22,backgroundColor:"#EEF2FF",alignItems:"center",justifyContent:"center",borderWidth:1,borderColor:"#C7D2FE"},
+ kpiRow:{flexDirection:"row",flexWrap:"wrap",gap:8},
+ kpiCard:{flex:1,minWidth:"45%",backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#E2E8F0",borderRadius:12,padding:12,elevation:2,shadowColor:"#0F172A",shadowOpacity:0.04,shadowOffset:{width:0,height:1},gap:6},
+ kpiTop:{flexDirection:"row",alignItems:"center",gap:8},
+ kpiIconBadge:{width:28,height:28,borderRadius:14,alignItems:"center",justifyContent:"center"},
+ kpiLabel:{fontSize:12,color:"#64748B",fontWeight:"600"},
+ kpiValue:{fontSize:22,fontWeight:"800",color:"#0F172A",fontVariant:["tabular-nums"]},
+ searchBar:{flexDirection:"row",alignItems:"center",gap:8,backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,paddingHorizontal:12,height:44},
+ searchInput:{flex:1,fontSize:14,color:"#0F172A",height:"100%"},
+ pageCardRow:{marginBottom:6},
+ stepperRow:{gap:8,paddingVertical:4},
+ stepChip:{paddingHorizontal:12,paddingVertical:8,borderRadius:8,backgroundColor:"#F1F5F9",borderWidth:1,borderColor:"#E2E8F0",minHeight:36,justifyContent:"center"},
+ stepChipActive:{backgroundColor:"#4F46E5",borderColor:"#4338CA"},
+ stepChipText:{fontSize:12,fontWeight:"600",color:"#334155"},
+ stepChipTextActive:{color:"#FFFFFF"}
 });

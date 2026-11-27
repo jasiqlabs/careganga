@@ -106,19 +106,33 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   if(ngoScope==="pan-details"){
    const publishedPan=text(f.pan);
    return <View style={styles.section}>
-    <Text accessibilityRole="header" style={styles.title}>PAN Details</Text>
+    <View style={styles.ngoHeadRow}>
+     <Text accessibilityRole="header" style={styles.title}>PAN DETAILS</Text>
+     {f.verification==="VERIFIED"&&<View style={styles.verifiedBadge}><Text style={styles.verifiedBadgeText}>VERIFIED / ACTIVE</Text></View>}
+    </View>
+    <Text style={styles.source}>Official Permanent Account Number (PAN) details of CareGanga Foundation.</Text>
     {/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(publishedPan)?
      <View style={styles.panCard}>
-      <Text style={styles.panLabel}>CareGanga Foundation</Text>
-      <Text style={styles.panLabel}>Published Permanent Account Number</Text>
+      <View style={styles.panTopRow}>
+       <Text style={styles.panIssuer}>INCOME TAX DEPARTMENT · GOVT. OF INDIA</Text>
+       <View style={styles.panTypePill}><Text style={styles.panTypeText}>SECTION 8 / TRUST</Text></View>
+      </View>
+      <Text style={styles.panLabel}>PERMANENT ACCOUNT NUMBER</Text>
       <Text style={styles.panNumber}>{publishedPan}</Text>
-      {!!text(f.source)&&<Text style={styles.panLabel}>Source: {text(f.source)}</Text>}
+      <Text style={styles.panEntity}>CAREGANGA FOUNDATION</Text>
+      <View style={styles.panFootRow}>
+       {!!text(f.verifiedAsOf)&&<Text style={styles.panLabel}>Reviewed: {text(f.verifiedAsOf)}</Text>}
+       <Text style={styles.panValid}>Verified Valid</Text>
+      </View>
      </View>:
      <Text style={styles.source}>No current approved PAN is published.</Text>}
-    {!!text(f.registrationNumber)&&<Text style={styles.body}>Foundation registration: {text(f.registrationNumber)}</Text>}
-    {!!text(f.issuer)&&<Text style={styles.body}>Issuer: {text(f.issuer)}</Text>}
-    {!!text(f.source)&&!!text(f.verifiedAsOf)&&<Text style={styles.source}>
-     Source reviewed: {text(f.verifiedAsOf)}</Text>}
+    {!!(text(f.registrationNumber)||text(f.issuer)||text(f.source))&&<View style={styles.ngoProfileCard}>
+     <Text style={styles.itemTitle}>Tax Profile Information</Text>
+     {!!text(f.registrationNumber)&&<View style={styles.kvRow}><Text style={styles.kvKey}>Registration</Text><Text style={styles.kvVal}>{text(f.registrationNumber)}</Text></View>}
+     {!!text(f.issuer)&&<View style={styles.kvRow}><Text style={styles.kvKey}>Tax Authority</Text><Text style={styles.kvVal}>{text(f.issuer)}</Text></View>}
+     {!!text(f.source)&&<View style={styles.kvRow}><Text style={styles.kvKey}>Source</Text><Text style={styles.kvVal}>{text(f.source)}</Text></View>}
+     {!!text(f.verifiedAsOf)&&<View style={styles.kvRow}><Text style={styles.kvKey}>Reviewed On</Text><Text style={styles.kvVal}>{text(f.verifiedAsOf)}</Text></View>}
+    </View>}
     {!!text(f.disclaimer)&&<Text style={styles.source}>{text(f.disclaimer)}</Text>}
    </View>;
   }
@@ -130,8 +144,11 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   const active=matching.filter(({record})=>ngoScope!=="annual-reports"||
    selectedYear==="ALL"||text(record.asOfDate).startsWith(selectedYear+"-"));
   return <View style={styles.section}>
-   <Text accessibilityRole="header" style={styles.title}>
-    {ngoScope==="annual-reports"?"Annual Reports":"Registration Certificate"}</Text>
+   <View style={styles.ngoHeadRow}>
+    <Text accessibilityRole="header" style={styles.title}>
+     {ngoScope==="annual-reports"?"Annual Reports":"Registration Certificates"}</Text>
+    {ngoScope==="registration-certificate"&&active.length>0&&<View style={styles.verifiedBadge}><Text style={styles.verifiedBadgeText}>PUBLISHED</Text></View>}
+   </View>
    {ngoScope==="annual-reports"&&<><Text style={styles.body}>Document year</Text><View style={styles.filterRow}
      accessibilityLabel="Annual reports year filter">
     <Pressable accessibilityRole="button" accessibilityState={{selected:selectedYear==="ALL"}}
@@ -143,45 +160,61 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    </View></>}
    {active.length===0&&<Text style={styles.source}>
     {matching.length?"No current approved documents are available for this selection.":ngoScope==="annual-reports"?"No reports published yet.":"No approved registration certificate is published."}</Text>}
-   {active.map(({record,index,url})=><View style={styles.item} key={index}>
-    <Text style={styles.itemTitle}>{text(record.title)}</Text>
+   {active.map(({record,index,url})=><View style={styles.ngoCertCard} key={index}>
+    <View style={styles.ngoHeadRow}>
+     <Text style={[styles.itemTitle,{flex:1}]}>{text(record.title)}</Text>
+     <View style={styles.verifiedBadge}><Text style={styles.verifiedBadgeText}>Published</Text></View>
+    </View>
     <Text style={styles.source}>Document date: {text(record.asOfDate)}</Text>
-    {url&&<Action title="View verified original document"
-     onPress={()=>open(url)}/>}
+    {url&&<Action title="View Document" onPress={()=>open(url)}/>}
    </View>)}
+   {ngoScope==="annual-reports"&&<View style={styles.transparencyCard}>
+    <Text style={styles.itemTitle}>Our Commitment to Transparency</Text>
+    <Text style={styles.source}>Approved annual reports are openly available for our donors, partners, and well-wishers.</Text>
+   </View>}
    {!!text(f.disclaimer)&&<Text style={styles.source}>{text(f.disclaimer)}</Text>}
   </View>;
  }
  if(section.kind==="COMPLIANCE_FACTS"){
   const url=documentUrl(0);
+  const supported=f.verification==="VERIFIED";
   return <View style={styles.section}>
-   <Text style={styles.eyebrow}>Registration &amp; disclosures</Text>
-   <Text accessibilityRole="header" style={styles.title}>{text(f.heading)}</Text>
-   {f.verification==="VERIFIED"&&!!text(f.badgeText)&&
-    <Text style={styles.source}>{text(f.badgeText)}</Text>}
+   <View style={styles.ngoHeadRow}>
+    <Text accessibilityRole="header" style={styles.title}>{text(f.heading)||"80G TAX BENEFIT"}</Text>
+    {supported&&<View style={styles.verifiedBadge}><Text style={styles.verifiedBadgeText}>{text(f.badgeText)||"VERIFIED / ACTIVE"}</Text></View>}
+   </View>
    {!!text(f.subtitle)&&<Text style={styles.orangeHeading}>{text(f.subtitle)}</Text>}
    <Text style={styles.body}>{text(f.summary)}</Text>
-   <Text style={styles.value}>{f.verification==="VERIFIED"?
-    "Document-supported Foundation declaration":
-    "Not currently verified — no tax benefit promised"}</Text>
-   {(["issuer","pan","registrationNumber","approvalNumber","validFrom","validUntil",
-     "source","verifiedAsOf"] as const).map(key=>text(f[key])?<Text key={key} style={styles.source}>
-      {key.replace(/([A-Z])/g," $1")}: {text(f[key])}</Text>:null)}
+   <View style={styles.panCard}>
+    <Text style={styles.panEntity}>CareGanga Foundation</Text>
+    <Text style={styles.panLabel}>{supported?"Eligible Charitable Organisation":"Foundation disclosure"}</Text>
+   </View>
+   <View style={styles.ngoProfileCard}>
+    <View style={styles.kvRow}>
+     <Text style={styles.kvKey}>80G Status</Text>
+     <Text style={[styles.kvVal,{color:supported?"#15803D":"#64748B"}]}>{supported?"● Active":"Not verified"}</Text>
+    </View>
+    {(["issuer","pan","registrationNumber","approvalNumber","validFrom","validUntil",
+      "source","verifiedAsOf"] as const).map(key=>text(f[key])?<View key={key} style={styles.kvRow}>
+       <Text style={styles.kvKey}>{key.replace(/([A-Z])/g," $1")}</Text>
+       <Text style={styles.kvVal}>{text(f[key])}</Text>
+      </View>:null)}
+   </View>
    {verified.map(({record:document,index:i,url:link})=>{
-    return <View style={styles.item} key={i}>
+    return <View style={styles.ngoCertCard} key={i}>
      <Text style={styles.eyebrow}>{text(document.type).replaceAll("_"," ")}</Text>
      <Text style={styles.itemTitle}>{text(document.title)}</Text>
      <Text style={styles.source}>Document date: {text(document.asOfDate)}</Text>
-     <Action title="Open approved source document" onPress={()=>open(link)}/>
+     <Action title="View Document" onPress={()=>open(link)}/>
     </View>;
    })}
-   {f.verification==="VERIFIED"&&url&&(f.documents===undefined||Array.isArray(f.documents)&&f.documents.length===0)&&
+   {supported&&url&&(f.documents===undefined||Array.isArray(f.documents)&&f.documents.length===0)&&
     <Action title="Open approved proof" onPress={()=>open(url)}/>}
    {!!text(f.importantNote)&&<View style={styles.item}>
     <Text style={styles.itemTitle}>Important</Text>
     <Text style={styles.body}>{text(f.importantNote)}</Text>
    </View>}
-   <Text style={styles.body}>{text(f.disclaimer)}</Text>
+   <Text style={styles.source}>{text(f.disclaimer)}</Text>
   </View>;
  }
  if(section.kind==="GALLERY_GRID")return <View style={styles.section}>
@@ -324,9 +357,25 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  return null;
 }
 const styles=StyleSheet.create({
- panCard:{backgroundColor:"#102D40",borderRadius:12,padding:18,gap:12},
- panLabel:{color:"#C3D6E2",fontSize:13,lineHeight:20},
- panNumber:{color:"#FFE074",fontSize:24,fontWeight:"800",flexShrink:1},
+ panCard:{backgroundColor:"#0A192F",borderRadius:14,padding:18,gap:10},
+ panTopRow:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8},
+ panIssuer:{color:"#93C5FD",fontSize:11,fontWeight:"700",letterSpacing:0.6},
+ panTypePill:{borderWidth:1,borderColor:"#10B981",borderRadius:6,paddingHorizontal:8,paddingVertical:3,backgroundColor:"rgba(16,185,129,0.12)"},
+ panTypeText:{color:"#34D399",fontSize:10,fontWeight:"700"},
+ panLabel:{color:"#94A3B8",fontSize:11,fontWeight:"600",letterSpacing:0.8},
+ panNumber:{color:"#FACC15",fontSize:26,fontWeight:"800",fontVariant:["tabular-nums"],letterSpacing:1.2},
+ panEntity:{color:"#F8FAFC",fontSize:15,fontWeight:"700"},
+ panFootRow:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",borderTopWidth:1,borderTopColor:"rgba(255,255,255,0.12)",paddingTop:10,marginTop:4},
+ panValid:{color:"#34D399",fontSize:12,fontWeight:"700"},
+ ngoHeadRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8},
+ verifiedBadge:{backgroundColor:"#ECFDF5",borderWidth:1,borderColor:"#86EFAC",borderRadius:999,paddingHorizontal:10,paddingVertical:4},
+ verifiedBadgeText:{color:"#15803D",fontSize:11,fontWeight:"700"},
+ ngoProfileCard:{backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#E2E8F0",borderRadius:12,padding:14,gap:10},
+ kvRow:{flexDirection:"row",justifyContent:"space-between",alignItems:"flex-start",gap:10,borderBottomWidth:1,borderBottomColor:"#F1F5F9",paddingBottom:8},
+ kvKey:{color:"#64748B",fontSize:13,fontWeight:"600",flexShrink:0},
+ kvVal:{color:"#0F172A",fontSize:13,fontWeight:"700",flex:1,textAlign:"right",fontVariant:["tabular-nums"]},
+ ngoCertCard:{backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#E2E8F0",borderRadius:12,padding:14,gap:8},
+ transparencyCard:{backgroundColor:"#F0FDF4",borderWidth:1,borderColor:"#BBF7D0",borderRadius:12,padding:14,gap:6},
  section:{backgroundColor:t.surface,borderRadius:12,borderWidth:1,
   borderColor:t.border,padding:16,gap:12},
  eyebrow:{fontSize:12,fontWeight:"700",color:t.primary,letterSpacing:1.1},

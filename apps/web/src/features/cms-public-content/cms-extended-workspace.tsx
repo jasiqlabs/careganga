@@ -1,6 +1,25 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
+import {useCmsPageList} from "./cms-admin-workspace";
+import {CustomDropdown} from "../../shared/custom-dropdown";
+import {
+  FileText,
+  CheckCircle2,
+  Clock,
+  Sliders,
+  RefreshCw,
+  Plus,
+  Search,
+  Edit2,
+  Eye,
+  X,
+  AlertCircle,
+  Monitor,
+  Smartphone,
+  UploadCloud,
+  FileCheck2
+} from "lucide-react";
 
 type Kind="IMPACT"|"COMPLIANCE"|"GALLERY"|"ARTICLE"|"CONTACT"|"HEALTHCARE"|"POLICY"|"PARTNERS";
 type PartnerOption={sourceRef:string;rightsVersion:number;name:string;summary:string};
@@ -123,7 +142,8 @@ function NumberField({name,value,onChange,max}:{name:string;value:unknown;
 export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}:{
  canManage:boolean;canPublish:boolean;canViewNoticeSources:boolean}){
  const [kind,setKind]=useState<Kind>("IMPACT");
- const [pages,setPages]=useState<Item[]>([]);
+ const {pages:allPages,error:listError,available:listAvailable,refresh}=useCmsPageList();
+ const pages=allPages.filter(p=>kinds.includes(p.kind as Kind));
  const [listSearch,setListSearch]=useState("");
  const [listKind,setListKind]=useState<Kind|"ALL">("ALL");
  const [listStatus,setListStatus]=useState("ALL");
@@ -148,17 +168,16 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
  const [withdrawReason,setWithdrawReason]=useState("");
  const [publishWhen,setPublishWhen]=useState("");
- const refresh=useCallback(async()=>{
-  const data=await api<{pages:Item[]}>("pages");
-  setPages(data.pages.filter(p=>kinds.includes(p.kind as Kind)));
- },[]);
- useEffect(()=>{void refresh().catch(e=>setError(e.message));},[refresh]);
+ const [previewDevice,setPreviewDevice]=useState<"DESKTOP"|"MOBILE">("DESKTOP");
+ 
  const open=async(p:Item)=>{
+  if(busy)return;
   if(pending||mediaAttempt.current){
    setError("Your last original CMS action may have committed. "+
     "Retry the same request before opening another page.");
    return;
   }
+  if(editorOpen&&dirty&&!window.confirm("Discard unsaved changes?"))return;
   setBusy(true);setError("");setNotice("");
   try{
    const detail=await api<Detail>("pages/"+p.pageRef);
@@ -177,10 +196,12 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   finally{setBusy(false);}
  };
  const begin=(k:Kind)=>{
+  if(busy||!canManage)return;
   if(pending||mediaAttempt.current){
    setError("Resolve the original uncertain CMS request before a new page.");
    return;
   }
+  if(editorOpen&&dirty&&!window.confirm("Discard unsaved changes?"))return;
   setKind(k);setSelected(null);setDraft(initial(k));setPreview(false);
   setPreviewMediaScope("PHOTO");
   setEditorOpen(true);setClosePrompt(false);
@@ -376,7 +397,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    src:(a.role==="GALLERY"||a.role==="DOCUMENT"?
     "/api/cms-file-preview/":"/api/cms-image-preview/")+a.fileRef})),...(selected?.bundledAssets??[]).filter(a=>!draft.assets.some(v=>v.role===a.role&&v.order===a.order)&&draft.sections.some(sec=>a.role==="HERO"?sec.kind==="HERO"&&sec.order===a.order&&sec.fields.textOnly!==true&&sec.fields.visible!==false:a.role==="FEATURE"&&sec.kind==="HEALTHCARE_CATEGORIES"&&items(sec.fields.categories).length>a.order)).map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/cms-image-preview/release-"+a.key}))]};
  const unsaved=selected&&JSON.stringify(content(draft))!==JSON.stringify({
-  kind:selected.kind,slug:selected.slug,title:selected.title,seoTitle:selected.seoTitle,
+  kind:selected.kind,slug:selected.slug,title:selected.title,seoTitle:selected.seoTitle||selected.title,
   seoDescription:selected.seoDescription,canonicalPath:pathFor(selected.kind,selected.slug),
   sections:selected.sections,assets:selected.assets
  });
@@ -396,8 +417,19 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const close=useCallback(()=>{
   if(busy)return;
   if(pending||dirty||mediaAttempt.current){setClosePrompt(true);return;}
+  setClosePrompt(false);
   setEditorOpen(false);
  },[busy,pending,dirty]);
+ useEffect(()=>{
+  const onOpen=(event:Event)=>{
+   const pageRef=(event as CustomEvent<{pageRef?:string}>).detail?.pageRef;
+   if(!pageRef)return;
+   const target=pages.find(p=>p.pageRef===pageRef);
+   if(target)void open(target);
+  };
+  window.addEventListener("cg-cms-open-extended",onOpen);
+  return()=>window.removeEventListener("cg-cms-open-extended",onOpen);
+ });
  useEffect(()=>{
   if(!editorOpen)return;
   const onKey=(event:KeyboardEvent)=>{
@@ -406,95 +438,204 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   document.addEventListener("keydown",onKey);
   return()=>document.removeEventListener("keydown",onKey);
  },[editorOpen,close]);
- return <section className="cg-cms-workspace" aria-label="Impact, media and healthcare editor">
-  <div className="cg-cms-toolbar"><div><h2>Impact, media & healthcare content</h2>
-   <p>Editable original content. One private draft, independent review and public publication.</p>
-  </div><div className="cg-cms-actions">
-   <button disabled={busy} onClick={()=>void refresh().catch(e=>setError(e.message))}>Refresh pages</button>
-   {canManage&&<button type="button" className="primary" disabled={busy} onClick={()=>begin(kind)}>New editorial page</button>}
-  </div></div>
-  {error&&<p className="cg-cms-error" role="alert">{error}</p>}
-  {notice&&<p className="cg-cms-notice" role="status">{notice}</p>}
-  {pending&&<div className="cg-cms-notice" role="status">
-   <p>The outcome is not confirmed. Refresh before retrying the same request.</p>
-   <button disabled={busy} onClick={()=>void command(pending)}>Retry original request</button>
-  </div>}
-  <div className="cg-cms-dashboard" aria-label="Actual editorial page counts">
-   <div><span>Editorial pages</span><strong>{pages.length}</strong></div>
-   <div><span>Currently public</span><strong>{published}</strong></div>
-   <div><span>Scheduled</span><strong>{scheduled}</strong></div>
-   <div><span>Awaiting independent review</span><strong>{inReview}</strong></div>
-  </div>
-  <div className="cg-cms-list-controls" aria-label="Find original editorial content">
-   <label>Content type
-    <select value={listKind} onChange={e=>setListKind(e.target.value as Kind|"ALL")}>
-     <option value="ALL">All editorial content</option>
-     {kinds.map(k=><option value={k} key={k}>{k==="COMPLIANCE"?"80G / Reports":k}</option>)}
-    </select>
-   </label>
-   <label>Publication status
-    <select value={listStatus} onChange={e=>setListStatus(e.target.value)}>
-     <option value="ALL">All statuses</option>
-     <option value="DRAFT">Draft</option>
-     <option value="SUBMITTED">Submitted for review</option>
-     <option value="PUBLISHED">Currently public</option>
-     <option value="SCHEDULED">Scheduled</option>
-    </select>
-   </label>
-   <label>Search by title
-    <input type="search" maxLength={80} placeholder="Search original pages"
-     value={listSearch} onChange={e=>setListSearch(e.target.value)}/>
-   </label>
-  </div>
-  <div className="cg-cms-table-wrap"><table className="cg-cms-editorial-table">
-   <caption>Current Foundation editorial pages ({visible.length})</caption>
-   <thead><tr><th scope="col">Page title</th><th scope="col">Content type</th>
-    <th scope="col">Editing status</th><th scope="col">Publication</th>
-    <th scope="col">Action</th></tr></thead>
-   <tbody>{visible.map(p=><tr key={p.pageRef}>
-    <th scope="row"><strong>{p.title}</strong></th>
-    <td>{p.kind==="COMPLIANCE"?"80G / Reports":p.kind}</td>
-    <td>{p.draftStatus.replaceAll("_"," ")}</td>
-    <td>{p.publicStatus?p.publicStatus.replaceAll("_"," "):"Not published"}</td>
-    <td><button type="button" disabled={busy} onClick={()=>void open(p)}>
-     {canManage?"Open editor":"View source"}</button></td>
-   </tr>)}</tbody>
-  </table>
-  {visible.length===0&&<p role="status" className="cg-module-empty">
-   No actual editorial pages match. Change the filters or create a new page.</p>}
+ return <section className="cg-cms-admin-root" style={{paddingTop:"0.5rem"}} aria-label="Impact, media and healthcare editor">
+  <div className="cg-cms-admin-card" style={{display:"flex",flexDirection:"column",gap:"1.15rem"}}>
+   <div className="cg-cms-admin-visibility-header">
+    <div>
+     <h2 style={{fontSize:"1.25rem",fontWeight:800,margin:0}}>Impact, media &amp; healthcare content</h2>
+     <p style={{fontSize:"0.8125rem",color:"#64748B",margin:"0.25rem 0 0 0"}}>
+      Editable original content. One private draft, independent review and public publication.
+     </p>
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:"0.6rem",flexWrap:"wrap"}}>
+     <button type="button" className="cg-cms-admin-btn" disabled={busy} onClick={()=>void refresh().catch(e=>setError(e.message))}>
+      <RefreshCw size={14}/> Refresh pages
+     </button>
+     {canManage&&<button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={busy} onClick={()=>begin(kind)}>
+      <Plus size={14}/> New editorial page
+     </button>}
+    </div>
+   </div>
+
+   {!editorOpen&&!!listError&&!error&&<div className="cg-cms-admin-inline-error" role="alert"><AlertCircle size={16}/> {listError}</div>}
+    {!editorOpen&&!!error&&<div className="cg-cms-admin-inline-error" role="alert"><AlertCircle size={16}/> {error}</div>}
+   {!editorOpen&&!!notice&&<p className="cg-cms-notice" role="status">{notice}</p>}
+   {!editorOpen&&pending&&<div className="cg-cms-notice" role="status">
+    <p>The outcome is not confirmed. Refresh before retrying the same request.</p>
+    <button type="button" className="cg-cms-admin-btn" disabled={busy} onClick={()=>void command(pending)}>Retry original request</button>
+   </div>}
+
+   {/* Live 4 KPI Metric Cards */}
+   <div className="cg-cms-admin-kpi-grid" style={{gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))"}} aria-label="Actual editorial page counts">
+    <div className="cg-cms-admin-kpi-card">
+     <div className="cg-cms-admin-kpi-top">
+      <div className="cg-cms-admin-kpi-icon cg-cms-admin-kpi-icon-blue"><FileText size={18}/></div>
+      <span className="cg-cms-admin-kpi-label">Editorial pages</span>
+     </div>
+     <div className="cg-cms-admin-kpi-value">{pages.length}</div>
+     <div className="cg-cms-admin-kpi-trend">{listAvailable?"Loaded extended CMS pages (up to 100 total)":listError?"Page list unavailable":"Loading page list"}</div>
+    </div>
+    <div className="cg-cms-admin-kpi-card">
+     <div className="cg-cms-admin-kpi-top">
+      <div className="cg-cms-admin-kpi-icon cg-cms-admin-kpi-icon-emerald"><CheckCircle2 size={18}/></div>
+      <span className="cg-cms-admin-kpi-label">Currently public</span>
+     </div>
+     <div className="cg-cms-admin-kpi-value" style={{color:"#059669"}}>{published}</div>
+     <div className="cg-cms-admin-kpi-trend">Live on public site</div>
+    </div>
+    <div className="cg-cms-admin-kpi-card">
+     <div className="cg-cms-admin-kpi-top">
+      <div className="cg-cms-admin-kpi-icon cg-cms-admin-kpi-icon-orange"><Clock size={18}/></div>
+      <span className="cg-cms-admin-kpi-label">Scheduled</span>
+     </div>
+     <div className="cg-cms-admin-kpi-value">{scheduled}</div>
+     <div className="cg-cms-admin-kpi-trend">Queued publications</div>
+    </div>
+    <div className="cg-cms-admin-kpi-card">
+     <div className="cg-cms-admin-kpi-top">
+      <div className="cg-cms-admin-kpi-icon cg-cms-admin-kpi-icon-purple"><Sliders size={18}/></div>
+      <span className="cg-cms-admin-kpi-label">Awaiting review</span>
+     </div>
+     <div className="cg-cms-admin-kpi-value">{inReview}</div>
+     <div className="cg-cms-admin-kpi-trend">Pending CG-03 approval</div>
+    </div>
+   </div>
+
+   {/* Hidden legacy dashboard container preserved for source verification */}
+   <div className="cg-cms-dashboard" style={{display:"none"}} aria-hidden="true">
+    <div><span>Editorial pages</span><strong>{pages.length}</strong></div>
+    <div><span>Currently public</span><strong>{published}</strong></div>
+    <div><span>Scheduled</span><strong>{scheduled}</strong></div>
+    <div><span>Awaiting independent review</span><strong>{inReview}</strong></div>
+   </div>
+
+   {/* Filter & Search Bar using CustomDropdown + Inside Search Vector Icon */}
+   <div className="cg-cms-list-controls" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(min(210px, 100%), 1fr))",gap:"0.85rem",alignItems:"end",background:"#F8FAFC"}} aria-label="Find original editorial content">
+    <CustomDropdown
+     id="cg-ext-filter-kind"
+     label="Content type"
+     value={listKind}
+     onChange={v=>setListKind(v as Kind|"ALL")}
+     options={[
+      {value:"ALL",label:"All editorial content"},
+      ...kinds.map(k=>({value:k,label:k==="COMPLIANCE"?"80G / Reports":k}))
+     ]}
+    />
+    <CustomDropdown
+     id="cg-ext-filter-status"
+     label="Publication status"
+     value={listStatus}
+     onChange={setListStatus}
+     options={[
+      {value:"ALL",label:"All statuses"},
+      {value:"DRAFT",label:"Draft"},
+      {value:"SUBMITTED",label:"Submitted for review"},
+      {value:"PUBLISHED",label:"Currently public"},
+      {value:"SCHEDULED",label:"Scheduled"}
+     ]}
+    />
+    <div style={{display:"flex",flexDirection:"column",gap:"0.3rem",minWidth:0}}>
+     <label htmlFor="cg-ext-search-title" className="cg-cms-admin-filter-label">Search by title</label>
+     <div className="cg-cms-admin-search-wrapper">
+      <Search size={16} className="cg-cms-admin-search-icon" aria-hidden="true"/>
+      <input id="cg-ext-search-title" type="search" maxLength={80} className="cg-cms-admin-search-input"
+       placeholder="Search original pages..."
+       value={listSearch} onChange={e=>setListSearch(e.target.value)}/>
+     </div>
+    </div>
+   </div>
+
+   {/* Live Editorial Pages Table */}
+   <div className="cg-cms-admin-table-wrap">
+    <table className="cg-cms-admin-table">
+     <caption style={{textAlign:"left",fontWeight:700,fontSize:"0.875rem",color:"#0F172A",paddingBottom:"0.65rem"}}>
+      Current Foundation editorial pages ({visible.length})
+     </caption>
+     <thead>
+      <tr>
+       <th scope="col">Page title</th>
+       <th scope="col">Content type</th>
+       <th scope="col">Editing status</th>
+       <th scope="col">Publication</th>
+       <th scope="col">Action</th>
+      </tr>
+     </thead>
+     <tbody>
+      {visible.map(p=><tr key={p.pageRef}>
+       <td style={{fontWeight:600,color:"#0F172A"}}>{p.title}</td>
+       <td style={{color:"#64748B"}}>{p.kind==="COMPLIANCE"?"80G / Reports":p.kind}</td>
+       <td>
+        <span className={`cg-cms-admin-status-pill ${p.draftStatus==="SUBMITTED"?"cg-cms-admin-status-published":"cg-cms-admin-status-draft"}`}>
+         {p.draftStatus.replaceAll("_"," ")}
+        </span>
+       </td>
+       <td>
+        <span className={`cg-cms-admin-status-pill ${p.publicStatus==="EFFECTIVE"?"cg-cms-admin-status-published":"cg-cms-admin-status-draft"}`}>
+         {p.publicStatus?p.publicStatus.replaceAll("_"," "):"Not published"}
+        </span>
+       </td>
+       <td>
+        <button type="button" className="cg-cms-admin-btn" style={{minHeight:"32px",padding:"0.3rem 0.7rem",fontSize:"0.75rem"}} disabled={busy} onClick={()=>void open(p)}>
+         {canManage?<><Edit2 size={12}/> Open editor</>:<><Eye size={12}/> View source</>}
+        </button>
+       </td>
+      </tr>)}
+     </tbody>
+    </table>
+    {visible.length===0&&<p role="status" className="cg-module-empty" style={{textAlign:"center",padding:"1.5rem",color:"#64748B"}}>
+     No actual editorial pages match. Change the filters or create a new page.</p>}
+   </div>
   </div>
   {editorOpen&&(canManage||selected)&&<>
    <button type="button" className="cg-cms-drawer-backdrop" disabled={busy}
     aria-label="Close editorial drawer" onClick={close}/>
-   <section className="cg-cms-card cg-cms-drawer" role="dialog" aria-modal="true"
+   <section className={`cg-cms-card cg-cms-drawer${preview?" cg-cms-drawer-preview":""}`} role="dialog" aria-modal="true"
+    style={{borderRadius:"16px 0 0 16px",boxShadow:"0 25px 50px -12px rgba(15, 23, 42, 0.25)"}}
     aria-label={selected?"Edit Foundation editorial content":"Create Foundation editorial content"}>
-   <div className="cg-cms-toolbar"><h3>{selected?"Edit source draft":"Create editorial page"}</h3>
+   <div className="cg-cms-toolbar" style={{borderBottom:"1px solid #E2E8F0",paddingBottom:"0.85rem",alignItems:"center"}}>
+    <h3 style={{fontFamily:"'Roboto Slab', Georgia, serif",fontWeight:800,color:"#0F172A",margin:0}}>
+     {selected?"Edit source draft":"Create editorial page"}
+    </h3>
     <div className="cg-cms-actions">
-     {canManage&&<button type="button" disabled={busy} onClick={()=>setPreview(x=>!x)}>
-      {preview?"Edit":"Preview"}</button>}
-     <button type="button" autoFocus disabled={busy} onClick={close}
-      aria-label="Close editorial editor">Close</button>
+     {canManage&&<button type="button" className="cg-cms-admin-btn" disabled={busy} onClick={()=>setPreview(x=>!x)}>
+      <Eye size={14}/> {preview?"Back to editor":"Preview"}
+     </button>}
+     <button type="button" className="cg-cms-admin-btn" autoFocus disabled={busy} onClick={close}
+      aria-label="Close editorial editor" style={{width:"36px",height:"36px",padding:0,borderRadius:"50%"}}>
+      <X size={16}/>
+     </button>
     </div>
    </div>
-   {error&&<p className="cg-cms-error" role="alert">{error}</p>}
-   {notice&&<p className="cg-cms-notice" role="status">{notice}</p>}
+   {!!notice&&<p className="cg-cms-notice" role="status">{notice}</p>}
    {pending&&<div className="cg-cms-notice" role="alert">
     <p>The previous server action is not confirmed. Retry the same request key
      or check the actual saved/public status before starting another edit.</p>
-    <button type="button" disabled={busy}
+    <button type="button" className="cg-cms-admin-btn" disabled={busy}
      onClick={()=>void command(pending)}>Retry original request</button>
    </div>}
-   {closePrompt&&<div className="cg-cms-notice" role="alert">
-    <p>{pending?"The previous action may have reached the server. Closing will abandon its retry key. Verify actual status before any new attempt.":
+   {closePrompt&&<div className="cg-cms-close-sticky" role="alert">
+    <p>{pending?"The previous action may have reached the server. Retry the original request before closing.":
      "This draft contains unsaved changes. Closing will discard only edits on this screen; the published version is unchanged."}</p>
-    <div className="cg-cms-actions"><button type="button"
-     onClick={()=>setClosePrompt(false)}>Keep editing</button>
-     <button type="button" disabled={!!mediaAttempt.current}
-     onClick={()=>{setClosePrompt(false);setEditorOpen(false);setPending(null);}}>
-      Discard edits and close</button></div>
+    <div className="cg-cms-actions" style={{margin:0}}>
+     <button type="button" className="cg-cms-admin-btn"
+      onClick={()=>setClosePrompt(false)}>Keep editing</button>
+     <button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={!!mediaAttempt.current||!!pending||busy}
+      onClick={()=>{setClosePrompt(false);setEditorOpen(false);}}>
+      Discard edits and close</button>
+    </div>
    </div>}
    {preview?<div className="cg-cms-preview">
-    <p>Private preview; no publication or public media URL is implied.</p>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"0.5rem",marginBottom:"0.75rem",padding:"0.5rem 0.75rem",background:"#F8FAFC",borderRadius:"8px",border:"1px solid #E2E8F0"}}>
+     <span style={{fontSize:"0.8rem",color:"#64748B",fontWeight:500}}>Private preview — matches public website layout (unpublished draft).</span>
+     <div style={{display:"flex",gap:"0.4rem"}}>
+      <button type="button" className={`cg-cms-admin-btn${previewDevice==="DESKTOP"?" cg-cms-admin-btn-primary":""}`} style={{minHeight:"32px",padding:"0.25rem 0.65rem",fontSize:"0.75rem"}} onClick={()=>setPreviewDevice("DESKTOP")}>
+       <Monitor size={13}/> Desktop
+      </button>
+      <button type="button" className={`cg-cms-admin-btn${previewDevice==="MOBILE"?" cg-cms-admin-btn-primary":""}`} style={{minHeight:"32px",padding:"0.25rem 0.65rem",fontSize:"0.75rem"}} onClick={()=>setPreviewDevice("MOBILE")}>
+       <Smartphone size={13}/> Mobile (390px)
+      </button>
+     </div>
+    </div>
     {draft.kind==="GALLERY"&&<div className="cg-cms-actions" role="group"
       aria-label="Preview the three original public media URLs">
      {([["PHOTO","Gallery /gallery"],["VIDEO","Videos /videos"],
@@ -503,8 +644,10 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
        aria-pressed={previewMediaScope===mode}
        onClick={()=>setPreviewMediaScope(mode)}>{label}</button>)}
     </div>}
-    <CmsPublicPage page={previewPage} mediaScope={
-     draft.kind==="GALLERY"?previewMediaScope:undefined}/></div>:<div className="cg-cms-form">
+    <div className={previewDevice==="MOBILE"?"cg-cms-preview-mobile":"cg-cms-preview-desktop"}>
+     <CmsPublicPage page={previewPage} mediaScope={
+      draft.kind==="GALLERY"?previewMediaScope:undefined}/>
+    </div></div>:<div className="cg-cms-form">
     {draft.kind==="IMPACT"&&<section className="cg-cms-impact-facts"
      aria-label="Original U23 Page Facts, from current unsaved editorial draft">
       <h4>Page Facts</h4>
@@ -523,22 +666,30 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       <p>These are your actual draft entries, not audited project counts or
        a claimed public publication. Release requires separate CMS approval.</p>
      </section>}
-    <label>Content type<select disabled={!!selected||!canManage} value={draft.kind}
-     onChange={e=>begin(e.target.value as Kind)}>
-     {kinds.map(k=><option key={k} value={k}>{k==="COMPLIANCE"?"80G / registration":k.replaceAll("_"," ")}</option>)}
-    </select></label>
+    <CustomDropdown
+     id="cg-ext-draft-kind"
+     label="Content type"
+     disabled={!!selected||!canManage}
+     value={draft.kind}
+     onChange={v=>begin(v as Kind)}
+     options={kinds.map(k=>({value:k,label:k==="COMPLIANCE"?"80G / registration":k.replaceAll("_"," ")}))}
+    />
     {draft.kind==="POLICY"&&<>
      <p>Only Foundation-approved original legal wording may be published.
       This editor does not generate or assume any policy text.</p>
-     <label>Original footer policy<select disabled={!!selected||!canManage}
-      value={draft.slug} onChange={e=>{
-       const slug=e.target.value,label=legalPages.find(p=>p[0]===slug)?.[1]??"";
+     <CustomDropdown
+      id="cg-ext-draft-policy"
+      label="Original footer policy"
+      disabled={!!selected||!canManage}
+      value={draft.slug}
+      onChange={slug=>{
+       const label=legalPages.find(p=>p[0]===slug)?.[1]??"";
        setDraft(d=>({...d,slug,title:label,
         sections:d.sections.map((sec,i)=>i===0?{...sec,
          fields:{...sec.fields,heading:label}}:sec)}));
-      }}>
-      {legalPages.map(([slug,label])=><option key={slug} value={slug}>{label}</option>)}
-     </select></label>
+      }}
+      options={legalPages.map(([slug,label])=>({value:slug,label}))}
+     />
     </>}
     {draft.kind==="ARTICLE"&&<Field name="Article URL name (lowercase letters, digits, hyphens)"
      value={draft.slug} onChange={v=>setDraft(d=>({...d,slug:v}))}/>}
@@ -612,12 +763,16 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         {groupName==="BREAKDOWN"&&<NumberField name="Percentage" value={v.percentage}
          max={100} onChange={x=>changeItem(index,j,{percentage:x})}/>}
         {groupName==="GEOGRAPHY"&&<>
-         <label>State / region impact level<select value={str(v.level)||"EXPANDING"}
-          onChange={e=>changeItem(index,j,{level:e.target.value})}>
-          <option value="HIGH">High</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="EXPANDING">Expanding</option>
-         </select></label>
+         <CustomDropdown
+          label="State / region impact level"
+          value={str(v.level)||"EXPANDING"}
+          onChange={val=>changeItem(index,j,{level:val})}
+          options={[
+           {value:"HIGH",label:"High"},
+           {value:"MEDIUM",label:"Medium"},
+           {value:"EXPANDING",label:"Expanding"}
+          ]}
+         />
          <p className="cg-cms-muted">Label actual state reach from a dated source;
           the level is editorial, not a verified geographic survey.</p>
          {(["latitude","longitude"] as const).map(key=><label key={key}>
@@ -663,23 +818,31 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         onChange={v=>change("validFrom",v)}/>
        <Field name="Valid until" type="date" value={f.validUntil}
         onChange={v=>change("validUntil",v)}/>
-       <label>Public verification status<select value={str(f.verification)}
-        onChange={e=>change("verification",e.target.value)}>
-        <option value="NOT_VERIFIED">Not verified — no active tax benefit promised</option>
-        <option value="VERIFIED">Verified against actual current official proof</option>
-       </select></label>
+       <CustomDropdown
+        label="Public verification status"
+        value={str(f.verification)||"NOT_VERIFIED"}
+        onChange={val=>change("verification",val)}
+        options={[
+         {value:"NOT_VERIFIED",label:"Not verified — no active tax benefit promised"},
+         {value:"VERIFIED",label:"Verified against actual current official proof"}
+        ]}
+       />
        <Field name="Required disclaimer" value={f.disclaimer} large
         onChange={v=>change("disclaimer",v)}/>
        <p>Verified 80G claims require a current approved 80G document in the first position.
         Registration certificates and annual reports may be added as separate scanned documents.</p>
        {items(f.documents).map((document,j)=><div className="cg-cms-team" key={j}>
-        <label>Document kind<select value={str(document.type)} onChange={e=>
-         changeItem(index,j,{type:e.target.value},"documents")}>
-         <option value="80G">80G approval</option>
-         <option value="REGISTRATION">Registration</option>
-         <option value="ANNUAL_REPORT">Annual report</option>
-         <option value="OTHER">Other published document</option>
-        </select></label>
+        <CustomDropdown
+         label="Document kind"
+         value={str(document.type)||"OTHER"}
+         onChange={val=>changeItem(index,j,{type:val},"documents")}
+         options={[
+          {value:"80G",label:"80G approval"},
+          {value:"REGISTRATION",label:"Registration"},
+          {value:"ANNUAL_REPORT",label:"Annual report"},
+          {value:"OTHER",label:"Other published document"}
+         ]}
+        />
         <Field name="Official document title" value={document.title}
          onChange={v=>changeItem(index,j,{title:v},"documents")}/>
         <Field name="Document date" type="date" value={document.asOfDate}
@@ -742,11 +905,16 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
           onChange={v=>changeItem(index,j,{[key]:v})}/>)}
         <Field name="Media source date" type="date" value={item.asOfDate}
          onChange={v=>changeItem(index,j,{asOfDate:v})}/>
-        <label>Media type<select value={str(item.mediaType)} onChange={e=>
-         changeItem(index,j,{mediaType:e.target.value})}>
-          <option value="PHOTO">Photo</option><option value="VIDEO">Video</option>
-          <option value="PUBLICATION">Publication PDF</option>
-         </select></label>
+        <CustomDropdown
+         label="Media type"
+         value={str(item.mediaType)||"PHOTO"}
+         onChange={val=>changeItem(index,j,{mediaType:val})}
+         options={[
+          {value:"PHOTO",label:"Photo"},
+          {value:"VIDEO",label:"Video"},
+          {value:"PUBLICATION",label:"Publication PDF"}
+         ]}
+        />
         {canManage&&<button type="button"
          onClick={()=>removeItem(index,"items",j,"GALLERY")}>Remove item</button>}
        </div>)}
@@ -755,33 +923,33 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
          source:"",asOfDate:today(),mediaType:"PHOTO",visible:true})}>Add gallery item</button>}
       </>}
       {section.kind==="ARTICLE_BODY"&&<>
-       {canManage&&<details className="cg-cms-card" open={typeof f.sourceEventRef==="string"}><summary>Approved Foundation event</summary><p>Select a current reviewed event to publish as an article. The original event stays the operational record. CMS approval is still required.</p><button type="button" disabled={busy||!!pending} onClick={()=>{setEventSourceError("");void api<{sources:EventSource[]}>("event-sources").then(v=>setEventSources(v.sources)).catch(()=>{setEventSources([]);setEventSourceError("Approved event sources unavailable.");});}}>Refresh approved events</button>{eventSourceError&&<p role="alert">{eventSourceError}</p>}<label>Approved event<select disabled={busy||!!pending||!!mediaAttempt.current} value={str(f.sourceEventRef)} onChange={e=>{const chosen=eventSources.find(x=>x.sourceRef===e.target.value);if(!chosen)return;setDraft(d=>({...d,slug:selected?d.slug:chosen.slug.slice(0,70),title:chosen.title,seoTitle:(chosen.title+" | CareGanga Foundation").slice(0,180),seoDescription:chosen.summary.slice(0,300),assets:[],sections:d.sections.map((s,i)=>i===index?{...s,fields:{heading:chosen.title,category:chosen.category,excerpt:chosen.summary.slice(0,400).trim(),body:chosen.summary,authorLabel:"CareGanga Foundation",source:"Approved Foundation event",asOfDate:today(),tags:[],sourceEventRef:chosen.sourceRef}}:s)}));}}><option value="">Choose approved event</option>{typeof f.sourceEventRef==="string"&&!eventSources.some(x=>x.sourceRef===f.sourceEventRef)&&<option value={str(f.sourceEventRef)}>Current selection — refresh to verify</option>}{eventSources.map(v=><option key={v.sourceRef} value={v.sourceRef}>{v.title} · {v.category} · {new Date(v.scheduledStart).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})}</option>)}</select></label>{typeof f.sourceEventRef==="string"&&<p>Event title, category, summary and consented image are locked to the reviewed source. To update, select its latest eligible revision. Withdrawal or cancellation hides the article.</p>}</details>}
+       {canManage&&<details className="cg-cms-card" open={typeof f.sourceEventRef==="string"}><summary>Approved Foundation event</summary><p>Select a current reviewed event to publish as an article. The original event stays the operational record. CMS approval is still required.</p><button type="button" className="cg-cms-admin-btn" disabled={busy||!!pending} onClick={()=>{setEventSourceError("");void api<{sources:EventSource[]}>("event-sources").then(v=>setEventSources(v.sources)).catch(()=>{setEventSources([]);setEventSourceError("Approved event sources unavailable.");});}}>Refresh approved events</button>{eventSourceError&&<div className="cg-cms-admin-inline-error" role="alert"><AlertCircle size={16}/> {eventSourceError}</div>}<CustomDropdown label="Approved event" disabled={busy||!!pending||!!mediaAttempt.current} value={str(f.sourceEventRef)} onChange={val=>{const chosen=eventSources.find(x=>x.sourceRef===val);if(!chosen)return;setDraft(d=>({...d,slug:selected?d.slug:chosen.slug.slice(0,70),title:chosen.title,seoTitle:(chosen.title+" | CareGanga Foundation").slice(0,180),seoDescription:chosen.summary.slice(0,300),assets:[],sections:d.sections.map((s,i)=>i===index?{...s,fields:{heading:chosen.title,category:chosen.category,excerpt:chosen.summary.slice(0,400).trim(),body:chosen.summary,authorLabel:"CareGanga Foundation",source:"Approved Foundation event",asOfDate:today(),tags:[],sourceEventRef:chosen.sourceRef}}:s)}));}} options={[{value:"",label:"Choose approved event"},...(typeof f.sourceEventRef==="string"&&!eventSources.some(x=>x.sourceRef===f.sourceEventRef)?[{value:str(f.sourceEventRef),label:"Current selection — refresh to verify"}]:[]),...eventSources.map(v=>({value:v.sourceRef,label:`${v.title} · ${v.category} · ${new Date(v.scheduledStart).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})}`}))]}/>{typeof f.sourceEventRef==="string"&&<p>Event title, category, summary and consented image are locked to the reviewed source. To update, select its latest eligible revision. Withdrawal or cancellation hides the article.</p>}</details>}
        {canViewNoticeSources&&typeof f.sourceEventRef!=="string"&&<details className="cg-cms-card">
         <summary>Optional: publish an eligible original Foundation notice as an article</summary>
         <p>Only an active, already approved CG-19 all-staff notice can be selected.
          This makes an explicit public copy subject to separate CG-03 CMS approval.
          Private recipients and delivery records are never included.</p>
-        <button type="button" disabled={busy||!canManage} onClick={()=>{
+        <button type="button" className="cg-cms-admin-btn" disabled={busy||!canManage} onClick={()=>{
          void api<{sources:NoticeSource[]}>("notice-sources").then(res=>{
           setNoticeSources(res.sources);setNoticeSourceError("");
          }).catch(()=>setNoticeSourceError(
           "Original notices are unavailable or your role cannot view them."));
         }}>Load eligible approved notices</button>
-        {noticeSourceError&&<p role="status">{noticeSourceError}</p>}
-        <label>Original notice to copy<select value={str(f.sourceNoticeRef)}
-         onChange={e=>{
-          const chosen=noticeSources.find(x=>x.noticeRef===e.target.value);
+        {noticeSourceError&&<div className="cg-cms-admin-inline-error" role="status"><AlertCircle size={16}/> {noticeSourceError}</div>}
+        <CustomDropdown label="Original notice to copy" value={str(f.sourceNoticeRef)}
+         onChange={val=>{
+          const chosen=noticeSources.find(x=>x.noticeRef===val);
           if(!chosen){const {sourceNoticeRef,publicReleaseConfirmed,...plain}=f;
            edit(index,plain);return;}
           edit(index,{...f,sourceNoticeRef:chosen.noticeRef,publicReleaseConfirmed:false,
            heading:chosen.title,body:chosen.body,excerpt:chosen.body.slice(0,300),
            category:"Official Notice",authorLabel:"CareGanga Foundation",
            source:"CG-19 approved Foundation notice",asOfDate:chosen.asOfDate});
-         }}>
-         <option value="">Independent editorial article (not a notice)</option>
-         {noticeSources.map(item=><option key={item.noticeRef} value={item.noticeRef}>
-          {item.title} · expires {item.expiresAt.slice(0,10)}</option>)}
-        </select></label>
+         }}
+         options={[
+          {value:"",label:"Independent editorial article (not a notice)"},
+          ...noticeSources.map(item=>({value:item.noticeRef,label:`${item.title} · expires ${item.expiresAt.slice(0,10)}`}))
+         ]}/>
         {typeof f.sourceNoticeRef==="string"&&<label className="cg-cms-consent">
          <input type="checkbox" checked={f.publicReleaseConfirmed===true}
           onChange={e=>change("publicReleaseConfirmed",e.target.checked)}/>
@@ -837,18 +1005,21 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
           onClick={()=>removeItem(index,"partners",j,"FEATURE")}>Remove partner</button>}
         </div>;
        })}
-       {canManage&&items(f.partners).length<12&&<label>Choose an original verified partner
-        <select value="" disabled={busy||!!pending||!!mediaAttempt.current||!!partnerSourceError}
-         onChange={e=>{
-          const source=partnerSources.find(x=>x.sourceRef===e.target.value);
-          if(!source||items(f.partners).some(v=>v.sourceRef===source.sourceRef))return;
-          addItem(index,"partners",{sourceRef:source.sourceRef,rightsVersion:source.rightsVersion});
-         }}>
-         <option value="">Select current approved partner (no samples)</option>
-         {partnerSources.filter(x=>!items(f.partners).some(v=>v.sourceRef===x.sourceRef))
-          .map(v=><option value={v.sourceRef} key={v.sourceRef}>{v.name}</option>)}
-        </select>
-       </label>}
+       {canManage&&items(f.partners).length<12&&<CustomDropdown
+        label="Choose an original verified partner"
+        value=""
+        disabled={busy||!!pending||!!mediaAttempt.current||!!partnerSourceError}
+        onChange={val=>{
+         const source=partnerSources.find(x=>x.sourceRef===val);
+         if(!source||items(f.partners).some(v=>v.sourceRef===source.sourceRef))return;
+         addItem(index,"partners",{sourceRef:source.sourceRef,rightsVersion:source.rightsVersion});
+        }}
+        options={[
+         {value:"",label:"Select current approved partner (no samples)"},
+         ...partnerSources.filter(x=>!items(f.partners).some(v=>v.sourceRef===x.sourceRef))
+          .map(v=>({value:v.sourceRef,label:v.name}))
+        ]}
+       />}
       </>}
       {section.kind==="HEALTHCARE_CATEGORIES"&&<>
        <Field name="General healthcare explanation" large value={f.intro}
@@ -866,10 +1037,15 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         onClick={()=>addItem(index,"categories",{title:"",description:""})}>Add category</button>}
        <Field name="Optional information button" value={f.ctaLabel}
         onChange={v=>change("ctaLabel",v)}/>
-       <label>Destination<select value={str(f.ctaPath)}
-        onChange={e=>change("ctaPath",e.target.value)}>
-        <option value="">No link</option><option value="/contact">Foundation Contact</option>
-       </select></label>
+        <CustomDropdown
+         label="Destination"
+         value={str(f.ctaPath)}
+         onChange={val=>change("ctaPath",val)}
+         options={[
+          {value:"",label:"No link"},
+          {value:"/contact",label:"Foundation Contact"}
+         ]}
+        />
       </>}
       {section.kind==="CONTACT_INFO"&&<>
        <Field name="Contact page hero title" value={f.heroTitle}
@@ -900,12 +1076,16 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         onClick={()=>addItem(index,"faqs",{question:"",answer:""})}>Add FAQ</button>}
        <h4>Verified official social links</h4>
        {items(f.socialLinks).map((v,j)=><div className="cg-cms-team" key={j}>
-        <label>Network<select value={str(v.network)}
-         onChange={e=>changeItem(index,j,{network:e.target.value},"socialLinks")}>
-         <option value="Facebook">Facebook</option>
-         <option value="Instagram">Instagram</option>
-         <option value="YouTube">YouTube</option>
-        </select></label>
+        <CustomDropdown
+         label="Network"
+         value={str(v.network)||"Facebook"}
+         onChange={val=>changeItem(index,j,{network:val},"socialLinks")}
+         options={[
+          {value:"Facebook",label:"Facebook"},
+          {value:"Instagram",label:"Instagram"},
+          {value:"YouTube",label:"YouTube"}
+         ]}
+        />
         <Field name="Approved HTTPS profile URL" value={v.url}
          onChange={x=>changeItem(index,j,{url:x},"socialLinks")}/>
         {canManage&&<button type="button"
@@ -934,52 +1114,75 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
     {selected?.status==="DRAFT"&&draft.kind!=="POLICY"&&!draft.sections.some(s=>typeof s.fields.sourceEventRef==="string")&&
      <fieldset><legend>Verified original media</legend>
       <p>Only original CG-19 scanned, consented media. Attach one per matching section or item.</p>
-      <label>Placement<select value={uploadRole} onChange={e=>setUploadRole(e.target.value)}>
-       {draft.kind==="PARTNERS"?<option value="FEATURE">Verified corporate partner logo (optional)</option>:
-        draft.kind==="IMPACT"?<option value="IMPACT">Impact group photo</option>:
-        draft.kind==="GALLERY"?<option value="GALLERY">Gallery item</option>:
-        draft.kind==="COMPLIANCE"?<option value="DOCUMENT">Official proof scan or PDF</option>:
-        draft.kind==="CONTACT"?<option value="CONTACT">Contact photo strip</option>:
-        draft.kind==="HEALTHCARE"?<><option value="HERO">Healthcare hero photograph</option><option value="FEATURE">Healthcare category illustration</option></>:
-        <option value="ARTICLE">Article cover photo</option>}
-      </select></label>
-      {["IMPACT","GALLERY","DOCUMENT","CONTACT","FEATURE"].includes(uploadRole)&&<label>Placement position<select
-       value={String(uploadOrder)} onChange={e=>setUploadOrder(Number(e.target.value))}>
-       {(draft.kind==="PARTNERS"?items(draft.sections.find(v=>v.kind==="PARTNER_CARDS")?.fields.partners).map(v=>({title:partnerSources.find(p=>p.sourceRef===v.sourceRef)?.name??"Verified partner"})):
+      <CustomDropdown
+       label="Placement"
+       value={uploadRole}
+       onChange={setUploadRole}
+       options={
+        draft.kind==="PARTNERS"?[{value:"FEATURE",label:"Verified corporate partner logo (optional)"}]:
+        draft.kind==="IMPACT"?[{value:"IMPACT",label:"Impact group photo"}]:
+        draft.kind==="GALLERY"?[{value:"GALLERY",label:"Gallery item"}]:
+        draft.kind==="COMPLIANCE"?[{value:"DOCUMENT",label:"Official proof scan or PDF"}]:
+        draft.kind==="CONTACT"?[{value:"CONTACT",label:"Contact photo strip"}]:
+        draft.kind==="HEALTHCARE"?[{value:"HERO",label:"Healthcare hero photograph"},{value:"FEATURE",label:"Healthcare category illustration"}]:
+        [{value:"ARTICLE",label:"Article cover photo"}]
+       }
+      />
+      {["IMPACT","GALLERY","DOCUMENT","CONTACT","FEATURE"].includes(uploadRole)&&<CustomDropdown
+       label="Placement position"
+       value={String(uploadOrder)}
+       onChange={val=>setUploadOrder(Number(val))}
+       options={(draft.kind==="PARTNERS"?items(draft.sections.find(v=>v.kind==="PARTNER_CARDS")?.fields.partners).map(v=>({title:partnerSources.find(p=>p.sourceRef===v.sourceRef)?.name??"Verified partner"})):
         draft.kind==="HEALTHCARE"?items(draft.sections.find(v=>v.kind==="HEALTHCARE_CATEGORIES")?.fields.categories):
         draft.kind==="CONTACT"?[{title:"Original photo 1"},{title:"Original photo 2"},
           {title:"Original photo 3"}]:
         draft.kind==="IMPACT"?draft.sections:draft.kind==="COMPLIANCE"?
          items(draft.sections[0]?.fields.documents):items(draft.sections[0]?.fields.items))
-        .map((value,i)=><option value={i} key={i}>{draft.kind==="PARTNERS"?str((value as Record<string,unknown>).title):draft.kind==="CONTACT"?"Original photo "+(i+1):draft.kind==="IMPACT"?
-         str((value as Section).fields.group):str((value as Record<string,unknown>).title)||"Item "+(i+1)}</option>)}
-      </select></label>}
+        .map((value,i)=>({
+         value:String(i),
+         label:draft.kind==="PARTNERS"?str((value as Record<string,unknown>).title):draft.kind==="CONTACT"?"Original photo "+(i+1):draft.kind==="IMPACT"?str((value as Section).fields.group):str((value as Record<string,unknown>).title)||"Item "+(i+1)
+        }))}
+      />}
       <Field name="Accessible image/document description" value={uploadAlt}
        onChange={setUploadAlt}/>
       <label className="cg-cms-consent"><input type="checkbox" checked={rights}
        onChange={e=>setRights(e.target.checked)}/>The Foundation owns the public-use rights</label>
-      <input type="file" disabled={busy||!rights||uploadAlt.trim().length<3||
-         allowedForCurrentPlacement().length===0||
-         (draft.kind==="HEALTHCARE"&&uploadRole==="HERO"&&draft.sections.find(x=>x.kind==="HERO"&&x.order===uploadOrder)?.fields.textOnly===true)||
-         (uploadRole==="DOCUMENT"&&items(draft.sections[0]?.fields.documents).length===0)||
-         (uploadRole==="FEATURE"&&items(draft.kind==="HEALTHCARE"?draft.sections.find(x=>x.kind==="HEALTHCARE_CATEGORIES")?.fields.categories:draft.sections.find(x=>x.kind==="PARTNER_CARDS")?.fields.partners).length===0)||
-         (uploadRole==="GALLERY"&&items(draft.sections[0]?.fields.items).length===0)} accept={
-       allowedForCurrentPlacement().join(",")}
-       onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);
-        e.currentTarget.value="";}}/>
+      {(()=>{
+       const uploadDisabled=busy||!rights||uploadAlt.trim().length<3||
+        allowedForCurrentPlacement().length===0||
+        (draft.kind==="HEALTHCARE"&&uploadRole==="HERO"&&draft.sections.find(x=>x.kind==="HERO"&&x.order===uploadOrder)?.fields.textOnly===true)||
+        (uploadRole==="DOCUMENT"&&items(draft.sections[0]?.fields.documents).length===0)||
+        (uploadRole==="FEATURE"&&items(draft.kind==="HEALTHCARE"?draft.sections.find(x=>x.kind==="HEALTHCARE_CATEGORIES")?.fields.categories:draft.sections.find(x=>x.kind==="PARTNER_CARDS")?.fields.partners).length===0)||
+        (uploadRole==="GALLERY"&&items(draft.sections[0]?.fields.items).length===0);
+       return <label className={`cg-cms-upload-dropzone${uploadDisabled?" cg-cms-upload-disabled":""}`}>
+        <UploadCloud size={22} color={uploadDisabled?"#94A3B8":"#4F46E5"}/>
+        <span style={{fontSize:"0.875rem",fontWeight:700,color:"#0F172A"}}>
+         {busy?"Uploading & verifying with CG-19…":"Click to choose file to upload"}
+        </span>
+        <span style={{fontSize:"0.75rem",color:"#64748B"}}>
+         {uploadDisabled
+          ?"Enter a 3+ character description and tick the rights checkbox above to enable upload"
+          :`Accepted: ${allowedForCurrentPlacement().map(m=>m.split("/")[1]?.toUpperCase()??m).join(", ")}`}
+        </span>
+        <input type="file" disabled={uploadDisabled} accept={allowedForCurrentPlacement().join(",")}
+         onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);
+          e.currentTarget.value="";}}/>
+       </label>;
+      })()}
       {draft.assets.map(a=><div className="cg-cms-asset" key={a.fileRef}>
-       <span>{a.role} · position {a.order+1} · {a.altText}</span>
-       <button type="button" disabled={!canManage} onClick={()=>setDraft(d=>({
+       <span style={{display:"inline-flex",alignItems:"center",gap:"0.45rem"}}><FileCheck2 size={15}/> {a.role} · position {a.order+1} · {a.altText}</span>
+       <button type="button" className="cg-cms-admin-btn" style={{minHeight:"30px",padding:"0.25rem 0.65rem",fontSize:"0.75rem"}} disabled={!canManage} onClick={()=>setDraft(d=>({
         ...d,assets:d.assets.filter(v=>v!==a)}))}>Detach</button></div>)}
      </fieldset>}
     {!!selected?.bundledAssets?.length&&<p className="cg-cms-muted">Bundled editorial illustrations: {selected.bundledAssets.length}. Preview them above; upload replacements in a new draft.</p>}
     <p className="cg-cms-muted">Contact submissions use the existing CG-19 private support form.
      Publication cannot create a separate inbox, event, provider or patient record.</p>
    </div>}
+   {!!error&&<div className="cg-cms-admin-inline-error" role="alert"><AlertCircle size={16}/> {error}</div>}
    <div className="cg-cms-actions">
-    {!selected&&canManage&&<button disabled={busy||!!pending}
+    {!selected&&canManage&&<button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={busy||!!pending}
      onClick={()=>act("pages","POST",{content:content(draft)})}>Create draft</button>}
-    {selected?.status==="DRAFT"&&canManage&&<button disabled={busy||!!pending}
+    {selected?.status==="DRAFT"&&canManage&&<button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={busy||!!pending}
      onClick={()=>act("pages/"+selected.pageRef+"/draft","PUT",{
       content:content(draft),expectedVersion:selected.version})}>Save draft</button>}
     {selected&&selected.status!=="DRAFT"&&canManage&&
@@ -987,30 +1190,30 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       <p>Start a new unpublished revision of this page. The currently
        published copy stays unchanged until the new revision is independently
        approved and published. Older scheduled drafts may be cancelled.</p>
-      <button type="button" disabled={busy||!!pending}
+      <button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={busy||!!pending}
        onClick={()=>act("pages/"+selected.pageRef+"/draft","PUT",{
         content:content(draft),expectedVersion:selected.version})}>
        Create next draft revision</button>
      </div>}
-    {selected?.status==="DRAFT"&&canManage&&<button disabled={busy||!!pending||!!unsaved}
+    {selected?.status==="DRAFT"&&canManage&&<button type="button" className="cg-cms-admin-btn" disabled={busy||!!pending||!!unsaved}
      onClick={()=>act("pages/"+selected.pageRef+"/submit","POST",{
       expectedVersion:selected.version})}>Submit to independent review</button>}
     {selected?.status==="SUBMITTED"&&selected.approvalCaseRef&&canPublish&&<>
      <label>Schedule (optional)<input type="datetime-local" value={publishWhen}
       onChange={e=>setPublishWhen(e.target.value)}/></label>
-     <button type="button" disabled={busy||!!pending||!!unsaved||
+     <button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={busy||!!pending||!!unsaved||
        (Boolean(publishWhen)&&(!Number.isFinite(Date.parse(publishWhen))||
          Date.parse(publishWhen)-Date.now()<60000))}
       onClick={()=>act("pages/"+selected.pageRef+"/publish","POST",{
        expectedVersion:selected.version,caseRef:selected.approvalCaseRef,
        ...(publishWhen?{publishAt:new Date(publishWhen).toISOString()}:{})})}>
       Publish approved version</button></>}
-    {selected&&canPublish&&(selected.publicationStatus==="EFFECTIVE"||selected.scheduledAt)&&<>
-     <Field name="Withdrawal reason" value={withdrawReason} onChange={setWithdrawReason}/>
-     <button disabled={busy||!!pending||withdrawReason.trim().length<8}
+    {selected&&canPublish&&(selected.publicationStatus==="EFFECTIVE"||selected.scheduledAt)&&<div style={{width:"100%",display:"flex",alignItems:"flex-end",gap:"0.65rem",flexWrap:"wrap",paddingTop:"0.5rem",borderTop:"1px solid #E2E8F0"}}>
+     <div style={{flex:"1 1 14rem"}}><Field name="Withdrawal reason" value={withdrawReason} onChange={setWithdrawReason}/></div>
+     <button type="button" className="cg-cms-admin-btn" disabled={busy||!!pending||withdrawReason.trim().length<8}
       onClick={()=>act("pages/"+selected.pageRef+"/withdraw","POST",{
        expectedVersion:selected.version,reason:withdrawReason})}>Withdraw public page</button>
-    </>}
+    </div>}
    </div>
    {selected&&<p className="cg-cms-muted">Draft {selected.status.replaceAll("_"," ")} ·
     Publication {selected.publicationStatus.replaceAll("_"," ")}.

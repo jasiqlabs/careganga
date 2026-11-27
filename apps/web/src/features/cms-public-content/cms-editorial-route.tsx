@@ -125,7 +125,7 @@ export async function CmsOriginalNgoInformationRoute(){
    <p>We cannot verify the current approved official information.</p>
    <Link href="/">Return to the homepage</Link></main>;
  return <CmsPublicPage page={{...r.page,canonicalPath:"/ngo-information"}}
-  sidebar={<CmsNgoSidebar page={r.page}/>} navigation={navigation}
+  sidebar={<CmsNgoSidebar page={r.page} navigation={navigation}/>} navigation={navigation}
   siteFooter={home.state==="PUBLISHED"?
    home.page.sections.find(s=>s.kind==="SITE_FOOTER")?.fields:null}/>;
 }

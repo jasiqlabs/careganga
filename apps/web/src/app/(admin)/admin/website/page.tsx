@@ -1,7 +1,8 @@
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
-import {CmsAdminWorkspace} from "../../../../features/cms-public-content/cms-admin-workspace";
+import {CmsAdminWorkspace,CmsPageListProvider} from "../../../../features/cms-public-content/cms-admin-workspace";
+import {publishedCmsNavigation} from "../../../../features/cms-public-content/cms-public-source";
 import {CmsExtendedWorkspace} from "../../../../features/cms-public-content/cms-extended-workspace";
 import {AccessDeniedView} from "../../../../shared/access-denied-view";
 import {UnavailablePage} from "../../../../shared/unavailable-page";
@@ -31,6 +32,7 @@ export default async function WebsiteCmsAdmin(){
    x&&typeof x==="object"&&"key" in x&&typeof x.key==="string"?[x.key]:[]));
   if(!actions.has("cms.content.view"))
    return <AccessDeniedView reason="Your Foundation role cannot view or edit website content." />;
+  const navigation=await publishedCmsNavigation();
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(actions)} active="cms" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.has("roles.view")}
@@ -43,17 +45,16 @@ export default async function WebsiteCmsAdmin(){
     canViewFoundation={actions.has("foundation.profile.view")}
     canViewFinance={actions.has("finance.accounts.view")}
     canViewVouchers={actions.has("finance.vouchers.view")}/>
-   <main className="workspace"><CmsAdminWorkspace
+   <main className="workspace" style={{padding:0,background:"#F8FAFC"}}><CmsPageListProvider><CmsAdminWorkspace
     canManage={actions.has("cms.content.manage")}
     canPublish={actions.has("cms.content.publish")}
-    canReview={actions.has("approvals.review")}/>
-    <details className="cg-cms-extra" id="editorial-pages">
-     <summary>Impact, 80G, Gallery, Articles, Contact &amp; Healthcare pages</summary>
+    canReview={actions.has("approvals.review")} navigation={navigation}/>
+    <div id="editorial-pages">
      <CmsExtendedWorkspace canManage={actions.has("cms.content.manage")}
       canPublish={actions.has("cms.content.publish")}
       canViewNoticeSources={actions.has("cms.content.manage")&&
        actions.has("communications.notices.manage")}/>
-    </details>
+    </div></CmsPageListProvider>
    </main>
   </div>;
  }catch(e){

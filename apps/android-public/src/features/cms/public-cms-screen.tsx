@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,AppState,BackHandler,Image,Linking,Pressable,
- StyleSheet,Text,TextInput,View} from "react-native";
+import {ActivityIndicator,AppState,BackHandler,Image,Linking,Modal,Pressable,
+ ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {CmsPublicExtendedSection} from "./cms-extended-native-screen";
 import {NativeMembershipPlans} from "../membership/native-membership-plans";
@@ -240,6 +240,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  const [noticeSearch,setNoticeSearch]=useState("");
  const [noticeCategory,setNoticeCategory]=useState("ALL");
  const [noticePriority,setNoticePriority]=useState("ALL");
+ const [activeNotice,setActiveNotice]=useState<Notice|null>(null);
  const [articleBackTarget,setArticleBackTarget]=useState<"articles"|"notices"|"@events">("articles");
  const [activeSlide,setActiveSlide]=useState(0);
  const [result,setResult]=useState<Result>({state:"UNAVAILABLE",page:null});
@@ -460,10 +461,37 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
        <Text accessibilityRole="header" style={styles.heading}>{n.title}</Text>
        <Text style={styles.body}>{n.body}</Text>
        <Text style={styles.muted}>Published {n.publishedOn}</Text>
-       <CmsButton title="Read approved notice" onPress={()=>{
-        setArticleBackTarget("notices");setSlug(n.path.slice("/blog/".length));}}/>
+       <CmsButton title="Read Details" onPress={()=>setActiveNotice(n)}/>
       </View>)}
      </>}
+     <Modal visible={!!activeNotice} transparent animationType="fade" onRequestClose={()=>setActiveNotice(null)}>
+      <View style={{flex:1,backgroundColor:"rgba(15,23,42,0.55)",justifyContent:"center",padding:16}}>
+       <View style={[styles.card,{maxHeight:"85%"}]}>
+        <ScrollView contentContainerStyle={{gap:10}}>
+         {activeNotice&&<>
+          <Text style={[styles.eyebrow,{color:activeNotice.priority==="IMPORTANT"?"#B91C1C":"#166534"}]}>
+           {activeNotice.priority==="IMPORTANT"?"IMPORTANT":"NORMAL"} · {activeNotice.category.toUpperCase()}
+          </Text>
+          <Text accessibilityRole="header" style={styles.heading}>{activeNotice.title}</Text>
+          <Text style={styles.muted}>Published on {activeNotice.publishedOn}</Text>
+          <View style={{backgroundColor:"#F1F5F9",borderLeftWidth:3,borderLeftColor:t.primary,padding:10,borderRadius:6}}>
+           <Text style={[styles.body,{fontWeight:"600",color:t.primary}]}>{activeNotice.title}</Text>
+          </View>
+          <Text style={styles.body}>{activeNotice.body}</Text>
+          <View style={styles.actions}>
+           <CmsButton title="Open Full Page" onPress={()=>{
+            const target=activeNotice.path.slice("/blog/".length);
+            setActiveNotice(null);
+            setArticleBackTarget("notices");
+            setSlug(target);
+           }}/>
+           <CmsButton title="Close" secondary onPress={()=>setActiveNotice(null)}/>
+          </View>
+         </>}
+        </ScrollView>
+       </View>
+      </View>
+     </Modal>
      <CmsButton title="Refresh approved notices" secondary
       onPress={()=>void load("notices")}/>
     </View>:slug==="collaboration"&&result.state!=="PUBLISHED"?<View style={styles.card}>

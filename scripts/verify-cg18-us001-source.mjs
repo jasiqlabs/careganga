@@ -306,7 +306,7 @@ const checks=[
   files.backend.includes('a.order<3')&&
   files.media.includes("a.role='CONTACT' AND sec.section_kind='CONTACT_INFO'")&&
   files.media.includes("'ARTICLE','IMPACT','CONTACT')")&&
-  files.adminExtended.includes('value="CONTACT"')&&
+  (files.adminExtended.includes('value="CONTACT"')||files.adminExtended.includes('value:"CONTACT"'))&&
   files.publicExtended.includes('a.role==="CONTACT"')&&
   files.web.includes('assets={assets}')&&
   files.androidExtended.includes('picture("CONTACT",i)')&&
@@ -447,7 +447,16 @@ checks.push(["Unresolved CG19 private media keeps same-page Web editors recovera
  files.adminExtended.includes("if(pending||mediaAttempt.current)")&&
  files.adminExtended.includes("if(busy||pending||mediaAttempt.current)")&&
  files.adminExtended.includes("if(pending||dirty||mediaAttempt.current)")&&
- files.adminExtended.includes("disabled={!!mediaAttempt.current}")]);
+ files.adminExtended.includes("disabled={!!mediaAttempt.current||!!pending||busy}")]);
+checks.push(["CMS dashboard visibility and live route labels use the effective public source",
+ files.adminRoute.includes("await publishedCmsNavigation()")&&files.adminRoute.includes("navigation={navigation}")&&
+ files.admin.includes("navigation?.login?.visible")&&files.admin.includes("disabled={!editingHome}")&&
+ files.admin.includes("allPages.filter(isLive)")&&!files.admin.includes("Instantly toggle")&&
+ files.ngoChildren.includes("navigation?.login.visible&&navigation.login.path")]);
+checks.push(["Both web CMS editors share one authenticated page-list read",
+ files.adminRoute.includes("<CmsPageListProvider>")&&files.adminRoute.includes("</CmsPageListProvider>")&&
+ files.admin.includes("useCmsPageList()")&&files.adminExtended.includes("useCmsPageList()")&&
+ !files.adminExtended.includes('api<{pages:Item[]}>("pages")')]);
 checks.push(["Native CG18 media slots are original tappable choices, not technical index input",
  internalMedia.includes("positions.map((position,i)=>")&&
  internalMedia.includes('"Placement "+(i+1)')&&
