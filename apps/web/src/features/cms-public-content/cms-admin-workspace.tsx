@@ -1299,6 +1299,99 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    <button type="button" className="cg-cms-admin-btn" style={{width:"fit-content"}} disabled={busy||!!pending}
      onClick={()=>{setReviewing(false);setActiveWorkspaceTab("PAGES");}}>Back to pages</button>
   </section>:<>
+   {activeWorkspaceTab==="BLOG"&&<section className="cg-cms-admin-card" aria-label="Blog and news articles">
+    <div className="cg-cms-admin-card-header">
+     <div>
+      <span className="cg-cms-admin-card-title">Blog / News Articles ({articlePages.length})</span>
+      <p style={{fontSize:"0.8rem",color:"#64748B",margin:"0.2rem 0 0 0"}}>Live news &amp; blog articles from the database. Click any article to open its editor.</p>
+     </div>
+     <button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" onClick={()=>scrollToExtended()}>
+      <Plus size={14}/> Manage / Create Articles
+     </button>
+    </div>
+    <div className="cg-cms-list">
+     {articlePages.map(v=><button type="button" key={v.pageRef} onClick={()=>scrollToExtended(v.pageRef)}>
+      <strong>{v.title}</strong>
+      <span>{routeFor(v)} · draft {v.draftStatus.replaceAll("_"," ")} · {v.publicStatus?"public "+v.publicStatus.replaceAll("_"," "):"Not published"}</span>
+     </button>)}
+     {articlePages.length===0&&<p style={{color:"#64748B",fontSize:"0.85rem"}}>No articles in database yet. Click &quot;Manage / Create Articles&quot; to create one.</p>}
+    </div>
+   </section>}
+
+   {activeWorkspaceTab==="MEDIA"&&<section className="cg-cms-admin-card" aria-label="Media Library and Gallery">
+    <div className="cg-cms-admin-card-header">
+     <div>
+      <span className="cg-cms-admin-card-title">Media Library &amp; Gallery ({galleryPages.length})</span>
+      <p style={{fontSize:"0.8rem",color:"#64748B",margin:"0.2rem 0 0 0"}}>CG-19 scanned photos, videos, and publications managed through Gallery pages.</p>
+     </div>
+     <button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" onClick={()=>scrollToExtended(galleryPages[0]?.pageRef)}>
+      <UploadCloud size={14}/> Open Gallery &amp; Media Editor
+     </button>
+    </div>
+    <div className="cg-cms-list">
+     {galleryPages.map(v=><button type="button" key={v.pageRef} onClick={()=>scrollToExtended(v.pageRef)}>
+      <strong>{v.title}</strong>
+      <span>{routeFor(v)} · draft {v.draftStatus.replaceAll("_"," ")} · {v.publicStatus?"public "+v.publicStatus.replaceAll("_"," "):"Not published"}</span>
+     </button>)}
+     {galleryPages.length===0&&<p style={{color:"#64748B",fontSize:"0.85rem"}}>No gallery page found yet.</p>}
+    </div>
+   </section>}
+
+   {activeWorkspaceTab==="MENUS"&&<section className="cg-cms-admin-card" aria-label="Public Website Navigation Menus">
+    <div className="cg-cms-admin-card-header">
+     <div>
+      <span className="cg-cms-admin-card-title">Public Navigation &amp; Live Routes ({allPages.length})</span>
+      <p style={{fontSize:"0.8rem",color:"#64748B",margin:"0.2rem 0 0 0"}}>Visibility toggles above control Login, Member Join, and Volunteer Join links. Below are all live CMS routes.</p>
+     </div>
+    </div>
+    <div className="cg-cms-admin-table-wrap">
+     <table className="cg-cms-admin-table">
+      <thead><tr><th>Page Title</th><th>Type</th><th>Public URL</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+       {allPages.map(p=><tr key={p.pageRef}>
+        <td style={{fontWeight:600,color:"#0F172A"}}>{p.title}</td>
+        <td style={{color:"#64748B"}}>{p.kind}</td>
+        <td><a href={routeFor(p)} target="_blank" rel="noopener noreferrer" style={{color:"#2563EB",textDecoration:"none"}}>{routeFor(p)}</a></td>
+        <td><span className={`cg-cms-admin-status-pill ${p.publicStatus==="EFFECTIVE"?"cg-cms-admin-status-published":"cg-cms-admin-status-draft"}`}>{p.publicStatus==="EFFECTIVE"?"Published":"Not published"}</span></td>
+        <td><button type="button" className="cg-cms-admin-btn" style={{minHeight:"30px",padding:"0.2rem 0.6rem",fontSize:"0.75rem"}} onClick={()=>{if(p.kind==="HOME"||p.kind==="ABOUT"){void openPage(p.pageRef);setActiveWorkspaceTab("PAGES");}else{scrollToExtended(p.pageRef);}}}><Edit2 size={12}/> Edit</button></td>
+       </tr>)}
+      </tbody>
+     </table>
+    </div>
+   </section>}
+
+   {(activeWorkspaceTab==="SLIDERS"||activeWorkspaceTab==="BANNERS")&&<section className="cg-cms-admin-card" aria-label="Homepage Hero Sliders and Banners">
+    <div className="cg-cms-admin-card-header">
+     <div>
+      <span className="cg-cms-admin-card-title">Homepage Hero Sliders &amp; Banners</span>
+      <p style={{fontSize:"0.8rem",color:"#64748B",margin:"0.2rem 0 0 0"}}>Manage hero carousel slides, headlines, buttons, and CG-19 verified banner images.</p>
+     </div>
+     {pages.find(p=>p.kind==="HOME")&&<button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={busy} onClick={()=>{const home=pages.find(p=>p.kind==="HOME");if(home){void openPage(home.pageRef);setActiveWorkspaceTab("PAGES");}}}>
+      <Sliders size={14}/> Open Homepage Banner Editor
+     </button>}
+    </div>
+    <p style={{fontSize:"0.85rem",color:"#334155",margin:0}}>Click &quot;Open Homepage Banner Editor&quot; to edit slides, colors, and desktop/mobile banner photos.</p>
+   </section>}
+
+   {activeWorkspaceTab==="SETTINGS"&&<section className="cg-cms-admin-card" aria-label="Website Settings and Legal Policies">
+    <div className="cg-cms-admin-card-header">
+     <div>
+      <span className="cg-cms-admin-card-title">Website Settings, Contact &amp; Legal Policies</span>
+      <p style={{fontSize:"0.8rem",color:"#64748B",margin:"0.2rem 0 0 0"}}>Edit Footer, Contact Us, and the 7 statutory legal policy pages.</p>
+     </div>
+     {pages.find(p=>p.kind==="HOME")&&<button type="button" className="cg-cms-admin-btn" disabled={busy} onClick={()=>{const home=pages.find(p=>p.kind==="HOME");if(home){void openPage(home.pageRef);setActiveWorkspaceTab("PAGES");}}}>
+      <Settings size={14}/> Edit Home Header / Footer
+     </button>}
+    </div>
+    <div className="cg-cms-list">
+     {allPages.filter(p=>p.kind==="POLICY"||p.kind==="CONTACT"||p.kind==="COMPLIANCE").map(v=><button type="button" key={v.pageRef} onClick={()=>scrollToExtended(v.pageRef)}>
+      <strong>{v.title}</strong>
+      <span>{v.kind} · {routeFor(v)} · {v.publicStatus?"public "+v.publicStatus.replaceAll("_"," "):"Not published"}</span>
+     </button>)}
+    </div>
+   </section>}
+
+   {activeWorkspaceTab==="PAGES"&&<>
    <div className="cg-cms-admin-search-wrapper" style={{marginBottom:"0.75rem"}}>
     <Search size={16} className="cg-cms-admin-search-icon" aria-hidden="true"/>
     <input type="search" className="cg-cms-admin-search-input"
@@ -1317,6 +1410,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      <span>{v.kind} · {routeFor(v)} · draft {v.draftStatus.replaceAll("_"," ")} · {v.publicStatus?"public "+v.publicStatus.replaceAll("_"," "):"Not published"}</span>
     </button>)}
    </section>
+   </>}
    {(selected||creating)&&<section id="cg-cms-page-editor-card" className="cg-cms-card" aria-label="Draft review and actions">
     <div className="cg-cms-toolbar">
      <h3>{selected?selected.title:"Create website page (Home / About)"}</h3>
