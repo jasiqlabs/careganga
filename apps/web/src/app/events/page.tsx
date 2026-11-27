@@ -54,7 +54,7 @@ export default async function EventsPage({
                 <p className="cg-site-notice-excerpt">{event.excerpt}</p>
                 <div className="cg-site-notice-card-footer">
                   <time dateTime={event.asOfDate}>
-                    <Calendar size={13} aria-hidden="true" /> {event.asOfDate}
+                    <Calendar size={13} aria-hidden="true" /> As of {event.asOfDate}
                   </time>
                   <Link href={event.path} className="cg-site-notice-link">
                     View event details <ArrowRight size={14} aria-hidden="true" />
