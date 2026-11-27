@@ -17,6 +17,7 @@ export function CmsNgoDocModalButton({
   verifiedBy,
   active = true,
   buttonLabel = "VIEW DOCUMENT",
+  className = "cg-site-ngo-view-doc-btn",
 }: {
   title: string;
   meta?: string;
@@ -24,6 +25,7 @@ export function CmsNgoDocModalButton({
   verifiedBy?: string;
   active?: boolean;
   buttonLabel?: string;
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
@@ -41,7 +43,7 @@ export function CmsNgoDocModalButton({
     <>
       <button
         type="button"
-        className="cg-site-ngo-view-doc-btn"
+        className={className}
         onClick={() => {
           setImgFailed(false);
           setOpen(true);

@@ -1939,6 +1939,64 @@
   color: #64748B;
 }
 
+.cg-site-ngo-cert-regno {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #15803D;
+  margin-top: 0.15rem;
+  overflow-wrap: anywhere;
+}
+
+.cg-site-ngo-cert-details {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.cg-site-ngo-cert-detail-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.cg-site-ngo-cert-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748B;
+}
+
+.cg-site-ngo-cert-detail-block strong {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1E293B;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.cg-site-ngo-cert-dates {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid #E2E8F0;
+  font-size: 0.76rem;
+  color: #475569;
+}
+
+.cg-site-ngo-cert-dates strong {
+  color: #15803D;
+  font-weight: 700;
+}
+
 .cg-site-ngo-active-pill {
   background: #ECFDF5;
   color: #15803D;
@@ -1963,9 +2021,17 @@
   font-size: 0.8rem;
   font-weight: 600;
   padding: 0.5rem 0.95rem;
+  border: 0;
   border-radius: 8px;
   text-decoration: none;
   min-height: 36px;
+  cursor: pointer;
+}
+
+@media (max-width: 540px) {
+  .cg-site-ngo-cert-actions .cg-site-ngo-doc-btn {
+    width: 100%;
+  }
 }
 
 .cg-site-ngo-doc-btn:hover {

@@ -47,7 +47,7 @@ const legalPages=[
 ] as const;
 const groups=["HERO","PILLARS","STATS","GROWTH","GEOGRAPHY","BREAKDOWN",
  "FOCUS","STORIES","UPDATES","CTA"];
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*60_000).toISOString().slice(0,10);
 const str=(v:unknown)=>typeof v==="string"?v:"";
 const items=(v:unknown)=>Array.isArray(v)?v as Record<string,unknown>[]:[];
 const pathFor=(kind:Kind,slug:string)=>kind==="COMPLIANCE"?"/ngo-information":
@@ -167,6 +167,8 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const [partnerSources,setPartnerSources]=useState<PartnerOption[]>([]),[partnerSourceError,setPartnerSourceError]=useState("");
  const [uploadRole,setUploadRole]=useState("IMPACT"),[uploadOrder,setUploadOrder]=useState(0);
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
+ const [docRights,setDocRights]=useState<Record<number,boolean>>({});
+ const [docAlt,setDocAlt]=useState<Record<number,string>>({});
  const [withdrawReason,setWithdrawReason]=useState("");
  const [publishWhen,setPublishWhen]=useState("");
  const [previewDevice,setPreviewDevice]=useState<"DESKTOP"|"MOBILE">("DESKTOP");
@@ -280,30 +282,84 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    setError(e instanceof Error?e.message:"Check the original action before retrying.");
   }finally{setBusy(false);}
  }
+ function validateDraft(d:Draft):string|null{
+  if(d.title.trim().length<3)return "Page title must be at least 3 characters.";
+  const curToday=today();
+  for(const s of d.sections){
+   const f=s.fields;
+   if(s.kind==="COMPLIANCE_FACTS"){
+    if(str(f.heading).trim().length<3)return "Section heading must be at least 3 characters.";
+    const pan=str(f.pan).trim().toUpperCase();
+    if(pan&&!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan))return "PAN must be a valid 10-character format (e.g. ABCDE1234F).";
+    const docs=items(f.documents);
+    if((str(f.verification)==="VERIFIED"||pan||str(f.registrationNumber).trim()||str(f.approvalNumber).trim()||docs.length>0)&&str(f.source).trim().length<3)
+     return "Source is required (at least 3 characters) when verification, PAN, registration, approval number, or documents are present.";
+    if(!str(f.verifiedAsOf))return "Source reviewed on date is required.";
+    if(str(f.verifiedAsOf)>curToday)return "Source reviewed on date cannot be in the future.";
+    if(str(f.disclaimer).trim().length<10)return "Required disclaimer must be at least 10 characters.";
+    if(str(f.verification)==="VERIFIED"){
+     if(!str(f.issuer).trim()||!str(f.approvalNumber).trim()||!str(f.validFrom)||!str(f.validUntil))
+      return "Verified 80G status requires Issuer, Approval number, Valid from, and Valid until.";
+     if(str(f.validUntil)<str(f.validFrom))return "Valid until date cannot be earlier than Valid from date.";
+     if(str(f.validUntil)<curToday)return "Valid until date cannot be in the past when status is Verified.";
+    }
+    for(let i=0;i<docs.length;i++){
+     const doc=docs[i];
+     if(str(doc.title).trim().length<3)return `Document ${i+1}: Official document title must be at least 3 characters (or remove the empty row).`;
+     if(!str(doc.asOfDate))return `Document ${i+1}: Document date is required.`;
+     if(str(doc.asOfDate)>curToday)return `Document ${i+1}: Document date cannot be in the future.`;
+    }
+   }
+  }
+  return null;
+ }
  const act=(path:string,method:"POST"|"PUT",body:Record<string,unknown>)=>{
   if(busy||pending||mediaAttempt.current){
    setError("Resolve the previous original request before another change.");
    return;
   }
+  if(method==="PUT"||path==="pages"){
+   const issue=validateDraft(draft);
+   if(issue){setError(issue);return;}
+  }
+  if(path.endsWith("/submit")&&draft.kind==="COMPLIANCE"){
+   const fact=draft.sections.find(s=>s.kind==="COMPLIANCE_FACTS")?.fields;
+   const docs=items(fact?.documents);
+   if(str(fact?.verification)==="VERIFIED"&&(docs.length===0||str(docs[0]?.type)!=="80G")){
+    setError("When Public verification status is 'Verified', Document 1 must have Document kind = '80G approval' (add or move an 80G approval document to position 1).");
+    return;
+   }
+   const missingIdx=docs.findIndex((_,i)=>!draft.assets.some(a=>a.role==="DOCUMENT"&&a.order===i));
+   if(missingIdx!==-1){
+    const title=str(docs[missingIdx]?.title)||`Document ${missingIdx+1}`;
+    setError(`Document ${missingIdx+1} (${title}): Please upload an image/PDF under "Verified original media" for position ${missingIdx+1} and click "Save draft" before submitting for review.`);
+    return;
+   }
+  }
   void command({path,method,body:{requestKey:crypto.randomUUID(),...body}});
  };
- const allowedForCurrentPlacement=()=>{
+ const allowedForCurrentPlacement=(roleOverride?:string)=>{
+  const role=roleOverride??uploadRole;
   const image=["image/jpeg","image/png","image/webp"];
-  if(uploadRole==="GALLERY"){
+  if(role==="GALLERY"){
    const media=items(draft.sections.find(s=>s.kind==="GALLERY_GRID")?.fields.items)
     [uploadOrder]?.mediaType;
    return media==="PHOTO"?image:media==="VIDEO"?["video/mp4"]:
     media==="PUBLICATION"?["application/pdf"]:[];
   }
-  return uploadRole==="DOCUMENT"?[...image,"application/pdf"]:image;
+  return role==="DOCUMENT"?[...image,"application/pdf"]:image;
  };
- async function upload(file:File){
+ async function upload(file:File,target?:{role:string;order:number;alt:string;rightsConfirmed:boolean}){
   if(!selected||selected.status!=="DRAFT"||busy||pending)return;
-  if(!rights||uploadAlt.trim().length<3){
-   setError("Confirm publication rights and original media description.");return;
+  const role=target?.role??uploadRole;
+  const order=target?.order??uploadOrder;
+  const alt=(target?.alt??uploadAlt).trim();
+  const okRights=target?target.rightsConfirmed:rights;
+  if(!okRights||alt.length<3){
+   setError("Confirm publication rights and original media description (at least 3 characters).");return;
   }
   const cap=file.type==="video/mp4"?26214400:10485760;
-  const allowed=allowedForCurrentPlacement();
+  const allowed=allowedForCurrentPlacement(role);
   if(!allowed.includes(file.type)||file.size<1||file.size>cap){
    setError("Select an allowed original image/PDF (10 MB) or video (25 MB).");
    return;
@@ -313,7 +369,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    const sha=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",
     await file.arrayBuffer()))).map(x=>x.toString(16).padStart(2,"0")).join("");
    const fingerprint=JSON.stringify([selected.pageRef,selected.revisionRef,
-    file.type,file.size,sha,uploadRole,uploadOrder,uploadAlt.trim()]);
+    file.type,file.size,sha,role,order,alt]);
    const old=mediaAttempt.current;
    if(old&&old.fingerprint!==fingerprint)
     throw Error("Earlier original media may have reached CG19. Choose the "+
@@ -322,11 +378,16 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
     old??{fingerprint,key:crypto.randomUUID(),uploadRef:null};
    mediaAttempt.current=attempt;
    const attach=(fileRef:string,version:number)=>{
-    const placement={fileRef,version,role:uploadRole,order:uploadOrder,
-     altText:uploadAlt.trim()};
+    const placement={fileRef,version,role,order,altText:alt};
     setDraft(d=>({...d,assets:[...d.assets.filter(a=>
-     a.role!==uploadRole||a.order!==uploadOrder),placement]}));
-    mediaAttempt.current=null;setUploadAlt("");setRights(false);
+     a.role!==role||a.order!==order),placement]}));
+    mediaAttempt.current=null;
+    if(target){
+     setDocAlt(prev=>{const next={...prev};delete next[order];return next;});
+     setDocRights(prev=>{const next={...prev};delete next[order];return next;});
+    }else{
+     setUploadAlt("");setRights(false);
+    }
     setNotice("Original CG19 scanned file is verified and attached to "+
      "your unsaved draft. Save before submitting.");
    };
@@ -838,25 +899,52 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         onChange={v=>change("disclaimer",v)}/>
        <p>Verified 80G claims require a current approved 80G document in the first position.
         Registration certificates and annual reports may be added as separate scanned documents.</p>
-       {items(f.documents).map((document,j)=><div className="cg-cms-team" key={j}>
-        <CustomDropdown
-         label="Document kind"
-         value={str(document.type)||"OTHER"}
-         onChange={val=>changeItem(index,j,{type:val},"documents")}
-         options={[
-          {value:"80G",label:"80G approval"},
-          {value:"REGISTRATION",label:"Registration"},
-          {value:"ANNUAL_REPORT",label:"Annual report"},
-          {value:"OTHER",label:"Other published document"}
-         ]}
-        />
-        <Field name="Official document title" value={document.title}
-         onChange={v=>changeItem(index,j,{title:v},"documents")}/>
-        <Field name="Document date" type="date" value={document.asOfDate}
-         onChange={v=>changeItem(index,j,{asOfDate:v},"documents")}/>
-        {canManage&&<button type="button"
-         onClick={()=>removeItem(index,"documents",j,"DOCUMENT")}>Remove document</button>}
-       </div>)}
+       {items(f.documents).map((document,j)=>{
+        const docAsset=draft.assets.find(a=>a.role==="DOCUMENT"&&a.order===j);
+        const rowAlt=(docAlt[j]??str(document.title)).trim();
+        const rowRights=docRights[j]===true;
+        const rowCanUpload=!busy&&rowRights&&rowAlt.length>=3;
+        return <div className="cg-cms-team" key={j}>
+         <CustomDropdown
+          label="Document kind"
+          value={str(document.type)||"OTHER"}
+          onChange={val=>changeItem(index,j,{type:val},"documents")}
+          options={[
+           {value:"80G",label:"80G approval"},
+           {value:"REGISTRATION",label:"Registration"},
+           {value:"ANNUAL_REPORT",label:"Annual report"},
+           {value:"OTHER",label:"Other published document"}
+          ]}
+         />
+         <Field name="Official document title" value={document.title}
+          onChange={v=>changeItem(index,j,{title:v},"documents")}/>
+         <Field name="Document date" type="date" value={document.asOfDate}
+          onChange={v=>changeItem(index,j,{asOfDate:v},"documents")}/>
+         {docAsset?<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"0.5rem",padding:"0.5rem 0.75rem",borderRadius:"8px",background:"#ECFDF5",border:"1px solid #A7F3D0",fontSize:"0.8125rem",color:"#065F46"}}>
+          <span style={{display:"inline-flex",alignItems:"center",gap:"0.4rem",fontWeight:600}}><FileCheck2 size={15}/> Attached (position {j+1}): {docAsset.altText}</span>
+          {selected?.status==="DRAFT"&&canManage&&<button type="button" className="cg-cms-admin-btn" style={{minHeight:"28px",padding:"0.2rem 0.6rem",fontSize:"0.75rem"}} onClick={()=>setDraft(d=>({...d,assets:d.assets.filter(v=>v!==docAsset)}))}>Detach</button>}
+         </div>:selected?.status==="DRAFT"&&canManage?<div style={{display:"grid",gap:"0.5rem",padding:"0.65rem 0.75rem",borderRadius:"8px",background:"#F8FAFC",border:"1px dashed #CBD5E1"}}>
+          <Field name={`File description (position ${j+1})`} value={docAlt[j]??str(document.title)}
+           onChange={v=>setDocAlt(prev=>({...prev,[j]:v}))}/>
+          <label className="cg-cms-consent" style={{margin:0}}><input type="checkbox" checked={rowRights}
+           onChange={e=>setDocRights(prev=>({...prev,[j]:e.target.checked}))}/>The Foundation owns the public-use rights</label>
+          <label className={`cg-cms-upload-dropzone${rowCanUpload?"":" cg-cms-upload-disabled"}`} style={{padding:"0.6rem 0.75rem"}}>
+           <UploadCloud size={18} color={rowCanUpload?"#4F46E5":"#94A3B8"}/>
+           <span style={{fontSize:"0.8125rem",fontWeight:700,color:"#0F172A"}}>
+            {busy?"Uploading & verifying with CG-19…":`Upload PDF / image for Document ${j+1}`}
+           </span>
+           <span style={{fontSize:"0.75rem",color:"#64748B"}}>
+            {rowCanUpload?"Allowed: JPG, PNG, WebP or PDF (max 10 MB)":"Tick the rights checkbox above (and ensure 3+ char title/description)"}
+           </span>
+           <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
+            disabled={!rowCanUpload}
+            onChange={e=>{const file=e.target.files?.[0];e.target.value="";if(file)void upload(file,{role:"DOCUMENT",order:j,alt:rowAlt,rightsConfirmed:rowRights});}}/>
+          </label>
+         </div>:null}
+         {canManage&&<button type="button"
+          onClick={()=>removeItem(index,"documents",j,"DOCUMENT")}>Remove document</button>}
+        </div>;
+       })}
        {canManage&&items(f.documents).length<6&&<button type="button"
         onClick={()=>addItem(index,"documents",{
          type:items(f.documents).length===0?"80G":"ANNUAL_REPORT",
