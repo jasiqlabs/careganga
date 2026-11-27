@@ -504,7 +504,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    </div>
 
    {/* Filter & Search Bar using CustomDropdown + Inside Search Vector Icon */}
-   <div className="cg-cms-list-controls" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(210px, 1fr))",gap:"0.85rem",alignItems:"end"}} aria-label="Find original editorial content">
+   <div className="cg-cms-list-controls" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(min(210px, 100%), 1fr))",gap:"0.85rem",alignItems:"end",background:"#F8FAFC"}} aria-label="Find original editorial content">
     <CustomDropdown
      id="cg-ext-filter-kind"
      label="Content type"
@@ -528,8 +528,8 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       {value:"SCHEDULED",label:"Scheduled"}
      ]}
     />
-    <div style={{display:"flex",flexDirection:"column",gap:"0.3rem"}}>
-     <label htmlFor="cg-ext-search-title" style={{fontSize:"0.75rem",fontWeight:600,color:"#64748b"}}>Search by title</label>
+    <div style={{display:"flex",flexDirection:"column",gap:"0.3rem",minWidth:0}}>
+     <label htmlFor="cg-ext-search-title" className="cg-cms-admin-filter-label">Search by title</label>
      <div className="cg-cms-admin-search-wrapper">
       <Search size={16} className="cg-cms-admin-search-icon" aria-hidden="true"/>
       <input id="cg-ext-search-title" type="search" maxLength={80} className="cg-cms-admin-search-input"

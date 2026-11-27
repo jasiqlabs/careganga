@@ -5050,6 +5050,16 @@ button:disabled {
   font: inherit
 }
 
+.cg-cms-list-controls .cg-custom-dropdown-root label,
+.cg-cms-list-controls .cg-cms-admin-filter-label {
+  flex: none !important;
+  display: block !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748B;
+  margin: 0;
+}
+
 .cg-cms-table-wrap {
   overflow-x: auto;
   max-width: 100%;
