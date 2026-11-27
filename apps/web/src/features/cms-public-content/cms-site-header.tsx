@@ -106,6 +106,7 @@ export function CmsSiteHeader({
    label:"About Us",
    children:[
     {text:"About the Foundation",href:isPublished("/about")?"/about":undefined},
+    {text:"Our Impact",href:isPublished("/our-impact")?"/our-impact":undefined},
     {text:"Team Directory",href:"/about/team"}
    ]
   },

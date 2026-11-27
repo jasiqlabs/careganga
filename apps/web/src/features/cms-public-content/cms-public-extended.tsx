@@ -13,12 +13,19 @@ import {
   Gift,
   AlertTriangle,
   ArrowRight,
-  Heart
+  Heart,
+  TrendingUp,
+  MapPin,
+  PieChart,
+  Target,
+  Quote,
+  Megaphone
 } from "lucide-react";
 import type {PublicCmsPage,PublicCmsSection} from "./cms-public-page";
 import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsGalleryGridClient,type CmsMediaType} from "./cms-gallery-grid-client";
 import {CmsNgoDocModalButton} from "./cms-ngo-doc-modal";
+import {CmsImpactGeoCard} from "./cms-impact-geo-card";
 type Asset=PublicCmsPage["assets"][number];
 const text=(v:unknown)=>typeof v==="string"?v:"";
 const records=(v:unknown)=>Array.isArray(v)?v.filter(x=>!!x&&typeof x==="object"&&!Array.isArray(x))
@@ -32,6 +39,115 @@ const label=(source:unknown,asOf:unknown)=>source||asOf?
   <span> · Editorial information; not an audited financial statement</span>
  </p>:null;
 
+export function CmsImpactPage({sections,assets,navigation}:{
+ sections:PublicCmsSection[];assets:Asset[];navigation?:PublicCmsNavigation|null}){
+ const byGroup=(name:string)=>sections.find(s=>s.kind==="IMPACT_GROUP"&&text(s.fields.group)===name);
+ const finite=(v:unknown):v is number=>typeof v==="number"&&Number.isFinite(v);
+ const validPct=(v:unknown):v is number=>finite(v)&&v>=0&&v<=100;
+ const hero=byGroup("HERO"),pillars=byGroup("PILLARS"),stats=byGroup("STATS");
+ const growth=byGroup("GROWTH"),geo=byGroup("GEOGRAPHY"),breakdown=byGroup("BREAKDOWN");
+ const focus=byGroup("FOCUS"),stories=byGroup("STORIES"),updates=byGroup("UPDATES"),cta=byGroup("CTA");
+ const growthRows=growth?records(growth.fields.items).filter(v=>finite(v.value)&&v.value>=0):[];
+ const growthMax=Math.max(1,...growthRows.map(v=>Number(v.value)||0));
+ const growthPts=growthRows.map((v,i)=>{
+  const x=growthRows.length===1?130:20+(i/(growthRows.length-1))*220;
+  const y=95-((Number(v.value)||0)/growthMax)*70;
+  return {x,y,label:typeof v.year==="number"?String(v.year):text(v.title),val:Number(v.value)||0};
+ });
+ const geoRows=geo?records(geo.fields.items):[];
+ const geoHigh=geoRows.filter(v=>text(v.level)==="HIGH").length;
+ const geoMed=geoRows.filter(v=>text(v.level)==="MEDIUM").length;
+ const geoExp=geoRows.filter(v=>text(v.level)==="EXPANDING").length;
+ const bdRows=breakdown?records(breakdown.fields.items).filter(v=>validPct(v.percentage)):[];
+ const bdColors=["#15803D","#2563EB","#EAB308","#DC2626","#7C3AED","#0D9488"];
+ const bdTotal=bdRows.reduce((a,b)=>a+Number(b.percentage||0),0);
+ const pillarColors=["is-green","is-pink","is-mint","is-amber"];
+ return <div className="cg-site-impact-dashboard">
+  {hero&&<CmsImpactGroup section={hero} assets={assets} navigation={navigation}/>}
+  {pillars&&<section className="cg-site-content cg-site-impact-pillars-wrap" aria-label={text(pillars.fields.heading)||"Our Pillars"}>
+   {records(pillars.fields.items).length>0?<div className="cg-site-impact-pillars-row">
+    {records(pillars.fields.items).map((item,i)=><article key={i} className="cg-site-impact-pillar-item">
+     <span className={"cg-site-impact-pillar-dot "+pillarColors[i%pillarColors.length]} aria-hidden="true">{text(item.title).slice(0,1)||"•"}</span>
+     <div><h3>{text(item.title)}</h3>{text(item.description)&&<p>{text(item.description)}</p>}</div>
+    </article>)}
+   </div>:<CmsImpactGroup section={pillars} assets={assets} navigation={navigation}/>}
+  </section>}
+  {stats&&records(stats.fields.items).length>0&&<section className="cg-site-content cg-site-impact-stats-row" aria-label={text(stats.fields.heading)||"Impact Statistics"}>
+   {records(stats.fields.items).map((item,i)=><article key={i} className="cg-site-impact-stat-card">
+    <strong>{finite(item.value)?item.value.toLocaleString("en-IN"):0}{text(item.unit)?" "+text(item.unit):""}</strong>
+    <h3>{text(item.title)}</h3>
+    {text(item.description)&&<p>{text(item.description)}</p>}
+   </article>)}
+  </section>}
+  <section className="cg-site-content cg-site-impact-analytics-grid" aria-label="Impact Analytics">
+   <article className="cg-site-impact-dash-card">
+    <div className="cg-site-impact-dash-head">
+     <h3><TrendingUp size={17} aria-hidden="true"/> {text(growth?.fields.heading)||"Impact Growth"}</h3>
+     <span className="cg-site-impact-dash-pill">{text(growth?.fields.asOfDate)||"Source Data"}</span>
+    </div>
+    <div className="cg-site-impact-growth-viz">
+     {growthPts.length>0?<svg viewBox="0 0 260 118" className="cg-site-impact-svg" role="img" aria-label="Impact growth chart">
+      <line x1="16" y1="96" x2="244" y2="96" stroke="#99F6E4" strokeWidth="6" strokeLinecap="round"/>
+      {growthPts.length>1?<polyline fill="none" stroke="#15803D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points={growthPts.map(p=>`${p.x},${p.y}`).join(" ")}/>:<path d="M 32 76 Q 130 62 224 22" fill="none" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round"/>}
+      {growthPts.map((p,i)=><g key={i}><circle cx={p.x} cy={growthPts.length>1?p.y:80} r="4" fill="#15803D"/><text x={p.x} y={growthPts.length>1?Math.max(14,p.y-8):88} textAnchor="middle" fontSize="11" fontWeight="800" fill="#0F172A">{p.val.toLocaleString("en-IN")}</text><text x={p.x} y="113" textAnchor="middle" fontSize="10" fill="#64748B">{p.label}</text></g>)}
+     </svg>:<svg viewBox="0 0 260 118" className="cg-site-impact-svg" role="img" aria-label="Impact growth baseline">
+      <path d="M 32 76 Q 130 62 224 22" fill="none" stroke="#15803D" strokeWidth="2" strokeLinecap="round"/>
+      <polygon points="224,22 216,23 221,30" fill="#15803D"/>
+      <text x="130" y="84" textAnchor="middle" fontSize="12" fontWeight="800" fill="#0F172A">0</text>
+      <line x1="16" y1="96" x2="244" y2="96" stroke="#99F6E4" strokeWidth="6" strokeLinecap="round"/>
+      <text x="130" y="113" textAnchor="middle" fontSize="10" fill="#64748B">No data yet</text>
+     </svg>}
+    </div>
+    {text(growth?.fields.intro)&&<p className="cg-site-impact-dash-note">{text(growth?.fields.intro)}</p>}
+    {growth&&growthRows.length>0&&label(growth.fields.source,growth.fields.asOfDate)}
+   </article>
+   <CmsImpactGeoCard
+    heading={text(geo?.fields.heading)||"Geographical Reach"}
+    items={geoRows}
+    sourceNode={geo&&geoRows.length>0?label(geo.fields.source,geo.fields.asOfDate):null}
+   />
+   <article className="cg-site-impact-dash-card">
+    <div className="cg-site-impact-dash-head">
+     <h3><PieChart size={17} aria-hidden="true"/> {text(breakdown?.fields.heading)||"Impact by Category"}</h3>
+    </div>
+    <div className="cg-site-impact-bd-split">
+     <div className="cg-site-impact-donut-wrap">
+      <svg viewBox="0 0 100 100" className="cg-site-impact-donut" role="img" aria-label="Impact category breakdown">
+       <circle cx="50" cy="50" r="36" fill="none" stroke="#E2E8F0" strokeWidth="12"/>
+       {(()=>{let off=0;return bdRows.map((v,i)=>{const pct=Number(v.percentage)||0;const len=(pct/100)*226.2;const el=<circle key={i} cx="50" cy="50" r="36" fill="none" stroke={bdColors[i%bdColors.length]} strokeWidth="12" strokeDasharray={`${len} ${226.2-len}`} strokeDashoffset={-off} transform="rotate(-90 50 50)"/>;off+=len;return el;});})()}
+      </svg>
+      <span className="cg-site-impact-donut-center">{bdTotal>0?`${bdTotal}%`:"Total Impact"}</span>
+     </div>
+     <ul className="cg-site-impact-legend">
+      {bdRows.length>0?bdRows.map((v,i)=><li key={i}><span className="cg-dot" style={{background:bdColors[i%bdColors.length]}}/> {text(v.title)} <strong>{Number(v.percentage)}%</strong></li>):<li className="cg-site-impact-empty-inline">No category breakdown published yet.</li>}
+     </ul>
+    </div>
+    {breakdown&&bdRows.length>0&&label(breakdown.fields.source,breakdown.fields.asOfDate)}
+   </article>
+  </section>
+  <section className="cg-site-content cg-site-impact-highlights-grid" aria-label="Impact Highlights">
+   {[
+    {sec:focus,Icon:Target,fallback:"Key Impact Areas",empty:"No impact areas published yet."},
+    {sec:stories,Icon:Quote,fallback:"Success Stories",empty:"No stories published yet."},
+    {sec:updates,Icon:Megaphone,fallback:"Latest Updates",empty:"No updates published yet."}
+   ].map(({sec,Icon,fallback,empty},idx)=>{
+    const list=sec?records(sec.fields.items):[];
+    const pic=sec?assets.find(a=>a.role==="IMPACT"&&a.order===sec.order):undefined;
+    return <article key={idx} className="cg-site-impact-dash-card">
+     <div className="cg-site-impact-dash-head">
+      <h3><Icon size={17} aria-hidden="true"/> {text(sec?.fields.heading)||fallback}</h3>
+      <span className="cg-site-impact-dash-pill">{list.length}</span>
+     </div>
+     {photo(pic,"cg-site-impact-card-photo")}
+     {list.length>0?<ul className="cg-site-impact-mini-list">
+      {list.slice(0,4).map((item,j)=><li key={j}><strong>{text(item.title)}</strong>{text(item.description)&&<p>{text(item.description)}</p>}</li>)}
+     </ul>:<p className="cg-site-impact-empty-inline">{empty}</p>}
+    </article>;
+   })}
+  </section>
+  {cta&&<CmsImpactGroup section={cta} assets={assets} navigation={navigation}/>}
+ </div>;
+}
 export function CmsImpactGroup({section,assets,navigation}:{
  section:PublicCmsSection;assets:Asset[];navigation?:PublicCmsNavigation|null}){
  const f=section.fields,group=text(f.group),rows=records(f.items);
