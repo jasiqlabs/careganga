@@ -120,7 +120,7 @@ export function CmsCompliance({section,assets}:{
    <div className="cg-site-ngo-navy-brand">
     <div className="cg-site-ngo-navy-emblem"><ShieldCheck size={28} aria-hidden="true"/></div>
     <strong>CareGanga Foundation</strong>
-    <span>Eligible Charitable Organisation</span>
+    <span>{supported?"Eligible Charitable Organisation":"Foundation disclosure"}</span>
    </div>
    <dl className="cg-site-ngo-kv-list cg-site-ngo-kv-card">
     <div>
@@ -153,7 +153,7 @@ export function CmsCompliance({section,assets}:{
        <h3>{text(record.title)}</h3>
        <span className="cg-site-ngo-cert-meta">{text(record.type).replaceAll("_"," ")} · {text(record.asOfDate)}</span>
       </div>
-      <span className="cg-site-ngo-active-pill">Active</span>
+      <span className="cg-site-ngo-active-pill">Published</span>
      </div>
      <div className="cg-site-ngo-cert-actions">
       <a className="cg-site-ngo-doc-btn" href={document.src} download><Download size={14} aria-hidden="true"/> View approved source document</a>
