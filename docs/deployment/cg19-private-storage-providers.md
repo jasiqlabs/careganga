@@ -10,7 +10,9 @@ One provider per CareGanga client deployment, not a browser-selectable destinati
 | --- | --- | --- |
 | CG19_STORAGE_PROVIDER | FIREBASE | S3 |
 | CG19_FIREBASE_BUCKET | Exact Firebase bucket name | Unset |
-| CG19_FIREBASE_PROJECT_ID | Client project ID | Unset |
+| CG19_FIREBASE_PROJECT_ID | Optional legacy client project ID (must agree with explicit FIREBASE_PROJECT_ID if both set) | Unset |
+| FIREBASE_PROJECT_ID | Project ID for explicit credentials | Unset |
+| FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY | Both set for explicit credentials, or both blank for ADC | Unset |
 | GOOGLE_APPLICATION_CREDENTIALS | Server-side scoped service-account credentials path or workload identity | Unset |
 | CG19_S3_BUCKET | Unset | Client private bucket |
 | AWS_REGION | Unset | Client bucket region |
@@ -23,7 +25,17 @@ Storage remains unavailable when a valid provider or ClamAV scanner is missing. 
 
 1. Confirm that the client's Firebase project has an active Cloud Storage bucket. New default buckets commonly end in .firebasestorage.app; older ones may end in .appspot.com. Enter the exact bucket ID.
 2. Firebase Cloud Storage now requires the pay-as-you-go Blaze plan, including default buckets. The plan still has eligible no-cost quotas, but billing must be configured. Advise the client to configure billing alerts.
-3. Use scoped Google Cloud server-side Application Default Credentials. The backend uses Google Cloud Storage v4 signed upload URLs with create-only generation preconditions. It never uses Firebase download tokens or an all-users bucket permission.
+3. Use a scoped server-side service account. Configure either explicit environment credentials (preferred for secret-manager deployments) or the existing ADC JSON/workload identity path. Example (backend secrets only):
+   ```dotenv
+   CG19_STORAGE_PROVIDER=FIREBASE
+   CG19_FIREBASE_BUCKET=your-project.firebasestorage.app
+   FIREBASE_PROJECT_ID=your-project
+   FIREBASE_CLIENT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
+   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+   CG19_CLAMAV_HOST=your-private-scanner
+   CG19_CLAMAV_PORT=3310
+   ```
+   Use the actual PEM key (literal newlines or escaped \n are accepted). For local development use apps/backend/.env; on Render/Coolify configure backend environment secrets. Never place credentials in Web/Android variables, Git, logs or screenshots. Leave both explicit credential fields blank to retain ADC; for a JSON file set GOOGLE_APPLICATION_CREDENTIALS to the mounted file path. CG19_FIREBASE_PROJECT_ID remains supported; conflicting project IDs with explicit credentials or incomplete/invalid explicit credentials disable Firebase storage instead of falling back. The backend uses Google Cloud Storage v4 signed upload URLs with create-only generation preconditions. It never uses Firebase download tokens or an all-users bucket permission.
 4. Block Firebase client SDK access to the prefix careganga/private/cg19/** using Storage Security Rules: allow read, write: if false. Audit all broader overlapping allow rules: a broad allow can override a narrower deny expectation. Signed GCS URLs use Google IAM, not Firebase client rules.
 5. Set bucket CORS for exactly the client's CareGanga Web origin, upload method PUT, signed Content-Type and x-goog-if-generation-match headers. Test CORS on a disposable bucket before enabling production.
 6. The backend pins a downloaded object's immutable GCS generation, confirms actual MIME, size and SHA-256 from retrieved bytes, and requires real ClamAV INSTREAM OK before writing CLEAN_VERIFIED.

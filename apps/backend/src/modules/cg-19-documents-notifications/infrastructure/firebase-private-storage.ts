@@ -1,11 +1,38 @@
 import {Storage} from "@google-cloud/storage";
+import {createPrivateKey} from "node:crypto";
 import {ServiceUnavailableException} from "@nestjs/common";
 import {ClamAvScanner} from "./clamav-scanner";
 import {ObjectBytes,UploadInput,VerifiedPrivateStorage} from "./verified-private-storage";
 import {PrivateUploadReservation} from "./private-object-storage";
 
+export type FirebaseStorageCredentials={client_email:string;private_key:string};
+export type FirebaseStorageConfig={projectId?:string;credentials?:FirebaseStorageCredentials};
+
+/** Backend-only configuration. Null means explicit configuration is invalid.
+ * Empty credential placeholders preserve Application Default Credentials.
+ */
+export function resolveFirebaseStorageConfig(env:NodeJS.ProcessEnv):FirebaseStorageConfig|null{
+  const legacyProject=env.CG19_FIREBASE_PROJECT_ID?.trim()||undefined;
+  const firebaseProject=env.FIREBASE_PROJECT_ID?.trim()||undefined;
+  const clientEmail=env.FIREBASE_CLIENT_EMAIL?.trim()??"";
+  const privateKey=(env.FIREBASE_PRIVATE_KEY?.trim()??"").replace(/\\r\\n|\\n|\r\n/g,"\n");
+  const explicit=Boolean(clientEmail||privateKey);
+  const projectId=explicit?firebaseProject||legacyProject:legacyProject||firebaseProject;
+  if(projectId&&!/^[a-z][a-z0-9-]{2,60}$/.test(projectId))return null;
+  if(!explicit)return projectId?{projectId}:{};
+  if(!projectId||!clientEmail||!privateKey||
+    (legacyProject&&firebaseProject&&legacyProject!==firebaseProject)||
+    !/^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/.test(clientEmail)||
+    !privateKey.startsWith("-----BEGIN PRIVATE KEY-----\n")||
+    !privateKey.endsWith("\n-----END PRIVATE KEY-----"))return null;
+  try{
+    if(createPrivateKey(privateKey).asymmetricKeyType!=="rsa")return null;
+  }catch{return null;}
+  return {projectId,credentials:{client_email:clientEmail,private_key:privateKey+"\n"}};
+}
+
 /** Firebase Storage is backed by a Google Cloud Storage bucket.
- * Uses server-side Application Default Credentials / workload identity;
+ * Uses server-side explicit credentials or Application Default Credentials / workload identity;
  * NEVER Firebase client SDK download tokens or world-readable rules.
  *
  * Set CG19_FIREBASE_BUCKET to the client's exact Firebase bucket name
@@ -15,10 +42,10 @@ export class FirebasePrivateStorage extends VerifiedPrivateStorage{
   private readonly storage:Storage;
   constructor(
     private readonly bucketName:string,scanner:ClamAvScanner,
-    projectId?:string
+    projectId?:string,credentials?:FirebaseStorageCredentials
   ){
     super(scanner);
-    this.storage=new Storage(projectId?{projectId}:{});
+    this.storage=new Storage(credentials?{projectId,credentials}:projectId?{projectId}:{});
   }
   private bucket(){return this.storage.bucket(this.bucketName);}
 

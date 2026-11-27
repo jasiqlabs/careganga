@@ -1,6 +1,6 @@
 import {PrivateObjectStorage,UnconfiguredPrivateObjectStorage} from "./private-object-storage";
 import {ClamAvScanner} from "./clamav-scanner";
-import {FirebasePrivateStorage} from "./firebase-private-storage";
+import {FirebasePrivateStorage,resolveFirebaseStorageConfig} from "./firebase-private-storage";
 import {S3PrivateStorage} from "./s3-private-storage";
 
 /** One provider per client deployment. No browser-supplied provider name,
@@ -19,13 +19,12 @@ export function makePrivateStorageProvider():PrivateObjectStorage{
 
   if(provider==="FIREBASE"){
     const bucket=process.env.CG19_FIREBASE_BUCKET?.trim()??"";
-    const projectId=process.env.CG19_FIREBASE_PROJECT_ID?.trim()||undefined;
+    const config=resolveFirebaseStorageConfig(process.env);
     // Firebase default buckets commonly end in .firebasestorage.app.
     // Legacy clients may have .appspot.com buckets. Use the exact bucket.
     if(!/^[a-z0-9][a-z0-9._-]{2,220}$/.test(bucket)||
-      (projectId&&!/^[a-z][a-z0-9-]{2,60}$/.test(projectId)))
-      return disabled();
-    return new FirebasePrivateStorage(bucket,scanner,projectId);
+      !config)return disabled();
+    return new FirebasePrivateStorage(bucket,scanner,config.projectId,config.credentials);
   }
 
   const bucket=process.env.CG19_S3_BUCKET?.trim()??"";
