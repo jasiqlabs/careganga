@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
+import {useCmsPageList} from "./cms-admin-workspace";
 import {CustomDropdown} from "../../shared/custom-dropdown";
 import {
   FileText,
@@ -141,7 +142,8 @@ function NumberField({name,value,onChange,max}:{name:string;value:unknown;
 export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}:{
  canManage:boolean;canPublish:boolean;canViewNoticeSources:boolean}){
  const [kind,setKind]=useState<Kind>("IMPACT");
- const [pages,setPages]=useState<Item[]>([]);
+ const {pages:allPages,error:listError,available:listAvailable,refresh}=useCmsPageList();
+ const pages=allPages.filter(p=>kinds.includes(p.kind as Kind));
  const [listSearch,setListSearch]=useState("");
  const [listKind,setListKind]=useState<Kind|"ALL">("ALL");
  const [listStatus,setListStatus]=useState("ALL");
@@ -167,11 +169,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const [withdrawReason,setWithdrawReason]=useState("");
  const [publishWhen,setPublishWhen]=useState("");
  const [previewDevice,setPreviewDevice]=useState<"DESKTOP"|"MOBILE">("DESKTOP");
- const refresh=useCallback(async()=>{
-  const data=await api<{pages:Item[]}>("pages");
-  setPages(data.pages.filter(p=>kinds.includes(p.kind as Kind)));
- },[]);
- useEffect(()=>{void refresh().catch(e=>setError(e.message));},[refresh]);
+ 
  const open=async(p:Item)=>{
   if(busy)return;
   if(pending||mediaAttempt.current){
@@ -259,7 +257,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    // an unrelated list/detail GET failing after the actual commit.
    setPending(null);setNotice("Confirmed: "+str(outcome.status).replaceAll("_"," "));
    try{
-    await refresh();window.dispatchEvent(new Event("cg-cms-extended-changed"));
+    await refresh();
     const ref=outcome.pageRef??selected?.pageRef;
     if(ref){
      const detail=await api<Detail>("pages/"+ref);
@@ -432,7 +430,6 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   window.addEventListener("cg-cms-open-extended",onOpen);
   return()=>window.removeEventListener("cg-cms-open-extended",onOpen);
  });
- useEffect(()=>{const sync=()=>{void refresh().catch(e=>setError(e.message));};window.addEventListener("cg-cms-admin-changed",sync);return()=>window.removeEventListener("cg-cms-admin-changed",sync);},[refresh]);
  useEffect(()=>{
   if(!editorOpen)return;
   const onKey=(event:KeyboardEvent)=>{
@@ -460,7 +457,8 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
     </div>
    </div>
 
-   {!editorOpen&&!!error&&<div className="cg-cms-admin-inline-error" role="alert"><AlertCircle size={16}/> {error}</div>}
+   {!editorOpen&&!!listError&&!error&&<div className="cg-cms-admin-inline-error" role="alert"><AlertCircle size={16}/> {listError}</div>}
+    {!editorOpen&&!!error&&<div className="cg-cms-admin-inline-error" role="alert"><AlertCircle size={16}/> {error}</div>}
    {!editorOpen&&!!notice&&<p className="cg-cms-notice" role="status">{notice}</p>}
    {!editorOpen&&pending&&<div className="cg-cms-notice" role="status">
     <p>The outcome is not confirmed. Refresh before retrying the same request.</p>
@@ -475,7 +473,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       <span className="cg-cms-admin-kpi-label">Editorial pages</span>
      </div>
      <div className="cg-cms-admin-kpi-value">{pages.length}</div>
-     <div className="cg-cms-admin-kpi-trend">All extended CMS pages</div>
+     <div className="cg-cms-admin-kpi-trend">{listAvailable?"Loaded extended CMS pages (up to 100 total)":listError?"Page list unavailable":"Loading page list"}</div>
     </div>
     <div className="cg-cms-admin-kpi-card">
      <div className="cg-cms-admin-kpi-top">
