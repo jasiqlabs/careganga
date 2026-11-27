@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useRef,useState} from "react";
+import {createContext,useCallback,useContext,useEffect,useRef,useState,type ReactNode} from "react";
 import {useRouter} from "next/navigation";
 import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
@@ -235,11 +235,35 @@ async function read<T>(path:string,init?:RequestInit):Promise<T>{
  }
  return r.json() as Promise<T>;
 }
+type CmsPageList={pages:PageItem[];available:boolean;error:string;refresh:(refreshNavigation?:boolean)=>Promise<void>};
+const CmsPageListContext=createContext<CmsPageList|null>(null);
+export function CmsPageListProvider({children}:{children:ReactNode}){
+ const router=useRouter();
+ const [pages,setPages]=useState<PageItem[]>([]),[available,setAvailable]=useState(false),[error,setError]=useState("");
+ const latest=useRef(0);
+ const refresh=useCallback(async(refreshNavigation=true)=>{
+  const generation=++latest.current;
+  try{
+   const data=await read<{pages:PageItem[]}>("pages");
+   if(generation===latest.current){setPages(data.pages);setAvailable(true);setError("");}
+  }catch(e){
+   if(generation===latest.current){setAvailable(false);setError(e instanceof Error?e.message:"Could not load website pages.");}
+   throw e;
+  }finally{if(refreshNavigation)router.refresh();}
+ },[router]);
+ useEffect(()=>{void refresh(false).catch(()=>{});},[refresh]);
+ return <CmsPageListContext.Provider value={{pages,available,error,refresh}}>{children}</CmsPageListContext.Provider>;
+}
+export function useCmsPageList(){
+ const value=useContext(CmsPageListContext);
+ if(!value)throw Error("CMS page list provider is missing.");
+ return value;
+}
 export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=null}:{
  canManage:boolean;canPublish:boolean;canReview:boolean;navigation?:PublicCmsNavigation|null}){
- const router=useRouter();
- const [listAvailable,setListAvailable]=useState(false);
- const [allPages,setAllPages]=useState<PageItem[]>([]),[projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
+ const {pages:allPages,available:listAvailable,error:listError,refresh:refreshShared}=useCmsPageList();
+ const [projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
+ const [projectLoaded,setProjectLoaded]=useState(false);
  const pages=allPages.filter(p=>p.kind==="HOME"||p.kind==="ABOUT");
  const articlePages=allPages.filter(p=>p.kind==="ARTICLE");
  const galleryPages=allPages.filter(p=>p.kind==="GALLERY");
@@ -262,7 +286,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
  const [formSectionStep,setFormSectionStep]=useState<"BASIC"|"BANNERS"|"STORY"|"SOURCES"|"CARDS"|"FOOTER">("BASIC");
  const [searchQuery,setSearchQuery]=useState("");
  const [campaignChoices,setCampaignChoices]=useState<CampaignSource[]>([]),[campaignError,setCampaignError]=useState("");
- const refreshProjects=()=>{setProjectError("");void read<{sources:ProjectSource[]}>("project-sources").then(v=>setProjectChoices(v.sources)).catch(()=>setProjectError("Current approved project sources unavailable."));};
+ const refreshProjects=()=>{setProjectLoaded(false);setProjectError("");void read<{sources:ProjectSource[]}>("project-sources").then(v=>{setProjectChoices(v.sources);setProjectLoaded(true);}).catch(()=>setProjectError("Current approved project sources unavailable."));};
  const refreshCampaigns=()=>{setCampaignError("");void read<{sources:CampaignSource[]}>("campaign-sources").then(v=>setCampaignChoices(v.sources)).catch(()=>setCampaignError("Approved campaigns are unavailable. Refresh after CG-03 review."));};
  useEffect(()=>{if(canManage){refreshProjects();refreshCampaigns();}},[canManage]);
  const [selected,setSelected]=useState<PageDetail|null>(null);
@@ -279,7 +303,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
  const [heroEditorTab,setHeroEditorTab]=useState<"BASIC"|"STYLE"|"MEDIA"|"IMAGES"|"BUTTONS"|"PREVIEW">("BASIC");
  const [activeHeroIndex,setActiveHeroIndex]=useState(0);
  const [teamChoices,setTeamChoices]=useState<Team[]>([]),[teamError,setTeamError]=useState("");
- const refreshTeam=()=>{setTeamError("");void read<{sources:Team[]}>("team-sources").then(v=>setTeamChoices(v.sources)).catch(()=>{setTeamChoices([]);setTeamError("Current consented staff sources require HR viewing permission.");});};
+ const [teamLoaded,setTeamLoaded]=useState(false);
+ const refreshTeam=()=>{setTeamLoaded(false);setTeamError("");void read<{sources:Team[]}>("team-sources").then(v=>{setTeamChoices(v.sources);setTeamLoaded(true);}).catch(()=>{setTeamChoices([]);setTeamError("Current consented staff sources require HR viewing permission.");});};
  useEffect(()=>{if(canManage)refreshTeam();},[canManage]);
  const [uploadRole,setUploadRole]=useState<Asset["role"]>("HERO");
  const [uploadOrder,setUploadOrder]=useState(0);
@@ -291,12 +316,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
  // second key when the editor selects the same original file again.
  const mediaAttempt=useRef<{fingerprint:string;key:string;uploadRef:string|null}|null>(null);
  const refresh=useCallback(async()=>{
-  try{const x=await read<{pages:PageItem[]}>("pages");
-   setAllPages(x.pages);setListAvailable(true);}
-  catch(e){setListAvailable(false);setError(e instanceof Error?e.message:"Could not load website pages.");}
- },[]);
- useEffect(()=>{void refresh();},[refresh]);
- useEffect(()=>{const sync=()=>{void refresh();router.refresh();};window.addEventListener("cg-cms-extended-changed",sync);return()=>window.removeEventListener("cg-cms-extended-changed",sync);},[refresh,router]);
+  try{await refreshShared();}catch(e){setError(e instanceof Error?e.message:"Could not load website pages.");}
+ },[refreshShared]);
  async function open(ref:string){
   if(busy)return;
   if(pending||mediaAttempt.current){
@@ -416,7 +437,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
    setPending(null);setNotice(c.label+" confirmed. "+val(outcome.status).replaceAll("_"," "));
    // A confirmed write stays confirmed even if the subsequent refresh fails.
    // Never invite a duplicate save after the server has acknowledged it.
-   await refresh();router.refresh();window.dispatchEvent(new Event("cg-cms-admin-changed"));
+   await refresh();
    try{
     if(c.path.startsWith("pages/")&&selected){
      const x=await read<PageDetail>("pages/"+selected.pageRef);
@@ -484,7 +505,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
    setPending(null);setReview(null);setReviewPassword("");
    setNotice(action==="APPROVE"?"The page is approved. A publisher must still publish it.":
     "The author can now correct or review this page.");
-   await showInbox(true);await refresh();router.refresh();window.dispatchEvent(new Event("cg-cms-admin-changed"));
+   await showInbox(true);await refresh();
   }catch(e){
    if(e instanceof CmsRequestRejected)setPending(null);
    setError(e instanceof Error?e.message:"Review was not confirmed.");
@@ -611,7 +632,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
         <span className="cg-cms-admin-kpi-label">Loaded Pages</span>
       </div>
       <div className="cg-cms-admin-kpi-value">{allPages.length}</div>
-      <div className="cg-cms-admin-kpi-trend">{listAvailable?"Loaded pages (up to 100)":"Page list unavailable"}</div>
+      <div className="cg-cms-admin-kpi-trend">{listAvailable?"Loaded pages (up to 100)":listError?"Page list unavailable":"Loading page list"}</div>
     </div>
     <div className="cg-cms-admin-kpi-card">
       <div className="cg-cms-admin-kpi-top">
@@ -818,6 +839,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
   </div>
 
   {/* Localized Inline Error Alert */}
+  {!!listError&&!error&&<div className="cg-cms-admin-inline-error" role="alert"><AlertCircle size={16}/> {listError}</div>}
   {!!error && (
     <div className="cg-cms-admin-inline-error" role="alert">
       <AlertCircle size={16} /> {error}
@@ -994,7 +1016,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
                       </span>
                     </td>
                     <td>
-                      <button type="button" className="cg-cms-admin-action-btn" title="View Public Page" onClick={()=>{window.open(routeFor(p),"_blank","noopener,noreferrer");}}>
+                      <button type="button" className="cg-cms-admin-action-btn" disabled={!isLive(p)} title={isLive(p)?"View Public Page":"Page is not publicly available"} onClick={()=>{window.open(routeFor(p),"_blank","noopener,noreferrer");}}>
                         <Eye size={12}/>
                       </button>
                       <button type="button" className="cg-cms-admin-action-btn" title={canManage?"Edit Page":"View Page"} onClick={()=>{
@@ -1047,7 +1069,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
                       </span>
                     </td>
                     <td>
-                      <button type="button" className="cg-cms-admin-action-btn" title="View Article" onClick={()=>{window.open("/blog/"+b.slug,"_blank","noopener,noreferrer");}}><Eye size={12}/></button>
+                      <button type="button" className="cg-cms-admin-action-btn" disabled={!isLive(b)} title={isLive(b)?"View Article":"Article is not publicly available"} onClick={()=>{window.open("/blog/"+b.slug,"_blank","noopener,noreferrer");}}><Eye size={12}/></button>
                       <button type="button" className="cg-cms-admin-action-btn" title={canManage?"Edit Article":"View Article"} onClick={()=>scrollToExtended(b.pageRef)}><Edit2 size={12}/></button>
                     </td>
                   </tr>
@@ -1203,11 +1225,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <span style={{color:"#64748B"}}>Consented Staff</span>
-              <span style={{fontWeight:600,color:"#0F172A"}}>{!canManage||teamError?"Unavailable":teamChoices.length}</span>
+              <span style={{fontWeight:600,color:"#0F172A"}}>{!canManage||teamError?"Unavailable":!teamLoaded?"Loading":teamChoices.length}</span>
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <span style={{color:"#64748B"}}>Approved Projects</span>
-              <span style={{fontWeight:600,color:"#0F172A"}}>{!canManage||projectError?"Unavailable":projectChoices.length}</span>
+              <span style={{fontWeight:600,color:"#0F172A"}}>{!canManage||projectError?"Unavailable":!projectLoaded?"Loading":projectChoices.length}</span>
             </div>
           </div>
         </div>
