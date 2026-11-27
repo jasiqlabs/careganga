@@ -458,7 +458,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     <View style={[styles.kpiCard,{minWidth:kpiWidth}]}>
      <View style={styles.kpiTop}>
       <View style={[styles.kpiIconBadge,{backgroundColor:"#EFF6FF"}]}><IconFileText size={16} color="#2563EB"/></View>
-      <Text style={styles.kpiLabel}>Total Pages</Text>
+      <Text style={styles.kpiLabel}>Loaded Pages</Text>
      </View>
      <Text style={styles.kpiValue}>{pages.length}</Text>
     </View>
@@ -467,7 +467,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
       <View style={[styles.kpiIconBadge,{backgroundColor:"#ECFDF5"}]}><IconCheckCircle size={16} color="#059669"/></View>
       <Text style={styles.kpiLabel}>Published</Text>
      </View>
-     <Text style={[styles.kpiValue,{color:"#059669"}]}>{pages.filter(p=>p.publicStatus!==null).length}</Text>
+     <Text style={[styles.kpiValue,{color:"#059669"}]}>{pages.filter(p=>p.publicStatus==="EFFECTIVE").length}</Text>
     </View>
     <View style={[styles.kpiCard,{minWidth:kpiWidth}]}>
      <View style={styles.kpiTop}>
