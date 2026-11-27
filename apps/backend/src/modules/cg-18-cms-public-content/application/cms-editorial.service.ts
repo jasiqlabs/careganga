@@ -726,7 +726,11 @@ export class CmsEditorialService{
     }
    }
    if(current.status!=="DRAFT"||current.release_baseline){
-    revisionNo++;
+    const maxRev=await tx.query<{next:string}>(
+     "SELECT COALESCE(MAX(revision_no),0)+1 AS next FROM cms_page_revision "+
+     "WHERE foundation_root_id=$1 AND page_id=$2",
+     [actor.realmId,page.id]);
+    revisionNo=Math.max(revisionNo+1,Number(maxRev.rows[0]?.next??1));
     const rev=await tx.query<{id:string}>(
      "INSERT INTO cms_page_revision(foundation_root_id,page_id,revision_no,title,"+
      "seo_title,seo_description,seo_canonical_path,content_digest,created_by) "+

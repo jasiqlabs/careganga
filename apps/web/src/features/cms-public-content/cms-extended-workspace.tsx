@@ -15,7 +15,9 @@ import {
   X,
   AlertCircle,
   Monitor,
-  Smartphone
+  Smartphone,
+  UploadCloud,
+  FileCheck2
 } from "lucide-react";
 
 type Kind="IMPACT"|"COMPLIANCE"|"GALLERY"|"ARTICLE"|"CONTACT"|"HEALTHCARE"|"POLICY"|"PARTNERS";
@@ -393,7 +395,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    src:(a.role==="GALLERY"||a.role==="DOCUMENT"?
     "/api/cms-file-preview/":"/api/cms-image-preview/")+a.fileRef})),...(selected?.bundledAssets??[]).filter(a=>!draft.assets.some(v=>v.role===a.role&&v.order===a.order)&&draft.sections.some(sec=>a.role==="HERO"?sec.kind==="HERO"&&sec.order===a.order&&sec.fields.textOnly!==true&&sec.fields.visible!==false:a.role==="FEATURE"&&sec.kind==="HEALTHCARE_CATEGORIES"&&items(sec.fields.categories).length>a.order)).map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/cms-image-preview/release-"+a.key}))]};
  const unsaved=selected&&JSON.stringify(content(draft))!==JSON.stringify({
-  kind:selected.kind,slug:selected.slug,title:selected.title,seoTitle:selected.seoTitle,
+  kind:selected.kind,slug:selected.slug,title:selected.title,seoTitle:selected.seoTitle||selected.title,
   seoDescription:selected.seoDescription,canonicalPath:pathFor(selected.kind,selected.slug),
   sections:selected.sections,assets:selected.assets
  });
@@ -412,9 +414,10 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const inReview=pages.filter(p=>p.draftStatus==="SUBMITTED").length;
  const close=useCallback(()=>{
   if(busy)return;
-  if(pending||dirty||mediaAttempt.current){setClosePrompt(true);return;}
+  if((pending||mediaAttempt.current)&&!closePrompt){setClosePrompt(true);return;}
+  setClosePrompt(false);
   setEditorOpen(false);
- },[busy,pending,dirty]);
+ },[busy,pending,closePrompt]);
  useEffect(()=>{
   const onOpen=(event:Event)=>{
    const pageRef=(event as CustomEvent<{pageRef?:string}>).detail?.pageRef;
@@ -607,14 +610,16 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
     <button type="button" className="cg-cms-admin-btn" disabled={busy}
      onClick={()=>void command(pending)}>Retry original request</button>
    </div>}
-   {closePrompt&&<div className="cg-cms-notice" role="alert">
+   {closePrompt&&<div className="cg-cms-close-sticky" role="alert">
     <p>{pending?"The previous action may have reached the server. Closing will abandon its retry key. Verify actual status before any new attempt.":
      "This draft contains unsaved changes. Closing will discard only edits on this screen; the published version is unchanged."}</p>
-    <div className="cg-cms-actions"><button type="button"
-     onClick={()=>setClosePrompt(false)}>Keep editing</button>
-     <button type="button" disabled={!!mediaAttempt.current}
-     onClick={()=>{setClosePrompt(false);setEditorOpen(false);setPending(null);}}>
-      Discard edits and close</button></div>
+    <div className="cg-cms-actions" style={{margin:0}}>
+     <button type="button" className="cg-cms-admin-btn"
+      onClick={()=>setClosePrompt(false)}>Keep editing</button>
+     <button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={!!mediaAttempt.current}
+      onClick={()=>{setClosePrompt(false);setEditorOpen(false);setPending(null);}}>
+      Discard edits and close</button>
+    </div>
    </div>}
    {preview?<div className="cg-cms-preview">
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"0.5rem",marginBottom:"0.75rem",padding:"0.5rem 0.75rem",background:"#F8FAFC",borderRadius:"8px",border:"1px solid #E2E8F0"}}>
@@ -1139,18 +1144,31 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
        onChange={setUploadAlt}/>
       <label className="cg-cms-consent"><input type="checkbox" checked={rights}
        onChange={e=>setRights(e.target.checked)}/>The Foundation owns the public-use rights</label>
-      <input type="file" disabled={busy||!rights||uploadAlt.trim().length<3||
-         allowedForCurrentPlacement().length===0||
-         (draft.kind==="HEALTHCARE"&&uploadRole==="HERO"&&draft.sections.find(x=>x.kind==="HERO"&&x.order===uploadOrder)?.fields.textOnly===true)||
-         (uploadRole==="DOCUMENT"&&items(draft.sections[0]?.fields.documents).length===0)||
-         (uploadRole==="FEATURE"&&items(draft.kind==="HEALTHCARE"?draft.sections.find(x=>x.kind==="HEALTHCARE_CATEGORIES")?.fields.categories:draft.sections.find(x=>x.kind==="PARTNER_CARDS")?.fields.partners).length===0)||
-         (uploadRole==="GALLERY"&&items(draft.sections[0]?.fields.items).length===0)} accept={
-       allowedForCurrentPlacement().join(",")}
-       onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);
-        e.currentTarget.value="";}}/>
+      {(()=>{
+       const uploadDisabled=busy||!rights||uploadAlt.trim().length<3||
+        allowedForCurrentPlacement().length===0||
+        (draft.kind==="HEALTHCARE"&&uploadRole==="HERO"&&draft.sections.find(x=>x.kind==="HERO"&&x.order===uploadOrder)?.fields.textOnly===true)||
+        (uploadRole==="DOCUMENT"&&items(draft.sections[0]?.fields.documents).length===0)||
+        (uploadRole==="FEATURE"&&items(draft.kind==="HEALTHCARE"?draft.sections.find(x=>x.kind==="HEALTHCARE_CATEGORIES")?.fields.categories:draft.sections.find(x=>x.kind==="PARTNER_CARDS")?.fields.partners).length===0)||
+        (uploadRole==="GALLERY"&&items(draft.sections[0]?.fields.items).length===0);
+       return <label className={`cg-cms-upload-dropzone${uploadDisabled?" cg-cms-upload-disabled":""}`}>
+        <UploadCloud size={22} color={uploadDisabled?"#94A3B8":"#4F46E5"}/>
+        <span style={{fontSize:"0.875rem",fontWeight:700,color:"#0F172A"}}>
+         {busy?"Uploading & verifying with CG-19…":"Click to choose file to upload"}
+        </span>
+        <span style={{fontSize:"0.75rem",color:"#64748B"}}>
+         {uploadDisabled
+          ?"Enter a 3+ character description and tick the rights checkbox above to enable upload"
+          :`Accepted: ${allowedForCurrentPlacement().map(m=>m.split("/")[1]?.toUpperCase()??m).join(", ")}`}
+        </span>
+        <input type="file" disabled={uploadDisabled} accept={allowedForCurrentPlacement().join(",")}
+         onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);
+          e.currentTarget.value="";}}/>
+       </label>;
+      })()}
       {draft.assets.map(a=><div className="cg-cms-asset" key={a.fileRef}>
-       <span>{a.role} · position {a.order+1} · {a.altText}</span>
-       <button type="button" disabled={!canManage} onClick={()=>setDraft(d=>({
+       <span style={{display:"inline-flex",alignItems:"center",gap:"0.45rem"}}><FileCheck2 size={15}/> {a.role} · position {a.order+1} · {a.altText}</span>
+       <button type="button" className="cg-cms-admin-btn" style={{minHeight:"30px",padding:"0.25rem 0.65rem",fontSize:"0.75rem"}} disabled={!canManage} onClick={()=>setDraft(d=>({
         ...d,assets:d.assets.filter(v=>v!==a)}))}>Detach</button></div>)}
      </fieldset>}
     {!!selected?.bundledAssets?.length&&<p className="cg-cms-muted">Bundled editorial illustrations: {selected.bundledAssets.length}. Preview them above; upload replacements in a new draft.</p>}
@@ -1187,12 +1205,12 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
        expectedVersion:selected.version,caseRef:selected.approvalCaseRef,
        ...(publishWhen?{publishAt:new Date(publishWhen).toISOString()}:{})})}>
       Publish approved version</button></>}
-    {selected&&canPublish&&(selected.publicationStatus==="EFFECTIVE"||selected.scheduledAt)&&<>
-     <Field name="Withdrawal reason" value={withdrawReason} onChange={setWithdrawReason}/>
+    {selected&&canPublish&&(selected.publicationStatus==="EFFECTIVE"||selected.scheduledAt)&&<div style={{width:"100%",display:"flex",alignItems:"flex-end",gap:"0.65rem",flexWrap:"wrap",paddingTop:"0.5rem",borderTop:"1px solid #E2E8F0"}}>
+     <div style={{flex:"1 1 14rem"}}><Field name="Withdrawal reason" value={withdrawReason} onChange={setWithdrawReason}/></div>
      <button type="button" className="cg-cms-admin-btn" disabled={busy||!!pending||withdrawReason.trim().length<8}
       onClick={()=>act("pages/"+selected.pageRef+"/withdraw","POST",{
        expectedVersion:selected.version,reason:withdrawReason})}>Withdraw public page</button>
-    </>}
+    </div>}
    </div>
    {selected&&<p className="cg-cms-muted">Draft {selected.status.replaceAll("_"," ")} ·
     Publication {selected.publicationStatus.replaceAll("_"," ")}.
