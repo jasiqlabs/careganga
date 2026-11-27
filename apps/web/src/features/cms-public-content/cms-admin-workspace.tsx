@@ -257,6 +257,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const refreshCampaigns=()=>{setCampaignError("");void read<{sources:CampaignSource[]}>("campaign-sources").then(v=>setCampaignChoices(v.sources)).catch(()=>setCampaignError("Approved campaigns are unavailable. Refresh after CG-03 review."));};
  useEffect(()=>{if(canManage){refreshProjects();refreshCampaigns();}},[canManage]);
  const [selected,setSelected]=useState<PageDetail|null>(null);
+ const [creating,setCreating]=useState(false);
  const [draft,setDraft]=useState<Draft>(blank("HOME"));
  const [preview,setPreview]=useState(false),[reviewing,setReviewing]=useState(false);
  const [reviews,setReviews]=useState<Review[]>([]);
@@ -293,7 +294,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    return;
   }
   setBusy(true);setError("");setNotice("");
-  try{const x=await read<PageDetail>("pages/"+ref);setSelected(x);setDraft(fromPage(x));
+  try{const x=await read<PageDetail>("pages/"+ref);setSelected(x);setCreating(false);setDraft(fromPage(x));
    setReviewing(false);setReview(null);setPreview(false);setPublishWhen("");}
   catch(e){setError(e instanceof Error?e.message:"Page detail unavailable.");}
   finally{setBusy(false);}
@@ -396,10 +397,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    try{
     if(c.path.startsWith("pages/")&&selected){
      const x=await read<PageDetail>("pages/"+selected.pageRef);
-     setSelected(x);setDraft(fromPage(x));
+     setSelected(x);setCreating(false);setDraft(fromPage(x));
     }else if(outcome.pageRef){
      const x=await read<PageDetail>("pages/"+outcome.pageRef);
-     setSelected(x);setDraft(fromPage(x));
+     setSelected(x);setCreating(false);setDraft(fromPage(x));
     }
    }catch{
     setSelected(null);setDraft(blank("HOME"));
@@ -563,11 +564,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       Review approvals
     </button>}
     {canManage&&<button className="cg-cms-admin-btn cg-cms-admin-btn-primary" type="button" disabled={busy||!!pending||!!mediaAttempt.current}
-      onClick={()=>{setSelected(null);setReviewing(false);setDraft(blank("HOME"));setPreview(false);setActiveWorkspaceTab("PAGES");}}>
+      onClick={()=>{setSelected(null);setReviewing(false);setCreating(true);setDraft(blank("HOME"));setPreview(false);setActiveWorkspaceTab("PAGES");setTimeout(()=>document.getElementById("cg-cms-page-editor-card")?.scrollIntoView({behavior:"smooth",block:"start"}),60);}}>
       <Plus size={14}/> New page
     </button>}
     {canManage&&!selected&&!reviewing&&<button type="button" className="cg-cms-admin-btn" disabled={busy||!!mediaAttempt.current}
-      onClick={()=>{setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);setActiveWorkspaceTab("PAGES");setNotice("Reference starter content loaded into the Home draft editor. Edit if needed and click 'Create draft' to save.");}}>
+      onClick={()=>{setSelected(null);setReviewing(false);setCreating(true);setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);setActiveWorkspaceTab("PAGES");setNotice("Reference starter content loaded into the Home draft editor. Edit if needed and click 'Create draft' to save.");setTimeout(()=>document.getElementById("cg-cms-page-editor-card")?.scrollIntoView({behavior:"smooth",block:"start"}),60);}}>
       Start with reference content
     </button>}
     <a href="/" target="_blank" rel="noopener noreferrer" className="cg-cms-admin-btn">
@@ -1123,7 +1124,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
             <span className="cg-cms-admin-card-title">Quick Actions</span>
           </div>
           <div className="cg-cms-admin-quick-grid">
-            <button type="button" className="cg-cms-admin-quick-btn" onClick={()=>{setSelected(null);setReviewing(false);setDraft(blank("HOME"));setActiveWorkspaceTab("PAGES");}}>
+            <button type="button" className="cg-cms-admin-quick-btn" onClick={()=>{setSelected(null);setReviewing(false);setCreating(true);setDraft(blank("HOME"));setActiveWorkspaceTab("PAGES");setTimeout(()=>document.getElementById("cg-cms-page-editor-card")?.scrollIntoView({behavior:"smooth",block:"start"}),60);}}>
               <div style={{color:"#8B5CF6"}}><FilePlus size={18}/></div>
               <span>Home / About</span>
             </button>
@@ -1316,18 +1317,23 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      <span>{v.kind} · {routeFor(v)} · draft {v.draftStatus.replaceAll("_"," ")} · {v.publicStatus?"public "+v.publicStatus.replaceAll("_"," "):"Not published"}</span>
     </button>)}
    </section>
-   {selected&&<section className="cg-cms-card" aria-label="Draft review and actions">
+   {(selected||creating)&&<section id="cg-cms-page-editor-card" className="cg-cms-card" aria-label="Draft review and actions">
     <div className="cg-cms-toolbar">
-     <h3>{selected.title}</h3>
+     <h3>{selected?selected.title:"Create website page (Home / About)"}</h3>
      <div className="cg-cms-actions">
-      <button type="button" disabled={busy} onClick={()=>setPreview(!preview)}>
+      <button type="button" className="cg-cms-admin-btn" disabled={busy} onClick={()=>setPreview(!preview)}>
        {preview?"Back to editor":"Preview draft"}</button>
-      {canPublish&&selected.publicationStatus&&<a href={selected.canonicalPath}
-       target="_blank" rel="noopener noreferrer">View public page</a>}
+      {!selected&&<button type="button" className="cg-cms-admin-btn" disabled={busy} onClick={()=>{setCreating(false);setPreview(false);}}>
+       Cancel</button>}
+      {canPublish&&selected?.publicationStatus&&<a href={selected.canonicalPath}
+       target="_blank" rel="noopener noreferrer" className="cg-cms-admin-btn">View public page</a>}
      </div>
     </div>
     {preview?<div className="cg-cms-preview"><CmsPublicPage page={previewPage}/></div>:
     <div className="cg-cms-form">
+     {!selected&&<CustomDropdown label="Page type" disabled={!canManage} value={draft.kind}
+      onChange={val=>setDraft(blank(val as Kind))}
+      options={[{value:"HOME",label:"Homepage (/)"},{value:"ABOUT",label:"About page (/about)"}]}/>}
      <label>Page title<input disabled={!canManage} value={draft.title}
       maxLength={120} onChange={e=>edit("title",e.target.value)}/></label>
      <label>Search-engine title<input disabled={!canManage} value={draft.seoTitle}
