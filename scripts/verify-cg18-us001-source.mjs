@@ -306,7 +306,7 @@ const checks=[
   files.backend.includes('a.order<3')&&
   files.media.includes("a.role='CONTACT' AND sec.section_kind='CONTACT_INFO'")&&
   files.media.includes("'ARTICLE','IMPACT','CONTACT')")&&
-  files.adminExtended.includes('value="CONTACT"')&&
+  (files.adminExtended.includes('value="CONTACT"')||files.adminExtended.includes('value:"CONTACT"'))&&
   files.publicExtended.includes('a.role==="CONTACT"')&&
   files.web.includes('assets={assets}')&&
   files.androidExtended.includes('picture("CONTACT",i)')&&

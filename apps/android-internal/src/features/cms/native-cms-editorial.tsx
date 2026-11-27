@@ -5,6 +5,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeCustomDropdown} from "../../shared/native-custom-dropdown";
 import {IconArrowLeft,IconCheckCircle,IconClock,IconFileText,IconRefresh,IconSearch,IconSliders} from "../dashboard/dashboard-icons";
 import {NativeCmsMediaUploader} from "./native-cms-media-uploader";
 import {NativeCmsReviewer} from "./native-cms-reviewer";
@@ -504,17 +505,26 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     <Text style={styles.heading}>Create an unpublished original CMS draft</Text>
     <Text style={styles.note}>Uses the original Web CMS page kinds and strict
      server template validation. A new draft is never automatically public.</Text>
-    <Text style={styles.heading}>Existing page type</Text>
-    <View style={styles.row}>{newKinds.map(k=>
-     <View key={k}>{button((newPage.kind===k?"✓ ":"")+title(k),()=>{
-      setNewPage(initialKind(k));setError("");},busy||uncertain)}</View>)}</View>
-    {newPage.kind==="POLICY"&&<View style={styles.panel}>
-     <Text style={styles.heading}>Existing legal-page type</Text>
-     {legalPages.map(([slug,heading])=>button(
-      (newPage.slug===slug?"✓ ":"")+heading,()=>changeNew({
+    <NativeCustomDropdown
+     label="Existing page type"
+     value={newPage.kind}
+     disabled={busy||uncertain}
+     searchable
+     onChange={val=>{setNewPage(initialKind(val as NewKind));setError("");}}
+     options={newKinds.map(k=>({value:k,label:title(k)}))}
+    />
+    {newPage.kind==="POLICY"&&<NativeCustomDropdown
+     label="Existing legal-page type"
+     value={newPage.slug}
+     disabled={busy||uncertain}
+     onChange={slug=>{
+      const heading=legalPages.find(p=>p[0]===slug)?.[1]??"";
+      changeNew({
        slug,title:heading,sections:newPage.sections.map(x=>({
-        ...x,fields:{...x.fields,heading}}))}),busy||uncertain))}
-    </View>}
+        ...x,fields:{...x.fields,heading}}))});
+     }}
+     options={legalPages.map(([slug,heading])=>({value:slug,label:heading}))}
+    />}
     <EditField name="Public page slug" value={newPage.slug} locked={locked}
      onChange={v=>changeNew({slug:String(v).trim().toLowerCase()})}/>
     <EditField name="Page title" value={newPage.title} locked={locked}

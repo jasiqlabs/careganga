@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
 import {isCmsCtaRoute} from "./cms-cta-route";
 import {clientScreenshotHome} from "./cms-client-screenshot-reference";
+import {CustomDropdown} from "../../shared/custom-dropdown";
 import "./cms-admin.css";
 import {
   FileText,
@@ -1393,21 +1394,24 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
            Display this banner on the public homepage</label>
          </>}
          {heroEditorTab==="STYLE"&&<>
-          <label>Heading font<select disabled={!canManage} value={slide.headingFont}
-           onChange={e=>updateSlide(index,"headingFont",e.target.value as Slide["headingFont"])}>
-           <option value="SERIF">Original serif (Merriweather / Caveat style)</option>
-           <option value="SANS">Clean sans-serif (Poppins)</option>
-          </select></label>
-          <label>Heading weight<select disabled={!canManage} value={slide.headingWeight}
-           onChange={e=>updateSlide(index,"headingWeight",e.target.value as Slide["headingWeight"])}>
-           <option value="BOLD">Bold</option>
-           <option value="REGULAR">Regular</option>
-          </select></label>
-          <label>Heading size<select disabled={!canManage} value={slide.headingSize}
-           onChange={e=>updateSlide(index,"headingSize",e.target.value as Slide["headingSize"])}>
-           <option value="LARGE">Large impact (original screenshot scale)</option>
-           <option value="STANDARD">Standard headline</option>
-          </select></label>
+          <CustomDropdown label="Heading font" disabled={!canManage} value={slide.headingFont}
+           onChange={val=>updateSlide(index,"headingFont",val as Slide["headingFont"])}
+           options={[
+            {value:"SERIF",label:"Original serif (Merriweather / Caveat style)"},
+            {value:"SANS",label:"Clean sans-serif (Poppins)"}
+           ]}/>
+          <CustomDropdown label="Heading weight" disabled={!canManage} value={slide.headingWeight}
+           onChange={val=>updateSlide(index,"headingWeight",val as Slide["headingWeight"])}
+           options={[
+            {value:"BOLD",label:"Bold"},
+            {value:"REGULAR",label:"Regular"}
+           ]}/>
+          <CustomDropdown label="Heading size" disabled={!canManage} value={slide.headingSize}
+           onChange={val=>updateSlide(index,"headingSize",val as Slide["headingSize"])}
+           options={[
+            {value:"LARGE",label:"Large impact (original screenshot scale)"},
+            {value:"STANDARD",label:"Standard headline"}
+           ]}/>
           <label>Heading highlight color<input type="color" disabled={!canManage}
            value={slide.headingColor||"#FFE34A"}
            onChange={e=>updateSlide(index,"headingColor",e.target.value)}/></label>
@@ -1462,15 +1466,19 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         onChange={e=>edit("bodyEyebrow",e.target.value)}/></label>
        <label>Section heading<input disabled={!canManage} value={draft.bodyHeading}
         maxLength={160} onChange={e=>edit("bodyHeading",e.target.value)}/></label>
-       <label>Layout<select disabled={!canManage} value={draft.bodyVariant}
-        onChange={e=>edit("bodyVariant",e.target.value as Draft["bodyVariant"])}>
-        <option value="SPLIT">Original photo / text split</option>
-        <option value="STANDARD">Plain text</option></select></label>
+       <CustomDropdown label="Layout" disabled={!canManage} value={draft.bodyVariant}
+        onChange={val=>edit("bodyVariant",val as Draft["bodyVariant"])}
+        options={[
+         {value:"SPLIT",label:"Original photo / text split"},
+         {value:"STANDARD",label:"Plain text"}
+        ]}/>
        <div className="cg-cms-team"><h4>Additional editorial sections</h4>
        <p>General public-page introductions are stored in the approved About revision. They never replace operational records.</p>
        {draft.extraText.map((block,i)=><fieldset key={block.order}>
         <legend>{block.placement?placements.find(x=>x[0]===block.placement)?.[1]??"Public page":"Additional page text"}</legend>
-        {draft.kind==="ABOUT"&&<label>Display on<select value={block.placement} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,placement:e.target.value}:x))}><option value="">About page</option>{placements.map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>}
+        {draft.kind==="ABOUT"&&<CustomDropdown label="Display on" value={block.placement} disabled={!canManage}
+         onChange={val=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,placement:val}:x))}
+         options={[{value:"",label:"About page"},...placements.map(([key,label])=>({value:key,label}))]}/>}
         <label>Section label<input value={block.eyebrow} maxLength={100} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,eyebrow:e.target.value}:x))}/></label>
         <label>Heading<input value={block.heading} maxLength={160} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,heading:e.target.value}:x))}/></label>
         <label>Body<textarea value={block.body} maxLength={4000} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,body:e.target.value}:x))}/></label>
