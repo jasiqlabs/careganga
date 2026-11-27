@@ -1720,7 +1720,9 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       <p>Only the current CG-10 self-consented name and designation may be selected. Photos, biography and location are not covered by that consent.</p>
       <label>Section heading<input disabled={!canManage||busy||!!pending} value={draft.teamHeading}
        onChange={e=>edit("teamHeading",e.target.value)}/></label>
-      <button type="button" disabled={!canManage||busy||!!pending} onClick={refreshTeam}>Refresh consented staff profiles</button>
+      <button type="button" className="cg-cms-admin-btn" style={{width:"fit-content"}} disabled={!canManage||busy||!!pending} onClick={refreshTeam}>
+       <RefreshCw size={14}/> Refresh consented staff profiles
+      </button>
       {teamError&&<p role="alert">{teamError}</p>}
       {draft.team.map((p,i)=><div className="cg-cms-team" key={i}><strong>{p.name}</strong><span>{p.designation}</span>
        <button type="button" disabled={!canManage||busy||!!pending} onClick={()=>removeIndexedContent("TEAM",i)}>Remove profile</button></div>)}
@@ -1728,7 +1730,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        disabled={!canManage||busy||!!pending||draft.team.length>=15} onClick={()=>edit("team",[...draft.team,p])}>Add {p.name} · {p.designation}</button>)}
      </fieldset>}
     </div>}
-    {canManage&&draftIssue&&<p className="cg-cms-error" role="status">{draftIssue}</p>}
+    {canManage&&draftIssue&&<p className={stepIdx===5||draft.title.trim().length>0?"cg-cms-error":"cg-cms-notice"} role="status">{draftIssue}</p>}
     {selected?.status==="DRAFT"&&unsaved&&<p role="status">
      Save your changes before sending this page for approval.</p>}
     {selected?.status==="DRAFT"&&heroPhotoMissing&&<p role="status">
