@@ -150,6 +150,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const [galleryCategory,setGalleryCategory]=useState("ALL");
  const [galleryVisibility,setGalleryVisibility]=useState("ALL");
  const [editorOpen,setEditorOpen]=useState(false);
+ const [loadingDetail,setLoadingDetail]=useState(false);
  const [closePrompt,setClosePrompt]=useState(false);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [draft,setDraft]=useState<Draft>(initial("IMPACT"));
@@ -178,11 +179,11 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    return;
   }
   if(editorOpen&&dirty&&!window.confirm("Discard unsaved changes?"))return;
-  setBusy(true);setError("");setNotice("");
+  setEditorOpen(true);setClosePrompt(false);setLoadingDetail(true);
+  setSelected(null);setBusy(true);setError("");setNotice("");
   try{
    const detail=await api<Detail>("pages/"+p.pageRef);
    setSelected(detail);setKind(detail.kind);
-   setEditorOpen(true);setClosePrompt(false);
    setPreviewMediaScope("PHOTO");setGalleryCategory("ALL");setGalleryVisibility("ALL");
    setUploadRole(detail.kind==="PARTNERS"?"FEATURE":detail.kind==="IMPACT"?"IMPACT":detail.kind==="GALLERY"?"GALLERY":
     detail.kind==="COMPLIANCE"?"DOCUMENT":detail.kind==="ARTICLE"?"ARTICLE":
@@ -193,7 +194,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
     sections:detail.sections,assets:detail.assets});
    setPreview(!canManage);setPending(null);
   }catch(e){setError(e instanceof Error?e.message:"Page could not be loaded.")}
-  finally{setBusy(false);}
+  finally{setBusy(false);setLoadingDetail(false);}
  };
  const begin=(k:Kind)=>{
   if(busy||!canManage)return;
@@ -624,7 +625,13 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       Discard edits and close</button>
     </div>
    </div>}
-   {preview?<div className="cg-cms-preview">
+   {loadingDetail?<div style={{padding:"2rem 1rem",display:"flex",flexDirection:"column",gap:"0.85rem"}} role="status">
+    <div style={{height:"1.25rem",width:"45%",borderRadius:"6px",background:"#E2E8F0"}}/>
+    <div style={{height:"2.5rem",width:"100%",borderRadius:"8px",background:"#F1F5F9",border:"1px solid #E2E8F0"}}/>
+    <div style={{height:"2.5rem",width:"100%",borderRadius:"8px",background:"#F1F5F9",border:"1px solid #E2E8F0"}}/>
+    <div style={{height:"7rem",width:"100%",borderRadius:"10px",background:"#F1F5F9",border:"1px solid #E2E8F0"}}/>
+    <p style={{margin:0,fontSize:"0.82rem",color:"#64748B",fontWeight:600}}>Loading latest draft from server…</p>
+   </div>:preview?<div className="cg-cms-preview">
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"0.5rem",marginBottom:"0.75rem",padding:"0.5rem 0.75rem",background:"#F8FAFC",borderRadius:"8px",border:"1px solid #E2E8F0"}}>
      <span style={{fontSize:"0.8rem",color:"#64748B",fontWeight:500}}>Private preview — matches public website layout (unpublished draft).</span>
      <div style={{display:"flex",gap:"0.4rem"}}>
