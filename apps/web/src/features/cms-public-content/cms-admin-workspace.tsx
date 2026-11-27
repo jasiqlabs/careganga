@@ -1,5 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {useRouter} from "next/navigation";
+import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
 import {isCmsCtaRoute} from "./cms-cta-route";
 import {clientScreenshotHome} from "./cms-client-screenshot-reference";
@@ -233,8 +235,10 @@ async function read<T>(path:string,init?:RequestInit):Promise<T>{
  }
  return r.json() as Promise<T>;
 }
-export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
- canManage:boolean;canPublish:boolean;canReview:boolean}){
+export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=null}:{
+ canManage:boolean;canPublish:boolean;canReview:boolean;navigation?:PublicCmsNavigation|null}){
+ const router=useRouter();
+ const [listAvailable,setListAvailable]=useState(false);
  const [allPages,setAllPages]=useState<PageItem[]>([]),[projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
  const pages=allPages.filter(p=>p.kind==="HOME"||p.kind==="ABOUT");
  const articlePages=allPages.filter(p=>p.kind==="ARTICLE");
@@ -243,9 +247,12 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const impactCompliancePages=allPages.filter(p=>p.kind==="IMPACT"||p.kind==="COMPLIANCE");
  const otherPages=allPages.filter(p=>!["HOME","ABOUT","ARTICLE","GALLERY","HEALTHCARE","IMPACT","COMPLIANCE"].includes(p.kind));
  const publishedPages=allPages.filter(p=>p.publicStatus==="EFFECTIVE");
+ const liveRoutes=navigation?.publishedRoutes??[];
+ const isLive=(p:PageItem)=>liveRoutes.some(r=>r.kind===p.kind&&r.slug===p.slug);
  const draftPages=allPages.filter(p=>p.draftStatus==="DRAFT");
  const submittedPages=allPages.filter(p=>p.draftStatus==="SUBMITTED");
  const scrollToExtended=(pageRef?:unknown)=>{
+  if(!canLeaveDraft())return;
   if(typeof pageRef==="string"&&pageRef){window.dispatchEvent(new CustomEvent("cg-cms-open-extended",{detail:{pageRef}}));}
   const el=document.getElementById("editorial-pages");
   if(el){el.scrollIntoView({behavior:"smooth",block:"start"});}
@@ -285,10 +292,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const mediaAttempt=useRef<{fingerprint:string;key:string;uploadRef:string|null}|null>(null);
  const refresh=useCallback(async()=>{
   try{const x=await read<{pages:PageItem[]}>("pages");
-   setAllPages(x.pages);}
-  catch(e){setError(e instanceof Error?e.message:"Could not load website pages.");}
+   setAllPages(x.pages);setListAvailable(true);}
+  catch(e){setListAvailable(false);setError(e instanceof Error?e.message:"Could not load website pages.");}
  },[]);
  useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{const sync=()=>{void refresh();router.refresh();};window.addEventListener("cg-cms-extended-changed",sync);return()=>window.removeEventListener("cg-cms-extended-changed",sync);},[refresh,router]);
  async function open(ref:string){
   if(busy)return;
   if(pending||mediaAttempt.current){
@@ -296,6 +304,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     "key before switching pages.");
    return;
   }
+  if(!canLeaveDraft())return;
   setBusy(true);setError("");setNotice("");
   try{const x=await read<PageDetail>("pages/"+ref);setSelected(x);setCreating(false);setFormSectionStep("BASIC");setDraft(fromPage(x));
    setReviewing(false);setReview(null);setPreview(false);setPublishWhen("");}
@@ -340,6 +349,17 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  }
  const unsaved=selected!==null&&
   JSON.stringify(payload(draft))!==JSON.stringify(payload(fromPage(selected)));
+ function canLeaveDraft(){
+  if(busy||pending||mediaAttempt.current){setError("Resolve the current CMS action before switching records.");return false;}
+  return !(unsaved||(creating&&JSON.stringify(draft)!==JSON.stringify(blank(draft.kind))))||window.confirm("Discard unsaved changes?");
+ }
+ function beginPage(reference=false){
+  if(!canManage||!canLeaveDraft())return;
+  setSelected(null);setReviewing(false);setCreating(true);setFormSectionStep("BASIC");setDraft(reference?{...blank("HOME"),...clientScreenshotHome}:blank("HOME"));setPreview(false);setActiveWorkspaceTab("PAGES");setActiveHeroIndex(0);
+  if(reference)setNotice("Reference starter content loaded. Verify the content before saving a draft.");
+  setTimeout(()=>document.getElementById("cg-cms-page-editor-card")?.scrollIntoView({behavior:"smooth",block:"start"}),60);
+ }
+ const editingHome=selected?.kind==="HOME"&&canManage&&!busy&&!pending&&!mediaAttempt.current;
  const heroPhotoMissing=draft.kind==="HOME"&&(
   !draft.slides.some(slide=>slide.visible)||draft.slides.some((slide,index)=>
   slide.visible&&!slide.textOnly&&
@@ -396,7 +416,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    setPending(null);setNotice(c.label+" confirmed. "+val(outcome.status).replaceAll("_"," "));
    // A confirmed write stays confirmed even if the subsequent refresh fails.
    // Never invite a duplicate save after the server has acknowledged it.
-   await refresh();
+   await refresh();router.refresh();window.dispatchEvent(new Event("cg-cms-admin-changed"));
    try{
     if(c.path.startsWith("pages/")&&selected){
      const x=await read<PageDetail>("pages/"+selected.pageRef);
@@ -428,10 +448,12 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   // The only allowed busy caller is our own already-confirmed reviewer
   // decision, whose list refresh is a READ, not a second CG03 mutation.
   if(busy&&!afterConfirmedDecision)return;
+  if(!afterConfirmedDecision&&!canReview)return;
   if((pending||mediaAttempt.current)&&!afterConfirmedDecision){
    setError("Resolve the original uncertain CMS request before switching to reviews.");
    return;
   }
+  if(!afterConfirmedDecision&&!canLeaveDraft())return;
   setBusy(true);setError("");setReviewing(true);setPreview(false);
   try{const x=await read<{cases:Review[]}>("reviews");setReviews(x.cases);setReview(null);}
   catch(e){setError(e instanceof Error?e.message:"Review inbox unavailable.");}
@@ -462,7 +484,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    setPending(null);setReview(null);setReviewPassword("");
    setNotice(action==="APPROVE"?"The page is approved. A publisher must still publish it.":
     "The author can now correct or review this page.");
-   await showInbox(true);await refresh();
+   await showInbox(true);await refresh();router.refresh();window.dispatchEvent(new Event("cg-cms-admin-changed"));
   }catch(e){
    if(e instanceof CmsRequestRejected)setPending(null);
    setError(e instanceof Error?e.message:"Review was not confirmed.");
@@ -567,11 +589,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       Review approvals
     </button>}
     {canManage&&<button className="cg-cms-admin-btn cg-cms-admin-btn-primary" type="button" disabled={busy||!!pending||!!mediaAttempt.current}
-      onClick={()=>{setSelected(null);setReviewing(false);setCreating(true);setFormSectionStep("BASIC");setDraft(blank("HOME"));setPreview(false);setActiveWorkspaceTab("PAGES");setTimeout(()=>document.getElementById("cg-cms-page-editor-card")?.scrollIntoView({behavior:"smooth",block:"start"}),60);}}>
+      onClick={()=>beginPage()}>
       <Plus size={14}/> New page
     </button>}
-    {canManage&&!selected&&!reviewing&&<button type="button" className="cg-cms-admin-btn" disabled={busy||!!mediaAttempt.current}
-      onClick={()=>{setSelected(null);setReviewing(false);setCreating(true);setFormSectionStep("BASIC");setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);setActiveWorkspaceTab("PAGES");setNotice("Reference starter content loaded into the Home draft editor. Review steps 1–6 and click 'Create draft' to save.");setTimeout(()=>document.getElementById("cg-cms-page-editor-card")?.scrollIntoView({behavior:"smooth",block:"start"}),60);}}>
+    {canManage&&!selected&&!reviewing&&<button type="button" className="cg-cms-admin-btn" disabled={busy||!!pending||!!mediaAttempt.current}
+      onClick={()=>beginPage(true)}>
       Start with reference content
     </button>}
     <a href="/" target="_blank" rel="noopener noreferrer" className="cg-cms-admin-btn">
@@ -586,10 +608,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         <div className="cg-cms-admin-kpi-icon cg-cms-admin-kpi-icon-blue">
           <FileText size={18}/>
         </div>
-        <span className="cg-cms-admin-kpi-label">Total Pages</span>
+        <span className="cg-cms-admin-kpi-label">Loaded Pages</span>
       </div>
       <div className="cg-cms-admin-kpi-value">{allPages.length}</div>
-      <div className="cg-cms-admin-kpi-trend">Live database pages</div>
+      <div className="cg-cms-admin-kpi-trend">{listAvailable?"Loaded pages (up to 100)":"Page list unavailable"}</div>
     </div>
     <div className="cg-cms-admin-kpi-card">
       <div className="cg-cms-admin-kpi-top">
@@ -619,7 +641,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         <span className="cg-cms-admin-kpi-label">Working Drafts</span>
       </div>
       <div className="cg-cms-admin-kpi-value">{draftPages.length}</div>
-      <div className="cg-cms-admin-kpi-trend">Unpublished revisions</div>
+      <div className="cg-cms-admin-kpi-trend">Draft revisions (including published pages)</div>
     </div>
     <div className="cg-cms-admin-kpi-card">
       <div className="cg-cms-admin-kpi-top">
@@ -629,7 +651,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         <span className="cg-cms-admin-kpi-label">Pending Review</span>
       </div>
       <div className="cg-cms-admin-kpi-value">{submittedPages.length}</div>
-      <div className="cg-cms-admin-kpi-trend">Awaiting approval</div>
+      <div className="cg-cms-admin-kpi-trend">Submitted revisions</div>
     </div>
     <div className="cg-cms-admin-kpi-card">
       <div className="cg-cms-admin-kpi-top">
@@ -639,17 +661,9 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         <span className="cg-cms-admin-kpi-label">Published Items</span>
       </div>
       <div className="cg-cms-admin-kpi-value" style={{color:"#059669"}}>{publishedPages.length}</div>
-      <div className="cg-cms-admin-kpi-trend">Live on public site</div>
+      <div className="cg-cms-admin-kpi-trend">Effective publications in loaded list</div>
     </div>
   </div>
-
-  {/* Retained Original Dashboard element for strict test verification */}
-  <section className="cg-cms-dashboard" aria-label="Current website publishing summary" style={{display:"none"}}>
-   <div><span>Website pages</span><strong>{pages.length}</strong></div>
-   <div><span>Published</span><strong>{pages.filter(p=>p.publicStatus==="EFFECTIVE").length}</strong></div>
-   <div><span>Working drafts</span><strong>{pages.filter(p=>p.draftStatus==="DRAFT").length}</strong></div>
-   <div><span>Submitted for review</span><strong>{pages.filter(p=>p.draftStatus==="SUBMITTED").length}</strong></div>
-  </section>
 
   {/* Frontend Website Visibility Controls Card (Screenshot 2) */}
   <div className="cg-cms-admin-visibility-card">
@@ -661,10 +675,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         <div>
           <div style={{display:"flex",alignItems:"center"}}>
             <h3 style={{fontSize:"1rem",fontWeight:700,margin:0,color:"#0F172A"}}>Frontend Website Visibility Controls</h3>
-            <span className="cg-cms-admin-badge-live">● Live Controls</span>
+            <span className="cg-cms-admin-badge-live">Draft Controls</span>
           </div>
           <p style={{fontSize:"0.8125rem",color:"#64748B",margin:"0.15rem 0 0 0"}}>
-            Instantly toggle the login button, member join, and volunteer join pages on the public website.
+            Current public settings are shown below. Open the Home page to edit its draft, then save, submit for approval and publish.
           </p>
         </div>
       </div>
@@ -673,6 +687,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       </a>
     </div>
 
+    {canManage&&!editingHome&&pages.some(p=>p.kind==="HOME")&&<button type="button" className="cg-cms-admin-btn" disabled={busy||!!pending||!!mediaAttempt.current} onClick={()=>{const home=pages.find(p=>p.kind==="HOME");if(home){setActiveWorkspaceTab("PAGES");void openPage(home.pageRef);}}}>Open Home draft</button>}
     <div className="cg-cms-admin-visibility-grid">
       {/* Card 1 */}
       <div className="cg-cms-admin-visibility-item">
@@ -680,8 +695,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
           <div className="cg-cms-admin-item-icon" style={{background:"#EFF6FF",color:"#2563EB",border:"1px solid #DBEAFE"}}>
             <LogIn size={18} />
           </div>
-          <span className={draft.loginDesired ? "cg-cms-admin-pill-green" : "cg-cms-admin-pill-grey"}>
-            {draft.loginDesired ? "● Login Button Visible" : "Hidden"}
+          <span className={navigation?.login?.visible ? "cg-cms-admin-pill-green" : "cg-cms-admin-pill-grey"}>
+            {!navigation?"Public status unavailable":navigation.login?.visible?"● Login Button Visible":"Hidden"}
           </span>
         </div>
         <div>
@@ -692,11 +707,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         </div>
         <div className="cg-cms-admin-toggle-row">
           <span style={{fontSize:"0.8125rem",color:"#64748B"}}>
-            Status: <strong style={{color: draft.loginDesired ? "#059669" : "#64748B"}}>{draft.loginDesired ? "Visible" : "Hidden"}</strong>
+            Draft: <strong style={{color: editingHome&&draft.loginDesired ? "#059669" : "#64748B"}}>{editingHome?(draft.loginDesired?"Requested visible":"Requested hidden"):"Open Home to edit"}</strong>
           </span>
-          <button type="button" role="switch" aria-checked={draft.loginDesired}
-            className={`cg-cms-admin-toggle-switch ${draft.loginDesired ? "active" : ""}`}
-            disabled={!canManage} onClick={() => edit("loginDesired", !draft.loginDesired)}>
+          <button type="button" role="switch" aria-checked={editingHome?draft.loginDesired:navigation?.login?.visible===true}
+            className={`cg-cms-admin-toggle-switch ${(editingHome?draft.loginDesired:navigation?.login?.visible) ? "active" : ""}`}
+            disabled={!editingHome} onClick={() => edit("loginDesired", !draft.loginDesired)}>
             <span className="cg-cms-admin-toggle-slider" />
           </button>
         </div>
@@ -708,23 +723,23 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
           <div className="cg-cms-admin-item-icon" style={{background:"#FFFBEB",color:"#D97706",border:"1px solid #FDE68A"}}>
             <UserPlus size={18} />
           </div>
-          <span className={draft.memberJoinDesired ? "cg-cms-admin-pill-green" : "cg-cms-admin-pill-grey"}>
-            {draft.memberJoinDesired ? "● Membership Open" : "Membership Closed"}
+          <span className={navigation?.memberJoin?.visible ? "cg-cms-admin-pill-green" : "cg-cms-admin-pill-grey"}>
+            {!navigation?"Public status unavailable":navigation.memberJoin?.visible?"● Membership Open":"Membership Closed"}
           </span>
         </div>
         <div>
           <h4 className="cg-cms-admin-item-title">Member Join &amp; Registration</h4>
           <p className="cg-cms-admin-item-desc">
-            Show or hide "Become a Member" in the Join menu, and enable or close membership registration.
+            Show or hide "Become a Member" in the Join menu, and request membership link visibility in the Home revision.
           </p>
         </div>
         <div className="cg-cms-admin-toggle-row">
           <span style={{fontSize:"0.8125rem",color:"#64748B"}}>
-            Status: <strong style={{color: draft.memberJoinDesired ? "#059669" : "#64748B"}}>{draft.memberJoinDesired ? "Visible" : "Off"}</strong>
+            Draft: <strong style={{color: editingHome&&draft.memberJoinDesired ? "#059669" : "#64748B"}}>{editingHome?(draft.memberJoinDesired?"Requested visible":"Requested hidden"):"Open Home to edit"}</strong>
           </span>
-          <button type="button" role="switch" aria-checked={draft.memberJoinDesired}
-            className={`cg-cms-admin-toggle-switch ${draft.memberJoinDesired ? "active" : ""}`}
-            disabled={!canManage} onClick={() => edit("memberJoinDesired", !draft.memberJoinDesired)}>
+          <button type="button" role="switch" aria-checked={editingHome?draft.memberJoinDesired:navigation?.memberJoin?.visible===true}
+            className={`cg-cms-admin-toggle-switch ${(editingHome?draft.memberJoinDesired:navigation?.memberJoin?.visible) ? "active" : ""}`}
+            disabled={!editingHome} onClick={() => edit("memberJoinDesired", !draft.memberJoinDesired)}>
             <span className="cg-cms-admin-toggle-slider" />
           </button>
         </div>
@@ -736,23 +751,23 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
           <div className="cg-cms-admin-item-icon" style={{background:"#F0FDFA",color:"#0D9488",border:"1px solid #CCFBF1"}}>
             <Heart size={18} />
           </div>
-          <span className={draft.volunteerJoinDesired ? "cg-cms-admin-pill-green" : "cg-cms-admin-pill-grey"}>
-            {draft.volunteerJoinDesired ? "● Volunteer Open" : "Volunteer Closed"}
+          <span className={navigation?.volunteerJoin?.visible ? "cg-cms-admin-pill-green" : "cg-cms-admin-pill-grey"}>
+            {!navigation?"Public status unavailable":navigation.volunteerJoin?.visible?"● Volunteer Open":"Volunteer Closed"}
           </span>
         </div>
         <div>
           <h4 className="cg-cms-admin-item-title">Volunteer Join &amp; Registration</h4>
           <p className="cg-cms-admin-item-desc">
-            Show or hide "Become a Volunteer" in the Join menu, and enable or close volunteer applications.
+            Show or hide "Become a Volunteer" in the Join menu, and request volunteer link visibility in the Home revision.
           </p>
         </div>
         <div className="cg-cms-admin-toggle-row">
           <span style={{fontSize:"0.8125rem",color:"#64748B"}}>
-            Status: <strong style={{color: draft.volunteerJoinDesired ? "#059669" : "#64748B"}}>{draft.volunteerJoinDesired ? "Visible" : "Off"}</strong>
+            Draft: <strong style={{color: editingHome&&draft.volunteerJoinDesired ? "#059669" : "#64748B"}}>{editingHome?(draft.volunteerJoinDesired?"Requested visible":"Requested hidden"):"Open Home to edit"}</strong>
           </span>
-          <button type="button" role="switch" aria-checked={draft.volunteerJoinDesired}
-            className={`cg-cms-admin-toggle-switch ${draft.volunteerJoinDesired ? "active" : ""}`}
-            disabled={!canManage} onClick={() => edit("volunteerJoinDesired", !draft.volunteerJoinDesired)}>
+          <button type="button" role="switch" aria-checked={editingHome?draft.volunteerJoinDesired:navigation?.volunteerJoin?.visible===true}
+            className={`cg-cms-admin-toggle-switch ${(editingHome?draft.volunteerJoinDesired:navigation?.volunteerJoin?.visible) ? "active" : ""}`}
+            disabled={!editingHome} onClick={() => edit("volunteerJoinDesired", !draft.volunteerJoinDesired)}>
             <span className="cg-cms-admin-toggle-slider" />
           </button>
         </div>
@@ -827,10 +842,13 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     const pGal = pct(galleryPages.length + healthcarePages.length);
     const pOth = Math.max(0, 100 - pCore - pArt - pImp - pGal);
 
+    const publishedWithoutWorkingRevision=publishedPages.filter(p=>p.draftStatus!=="DRAFT"&&p.draftStatus!=="SUBMITTED");
     const sPub = pct(publishedPages.length);
+    const chartPub = pct(publishedWithoutWorkingRevision.length);
     const sDrf = pct(draftPages.length);
     const sSub = pct(submittedPages.length);
-    const sOth = Math.max(0, 100 - sPub - sDrf - sSub);
+    const otherStatus=allPages.length-publishedWithoutWorkingRevision.length-draftPages.length-submittedPages.length;
+    const sOth = pct(otherStatus);
 
     return (
     <div className="cg-cms-admin-overview-grid">
@@ -881,16 +899,16 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
 
           <div className="cg-cms-admin-card">
             <div className="cg-cms-admin-card-header">
-              <span className="cg-cms-admin-card-title">Content Status</span>
+              <span className="cg-cms-admin-card-title">Editorial Status (latest revision)</span>
             </div>
             <div className="cg-cms-admin-donut-wrap">
               <svg width="110" height="110" viewBox="0 0 42 42">
                 <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#E2E8F0" strokeWidth="4"></circle>
                 {allPages.length > 0 && <>
-                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#10B981" strokeWidth="4.5" strokeDasharray={`${sPub} ${100 - sPub}`} strokeDashoffset="25"></circle>
-                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#F59E0B" strokeWidth="4.5" strokeDasharray={`${sDrf} ${100 - sDrf}`} strokeDashoffset={25 - sPub}></circle>
-                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#3B82F6" strokeWidth="4.5" strokeDasharray={`${sSub} ${100 - sSub}`} strokeDashoffset={25 - sPub - sDrf}></circle>
-                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#6366F1" strokeWidth="4.5" strokeDasharray={`${sOth} ${100 - sOth}`} strokeDashoffset={25 - sPub - sDrf - sSub}></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#10B981" strokeWidth="4.5" strokeDasharray={`${chartPub} ${100 - chartPub}`} strokeDashoffset="25"></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#F59E0B" strokeWidth="4.5" strokeDasharray={`${sDrf} ${100 - sDrf}`} strokeDashoffset={25 - chartPub}></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#3B82F6" strokeWidth="4.5" strokeDasharray={`${sSub} ${100 - sSub}`} strokeDashoffset={25 - chartPub - sDrf}></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#6366F1" strokeWidth="4.5" strokeDasharray={`${sOth} ${100 - sOth}`} strokeDashoffset={25 - chartPub - sDrf - sSub}></circle>
                 </>}
                 <text x="21" y="19" textAnchor="middle" style={{fontSize:"6px",fontWeight:800,fontFamily:"'Roboto Slab',serif",fill:"#0F172A"}}>{allPages.length}</text>
                 <text x="21" y="24" textAnchor="middle" style={{fontSize:"2.6px",fill:"#64748B"}}>Total</text>
@@ -898,8 +916,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
             </div>
             <div className="cg-cms-admin-donut-legend">
               <div className="cg-cms-admin-legend-item">
-                <span><span className="cg-cms-admin-dot" style={{background:"#10B981"}}/>Published</span>
-                <span><strong>{publishedPages.length}</strong> ({allPages.length ? sPub : 0}%)</span>
+                <span><span className="cg-cms-admin-dot" style={{background:"#10B981"}}/>Published, no open draft</span>
+                <span><strong>{publishedWithoutWorkingRevision.length}</strong> ({allPages.length ? chartPub : 0}%)</span>
               </div>
               <div className="cg-cms-admin-legend-item">
                 <span><span className="cg-cms-admin-dot" style={{background:"#F59E0B"}}/>Draft</span>
@@ -911,7 +929,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
               </div>
               <div className="cg-cms-admin-legend-item">
                 <span><span className="cg-cms-admin-dot" style={{background:"#6366F1"}}/>Other / Approved</span>
-                <span><strong>{Math.max(0, allPages.length - publishedPages.length - draftPages.length - submittedPages.length)}</strong> ({allPages.length ? sOth : 0}%)</span>
+                <span><strong>{otherStatus}</strong> ({allPages.length ? sOth : 0}%)</span>
               </div>
             </div>
           </div>
@@ -937,7 +955,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
                   </div>
                 </div>
               ))}
-              {allPages.length === 0 && (
+              {!allPages.some(isLive) && (
                 <div style={{fontSize:"0.8125rem",color:"#64748B",padding:"0.5rem 0"}}>
                   No CMS pages found in database yet.
                 </div>
@@ -976,10 +994,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
                       </span>
                     </td>
                     <td>
-                      <button type="button" className="cg-cms-admin-action-btn" title="View Public Page" onClick={()=>{window.open(routeFor(p),"_blank");}}>
+                      <button type="button" className="cg-cms-admin-action-btn" title="View Public Page" onClick={()=>{window.open(routeFor(p),"_blank","noopener,noreferrer");}}>
                         <Eye size={12}/>
                       </button>
-                      <button type="button" className="cg-cms-admin-action-btn" title="Edit Page" onClick={()=>{
+                      <button type="button" className="cg-cms-admin-action-btn" title={canManage?"Edit Page":"View Page"} onClick={()=>{
                         if(p.kind==="HOME"||p.kind==="ABOUT"){void openPage(p.pageRef);setActiveWorkspaceTab("PAGES");}
                         else{scrollToExtended(p.pageRef);}
                       }}>
@@ -1029,8 +1047,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
                       </span>
                     </td>
                     <td>
-                      <button type="button" className="cg-cms-admin-action-btn" title="View Article" onClick={()=>{window.open("/blog/"+b.slug,"_blank");}}><Eye size={12}/></button>
-                      <button type="button" className="cg-cms-admin-action-btn" title="Edit Article" onClick={()=>scrollToExtended(b.pageRef)}><Edit2 size={12}/></button>
+                      <button type="button" className="cg-cms-admin-action-btn" title="View Article" onClick={()=>{window.open("/blog/"+b.slug,"_blank","noopener,noreferrer");}}><Eye size={12}/></button>
+                      <button type="button" className="cg-cms-admin-action-btn" title={canManage?"Edit Article":"View Article"} onClick={()=>scrollToExtended(b.pageRef)}><Edit2 size={12}/></button>
                     </td>
                   </tr>
                 ))}
@@ -1076,7 +1094,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
               <div className="cg-cms-admin-media-summary-item">
                 <div style={{color:"#F59E0B"}}><UploadCloud size={18}/></div>
                 <strong style={{fontSize:"0.8125rem",color:"#0F172A"}}>{selected?.assets.length ?? 0} Files</strong>
-                <span style={{fontSize:"0.7rem",color:"#64748B"}}>Active Uploads</span>
+                <span style={{fontSize:"0.7rem",color:"#64748B"}}>Selected page attachments</span>
               </div>
               <div className="cg-cms-admin-media-summary-item">
                 <div style={{color:"#64748B"}}><Grid size={18}/></div>
@@ -1127,10 +1145,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
             <span className="cg-cms-admin-card-title">Quick Actions</span>
           </div>
           <div className="cg-cms-admin-quick-grid">
-            <button type="button" className="cg-cms-admin-quick-btn" onClick={()=>{setSelected(null);setReviewing(false);setCreating(true);setDraft(blank("HOME"));setActiveWorkspaceTab("PAGES");setTimeout(()=>document.getElementById("cg-cms-page-editor-card")?.scrollIntoView({behavior:"smooth",block:"start"}),60);}}>
+            {canManage&&<button type="button" className="cg-cms-admin-quick-btn" disabled={busy||!!pending||!!mediaAttempt.current} onClick={()=>beginPage()}>
               <div style={{color:"#8B5CF6"}}><FilePlus size={18}/></div>
               <span>Home / About</span>
-            </button>
+            </button>}
             <button type="button" className="cg-cms-admin-quick-btn" onClick={scrollToExtended}>
               <div style={{color:"#10B981"}}><BookOpen size={18}/></div>
               <span>Articles</span>
@@ -1151,10 +1169,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
               <div style={{color:"#EF4444"}}><ImageIcon size={18}/></div>
               <span>Contact &amp; Legal</span>
             </button>
-            <button type="button" className="cg-cms-admin-quick-btn" onClick={()=>{if(canReview){setActiveWorkspaceTab("APPROVALS");void showInbox();}}}>
+            {canReview&&<button type="button" className="cg-cms-admin-quick-btn" disabled={busy||!!pending||!!mediaAttempt.current} onClick={()=>{setActiveWorkspaceTab("APPROVALS");void showInbox();}}>
               <div style={{color:"#0D9488"}}><CheckCircle2 size={18}/></div>
               <span>Approvals</span>
-            </button>
+            </button>}
             <button type="button" className="cg-cms-admin-quick-btn" onClick={()=>{void refresh();}}>
               <div style={{color:"#64748B"}}><RefreshCw size={18}/></div>
               <span>Sync Live Data</span>
@@ -1185,11 +1203,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <span style={{color:"#64748B"}}>Consented Staff</span>
-              <span style={{fontWeight:600,color:"#0F172A"}}>{teamChoices.length}</span>
+              <span style={{fontWeight:600,color:"#0F172A"}}>{!canManage||teamError?"Unavailable":teamChoices.length}</span>
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <span style={{color:"#64748B"}}>Approved Projects</span>
-              <span style={{fontWeight:600,color:"#0F172A"}}>{projectChoices.length}</span>
+              <span style={{fontWeight:600,color:"#0F172A"}}>{!canManage||projectError?"Unavailable":projectChoices.length}</span>
             </div>
           </div>
         </div>
@@ -1200,14 +1218,14 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
             <span className="cg-cms-admin-link" onClick={()=>{setActiveWorkspaceTab("PAGES");}}>View All</span>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:"0.55rem",fontSize:"0.8125rem"}}>
-            {allPages.slice(0, 6).map(p => (
+            {allPages.filter(isLive).slice(0, 6).map(p => (
               <div key={p.pageRef} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"0.5rem"}}>
                 <span style={{fontWeight:600,color:"#0F172A",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.title}</span>
                 <a href={routeFor(p)} target="_blank" rel="noopener noreferrer" style={{color:"#2563EB",textDecoration:"none",fontSize:"0.75rem",flexShrink:0}}>{routeFor(p)}</a>
               </div>
             ))}
             {allPages.length === 0 && (
-              <span style={{color:"#64748B"}}>No routes loaded yet.</span>
+              <span style={{color:"#64748B"}}>{navigation?"No approved routes in loaded list.":"Public routes unavailable."}</span>
             )}
           </div>
         </div>
@@ -1309,7 +1327,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       <p style={{fontSize:"0.8rem",color:"#64748B",margin:"0.2rem 0 0 0"}}>Live news &amp; blog articles from the database. Click any article to open its editor.</p>
      </div>
      <button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" onClick={()=>scrollToExtended()}>
-      <Plus size={14}/> Manage / Create Articles
+      <Plus size={14}/> {canManage?"Manage / Create Articles":"View Articles"}
      </button>
     </div>
     <div className="cg-cms-list">
@@ -1317,7 +1335,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       <strong>{v.title}</strong>
       <span>{routeFor(v)} · draft {v.draftStatus.replaceAll("_"," ")} · {v.publicStatus?"public "+v.publicStatus.replaceAll("_"," "):"Not published"}</span>
      </button>)}
-     {articlePages.length===0&&<p style={{color:"#64748B",fontSize:"0.85rem"}}>No articles in database yet. Click &quot;Manage / Create Articles&quot; to create one.</p>}
+     {articlePages.length===0&&<p style={{color:"#64748B",fontSize:"0.85rem"}}>{canManage?"No articles loaded yet. Open the editor to create one.":"No articles loaded yet."}</p>}
     </div>
    </section>}
 
@@ -1343,20 +1361,20 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    {activeWorkspaceTab==="MENUS"&&<section className="cg-cms-admin-card" aria-label="Public Website Navigation Menus">
     <div className="cg-cms-admin-card-header">
      <div>
-      <span className="cg-cms-admin-card-title">Public Navigation &amp; Live Routes ({allPages.length})</span>
-      <p style={{fontSize:"0.8rem",color:"#64748B",margin:"0.2rem 0 0 0"}}>Visibility toggles above control Login, Member Join, and Volunteer Join links. Below are all live CMS routes.</p>
+      <span className="cg-cms-admin-card-title">Public Navigation &amp; Live Routes ({allPages.filter(isLive).length})</span>
+      <p style={{fontSize:"0.8rem",color:"#64748B",margin:"0.2rem 0 0 0"}}>Only current approved public routes in the loaded list. Edit Home to request navigation changes.</p>
      </div>
     </div>
     <div className="cg-cms-admin-table-wrap">
      <table className="cg-cms-admin-table">
       <thead><tr><th>Page Title</th><th>Type</th><th>Public URL</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>
-       {allPages.map(p=><tr key={p.pageRef}>
+       {allPages.filter(isLive).map(p=><tr key={p.pageRef}>
         <td style={{fontWeight:600,color:"#0F172A"}}>{p.title}</td>
         <td style={{color:"#64748B"}}>{p.kind}</td>
         <td><a href={routeFor(p)} target="_blank" rel="noopener noreferrer" style={{color:"#2563EB",textDecoration:"none"}}>{routeFor(p)}</a></td>
         <td><span className={`cg-cms-admin-status-pill ${p.publicStatus==="EFFECTIVE"?"cg-cms-admin-status-published":"cg-cms-admin-status-draft"}`}>{p.publicStatus==="EFFECTIVE"?"Published":"Not published"}</span></td>
-        <td><button type="button" className="cg-cms-admin-btn" style={{minHeight:"30px",padding:"0.2rem 0.6rem",fontSize:"0.75rem"}} onClick={()=>{if(p.kind==="HOME"||p.kind==="ABOUT"){void openPage(p.pageRef);setActiveWorkspaceTab("PAGES");}else{scrollToExtended(p.pageRef);}}}><Edit2 size={12}/> Edit</button></td>
+        <td><button type="button" className="cg-cms-admin-btn" style={{minHeight:"30px",padding:"0.2rem 0.6rem",fontSize:"0.75rem"}} onClick={()=>{if(p.kind==="HOME"||p.kind==="ABOUT"){void openPage(p.pageRef);setActiveWorkspaceTab("PAGES");}else{scrollToExtended(p.pageRef);}}}>{canManage?<><Edit2 size={12}/> Edit</>:<><Eye size={12}/> View</>}</button></td>
        </tr>)}
       </tbody>
      </table>
@@ -1383,7 +1401,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       <p style={{fontSize:"0.8rem",color:"#64748B",margin:"0.2rem 0 0 0"}}>Edit Footer, Contact Us, and the 7 statutory legal policy pages.</p>
      </div>
      {pages.find(p=>p.kind==="HOME")&&<button type="button" className="cg-cms-admin-btn" disabled={busy} onClick={()=>{const home=pages.find(p=>p.kind==="HOME");if(home){void openPage(home.pageRef);setActiveWorkspaceTab("PAGES");}}}>
-      <Settings size={14}/> Edit Home Header / Footer
+      <Settings size={14}/> {canManage?"Edit Home Header / Footer":"View Home Header / Footer"}
      </button>}
     </div>
     <div className="cg-cms-list">
@@ -1435,7 +1453,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      <div className="cg-cms-actions">
       <button type="button" className="cg-cms-admin-btn" disabled={busy} onClick={()=>setPreview(!preview)}>
        <Eye size={14}/> {preview?"Back to editor":"Preview draft"}</button>
-      {!selected&&<button type="button" className="cg-cms-admin-btn" disabled={busy} onClick={()=>{setCreating(false);setPreview(false);}}>
+      {!selected&&<button type="button" className="cg-cms-admin-btn" disabled={busy} onClick={()=>{if(canLeaveDraft()){setCreating(false);setPreview(false);}}}>
        Cancel</button>}
       {canPublish&&selected?.publicationStatus&&<a href={selected.canonicalPath}
        target="_blank" rel="noopener noreferrer" className="cg-cms-admin-btn">View public page <ExternalLink size={13}/></a>}
