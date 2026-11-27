@@ -31,7 +31,9 @@ import {
   ChevronRight,
   ChevronLeft,
   AlertCircle,
-  Search
+  Search,
+  Monitor,
+  Smartphone
 } from "lucide-react";
 
 type Kind="HOME"|"ABOUT";
@@ -258,6 +260,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  useEffect(()=>{if(canManage){refreshProjects();refreshCampaigns();}},[canManage]);
  const [selected,setSelected]=useState<PageDetail|null>(null);
  const [creating,setCreating]=useState(false);
+ const [previewDevice,setPreviewDevice]=useState<"DESKTOP"|"MOBILE">("DESKTOP");
  const [draft,setDraft]=useState<Draft>(blank("HOME"));
  const [preview,setPreview]=useState(false),[reviewing,setReviewing]=useState(false);
  const [reviews,setReviews]=useState<Review[]>([]);
@@ -294,7 +297,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    return;
   }
   setBusy(true);setError("");setNotice("");
-  try{const x=await read<PageDetail>("pages/"+ref);setSelected(x);setCreating(false);setDraft(fromPage(x));
+  try{const x=await read<PageDetail>("pages/"+ref);setSelected(x);setCreating(false);setFormSectionStep("BASIC");setDraft(fromPage(x));
    setReviewing(false);setReview(null);setPreview(false);setPublishWhen("");}
   catch(e){setError(e instanceof Error?e.message:"Page detail unavailable.");}
   finally{setBusy(false);}
@@ -564,11 +567,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       Review approvals
     </button>}
     {canManage&&<button className="cg-cms-admin-btn cg-cms-admin-btn-primary" type="button" disabled={busy||!!pending||!!mediaAttempt.current}
-      onClick={()=>{setSelected(null);setReviewing(false);setCreating(true);setDraft(blank("HOME"));setPreview(false);setActiveWorkspaceTab("PAGES");setTimeout(()=>document.getElementById("cg-cms-page-editor-card")?.scrollIntoView({behavior:"smooth",block:"start"}),60);}}>
+      onClick={()=>{setSelected(null);setReviewing(false);setCreating(true);setFormSectionStep("BASIC");setDraft(blank("HOME"));setPreview(false);setActiveWorkspaceTab("PAGES");setTimeout(()=>document.getElementById("cg-cms-page-editor-card")?.scrollIntoView({behavior:"smooth",block:"start"}),60);}}>
       <Plus size={14}/> New page
     </button>}
     {canManage&&!selected&&!reviewing&&<button type="button" className="cg-cms-admin-btn" disabled={busy||!!mediaAttempt.current}
-      onClick={()=>{setSelected(null);setReviewing(false);setCreating(true);setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);setActiveWorkspaceTab("PAGES");setNotice("Reference starter content loaded into the Home draft editor. Edit if needed and click 'Create draft' to save.");setTimeout(()=>document.getElementById("cg-cms-page-editor-card")?.scrollIntoView({behavior:"smooth",block:"start"}),60);}}>
+      onClick={()=>{setSelected(null);setReviewing(false);setCreating(true);setFormSectionStep("BASIC");setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);setActiveWorkspaceTab("PAGES");setNotice("Reference starter content loaded into the Home draft editor. Review steps 1–6 and click 'Create draft' to save.");setTimeout(()=>document.getElementById("cg-cms-page-editor-card")?.scrollIntoView({behavior:"smooth",block:"start"}),60);}}>
       Start with reference content
     </button>}
     <a href="/" target="_blank" rel="noopener noreferrer" className="cg-cms-admin-btn">
@@ -1411,31 +1414,74 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     </button>)}
    </section>
    </>}
-   {(selected||creating)&&<section id="cg-cms-page-editor-card" className="cg-cms-card" aria-label="Draft review and actions">
+   {(selected||creating)&&(()=>{
+    const wizardSteps:{key:typeof formSectionStep;num:number;label:string}[]=[
+     {key:"BASIC",num:1,label:"Basic & SEO"},
+     {key:"BANNERS",num:2,label:"Hero Banners"},
+     {key:"STORY",num:3,label:"About & Story"},
+     {key:"SOURCES",num:4,label:"Team Directory"},
+     {key:"CARDS",num:5,label:"Cards & Promo"},
+     {key:"FOOTER",num:6,label:"Footer & Save"}
+    ];
+    const stepIdx=wizardSteps.findIndex(s=>s.key===formSectionStep);
+    return <section id="cg-cms-page-editor-card" className="cg-cms-card" aria-label="Draft review and actions">
     <div className="cg-cms-toolbar">
-     <h3>{selected?selected.title:"Create website page (Home / About)"}</h3>
+     <div>
+      <h3 style={{margin:0}}>{selected?selected.title:"Create website page (Home / About)"}</h3>
+      <p style={{fontSize:"0.8rem",color:"#64748B",margin:"0.2rem 0 0 0"}}>
+       Step {stepIdx+1} of 6: {wizardSteps[stepIdx]?.label}
+      </p>
+     </div>
      <div className="cg-cms-actions">
       <button type="button" className="cg-cms-admin-btn" disabled={busy} onClick={()=>setPreview(!preview)}>
-       {preview?"Back to editor":"Preview draft"}</button>
+       <Eye size={14}/> {preview?"Back to editor":"Preview draft"}</button>
       {!selected&&<button type="button" className="cg-cms-admin-btn" disabled={busy} onClick={()=>{setCreating(false);setPreview(false);}}>
        Cancel</button>}
       {canPublish&&selected?.publicationStatus&&<a href={selected.canonicalPath}
-       target="_blank" rel="noopener noreferrer" className="cg-cms-admin-btn">View public page</a>}
+       target="_blank" rel="noopener noreferrer" className="cg-cms-admin-btn">View public page <ExternalLink size={13}/></a>}
      </div>
     </div>
-    {preview?<div className="cg-cms-preview"><CmsPublicPage page={previewPage}/></div>:
+    {!preview&&<div className="cg-cms-admin-stepper" role="tablist" aria-label="Page creation steps">
+     {wizardSteps.map(step=>(
+      <button key={step.key} type="button" role="tab" aria-selected={formSectionStep===step.key}
+       className={`cg-cms-admin-step-btn${formSectionStep===step.key?" active":""}`}
+       onClick={()=>setFormSectionStep(step.key)}>
+       <span className="cg-cms-admin-step-num">{step.num}</span>
+       <span>{step.label}</span>
+      </button>
+     ))}
+    </div>}
+    {preview?<div className="cg-cms-preview">
+     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"0.5rem",marginBottom:"0.75rem",padding:"0.5rem 0.75rem",background:"#F8FAFC",borderRadius:"8px",border:"1px solid #E2E8F0"}}>
+      <span style={{fontSize:"0.8rem",color:"#64748B",fontWeight:500}}>Private preview — matches public website layout (unpublished draft).</span>
+      <div style={{display:"flex",gap:"0.4rem"}}>
+       <button type="button" className={`cg-cms-admin-btn${previewDevice==="DESKTOP"?" cg-cms-admin-btn-primary":""}`} style={{minHeight:"32px",padding:"0.25rem 0.65rem",fontSize:"0.75rem"}} onClick={()=>setPreviewDevice("DESKTOP")}>
+        <Monitor size={13}/> Desktop
+       </button>
+       <button type="button" className={`cg-cms-admin-btn${previewDevice==="MOBILE"?" cg-cms-admin-btn-primary":""}`} style={{minHeight:"32px",padding:"0.25rem 0.65rem",fontSize:"0.75rem"}} onClick={()=>setPreviewDevice("MOBILE")}>
+        <Smartphone size={13}/> Mobile (390px)
+       </button>
+      </div>
+     </div>
+     <div className={previewDevice==="MOBILE"?"cg-cms-preview-mobile":"cg-cms-preview-desktop"}>
+      <CmsPublicPage page={previewPage}/>
+     </div>
+    </div>:
     <div className="cg-cms-form">
-     {!selected&&<CustomDropdown label="Page type" disabled={!canManage} value={draft.kind}
-      onChange={val=>setDraft(blank(val as Kind))}
-      options={[{value:"HOME",label:"Homepage (/)"},{value:"ABOUT",label:"About page (/about)"}]}/>}
-     <label>Page title<input disabled={!canManage} value={draft.title}
-      maxLength={120} onChange={e=>edit("title",e.target.value)}/></label>
-     <label>Search-engine title<input disabled={!canManage} value={draft.seoTitle}
-      maxLength={120} onChange={e=>edit("seoTitle",e.target.value)}/></label>
-     <label>Search-engine description<textarea disabled={!canManage}
-      value={draft.seoDescription} maxLength={300}
-      onChange={e=>edit("seoDescription",e.target.value)}/></label>
-     <div className="cg-cms-grid">
+     {formSectionStep==="BASIC"&&<>
+      {!selected&&<CustomDropdown label="Page type" disabled={!canManage} value={draft.kind}
+       onChange={val=>setDraft(blank(val as Kind))}
+       options={[{value:"HOME",label:"Homepage (/)"},{value:"ABOUT",label:"About page (/about)"}]}/>}
+      <label>Page title<input disabled={!canManage} value={draft.title}
+       maxLength={120} placeholder="e.g. CareGanga Foundation" onChange={e=>edit("title",e.target.value)}/></label>
+      <label>Search-engine title<input disabled={!canManage} value={draft.seoTitle}
+       maxLength={120} placeholder="Optional — defaults to page title" onChange={e=>edit("seoTitle",e.target.value)}/></label>
+      <label>Search-engine description<textarea disabled={!canManage}
+       value={draft.seoDescription} maxLength={300}
+       placeholder="Short summary for Google search results"
+       onChange={e=>edit("seoDescription",e.target.value)}/></label>
+     </>}
+     {formSectionStep==="BANNERS"&&<div className="cg-cms-grid">
       <fieldset><legend>Website banners</legend>
         <p>Verified banner photos are scanned by CG-19 antivirus and stored privately. Draft banners do not alter the public website until approved.</p>
         <div className="cg-cms-banner-summary" role="tablist" aria-label="Banners in this draft">
@@ -1558,11 +1604,12 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
            onClick={()=>removeSlide(index)}>Remove slide</button>
          </div>}
         </div>:null)}
-        {canManage&&draft.slides.length<6&&<button type="button"
+        {canManage&&draft.slides.length<6&&<button type="button" className="cg-cms-admin-btn"
          onClick={()=>{setActiveHeroIndex(draft.slides.length);
           edit("slides",[...draft.slides,blankSlide()]);setHeroEditorTab("BASIC");}}>
-         Add new banner</button>}
-       </fieldset>      <fieldset><legend>Foundation About / story</legend>
+         <Plus size={14}/> Add new banner</button>}
+       </fieldset></div>}
+      {formSectionStep==="STORY"&&<fieldset><legend>Foundation About / story</legend>
        <label>Eyebrow<input disabled={!canManage} value={draft.bodyEyebrow} maxLength={100}
         onChange={e=>edit("bodyEyebrow",e.target.value)}/></label>
        <label>Section heading<input disabled={!canManage} value={draft.bodyHeading}
@@ -1598,8 +1645,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        <label>Highlights (one per line)<textarea disabled={!canManage} rows={4}
         value={draft.highlights} maxLength={800}
         onChange={e=>edit("highlights",e.target.value)}/></label>
-      </fieldset>     </div>
-     {draft.kind==="HOME"&&<>
+      </fieldset>}
+     {formSectionStep==="CARDS"&&(draft.kind==="HOME"?<>
      <fieldset><legend>Volunteer photo banner</legend>
       <label>Eyebrow<input disabled={!canManage} value={draft.promoEyebrow}
        maxLength={80} onChange={e=>edit("promoEyebrow",e.target.value)}/></label>
@@ -1650,7 +1697,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       <label>Member benefits (one per line)<textarea disabled={!canManage}
        value={draft.memberBenefits} onChange={e=>edit("memberBenefits",e.target.value)}/></label>
      </fieldset>
-     <fieldset><legend>Website header / footer content</legend>
+    </>:<p style={{color:"#64748B",fontSize:"0.875rem",padding:"0.75rem",background:"#F8FAFC",borderRadius:"8px",border:"1px solid #E2E8F0"}}>Volunteer banner &amp; solution cards apply to Homepage only. Proceed to Step 6 to save your About page.</p>)}
+     {formSectionStep==="FOOTER"&&(draft.kind==="HOME"?<fieldset><legend>Website header / footer content</legend>
       <p>Published site contact information is reused on Home and About.</p>
       <label>Mission<textarea disabled={!canManage} maxLength={600}
        value={draft.footerMission} onChange={e=>edit("footerMission",e.target.value)}/></label>
@@ -1667,9 +1715,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       <label>Newsletter description<textarea disabled={!canManage} maxLength={250}
        value={draft.footerNewsletterText}
        onChange={e=>edit("footerNewsletterText",e.target.value)}/></label>
-     </fieldset>
-    </>}
-    <fieldset><legend>Public team directory</legend>
+     </fieldset>:<p style={{color:"#64748B",fontSize:"0.875rem",padding:"0.75rem",background:"#F8FAFC",borderRadius:"8px",border:"1px solid #E2E8F0"}}>Site-wide footer contact info is managed on Homepage. Review status below and save your About page.</p>)}
+    {formSectionStep==="SOURCES"&&<fieldset><legend>Public team directory</legend>
       <p>Only the current CG-10 self-consented name and designation may be selected. Photos, biography and location are not covered by that consent.</p>
       <label>Section heading<input disabled={!canManage||busy||!!pending} value={draft.teamHeading}
        onChange={e=>edit("teamHeading",e.target.value)}/></label>
@@ -1679,7 +1726,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        <button type="button" disabled={!canManage||busy||!!pending} onClick={()=>removeIndexedContent("TEAM",i)}>Remove profile</button></div>)}
       {teamChoices.filter(p=>!draft.team.some(x=>x.sourceRef===p.sourceRef)).map(p=><button type="button" key={p.sourceRef}
        disabled={!canManage||busy||!!pending||draft.team.length>=15} onClick={()=>edit("team",[...draft.team,p])}>Add {p.name} · {p.designation}</button>)}
-     </fieldset>
+     </fieldset>}
     </div>}
     {canManage&&draftIssue&&<p className="cg-cms-error" role="status">{draftIssue}</p>}
     {selected?.status==="DRAFT"&&unsaved&&<p role="status">
@@ -1691,8 +1738,17 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       <AlertCircle size={16}/> {error}
      </div>
     )}
-    <div className="cg-cms-actions">
-     {!selected&&canManage&&<button disabled={busy||!okay||!!pending} type="button"
+    <div className="cg-cms-actions" style={{justifyContent:"space-between",borderTop:"1px solid #E2E8F0",paddingTop:"0.85rem"}}>
+     <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
+      {!preview&&stepIdx>0&&<button type="button" className="cg-cms-admin-btn" onClick={()=>setFormSectionStep(wizardSteps[stepIdx-1].key)}>
+       <ChevronLeft size={14}/> Previous
+      </button>}
+      {!preview&&stepIdx<wizardSteps.length-1&&<button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" onClick={()=>setFormSectionStep(wizardSteps[stepIdx+1].key)}>
+       Next <ChevronRight size={14}/>
+      </button>}
+     </div>
+     <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap",alignItems:"center"}}>
+     {!selected&&canManage&&<button className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={busy||!okay||!!pending} type="button"
       onClick={()=>command("Draft created","pages","POST",{content:payload(draft)})}>Create draft</button>}
      {selected&&canManage&&<button disabled={busy||!okay||!!pending} type="button"
       onClick={()=>command(selected.status==="DRAFT"?"Draft saved":
@@ -1727,13 +1783,15 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         {expectedVersion:selected.version,reason:withdrawReason})}>
        {selected.scheduledAt?"Cancel scheduled publication / hide page":"Hide from public website"}</button>
      </>}
+     </div>
     </div>
     {selected?.bundledAssets?.length? <p className="cg-cms-muted">Default release illustrations are preserved when you edit text. Upload a replacement in a new draft to override a placement.</p>:null}
     {selected&&<p className="cg-cms-muted">Current draft: {selected.status.replaceAll("_"," ")}.
      Public page: {selected.publicationStatus.replaceAll("_"," ")}.
      {selected.scheduledAt&&" Scheduled for "+new Date(selected.scheduledAt).toLocaleString()+"."}
      {selected.status==="SUBMITTED"&&" A different authorized reviewer must approve the exact draft."}</p>}
-   </section>}
+   </section>;
+   })()}
   </>}
     </>
   )}

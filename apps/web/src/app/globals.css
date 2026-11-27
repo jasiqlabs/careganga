@@ -17909,6 +17909,70 @@ button:disabled {
   box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
 }
 
+/* 6-Step Horizontal Wizard Stepper */
+.cg-cms-admin-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.55rem 0.65rem;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+}
+
+.cg-cms-admin-step-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748B;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.cg-cms-admin-step-btn:hover {
+  background: #FFFFFF;
+  color: #0F172A;
+  border-color: #E2E8F0;
+}
+
+.cg-cms-admin-step-btn.active {
+  background: #4F46E5 !important;
+  border-color: #4338CA !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
+}
+
+.cg-cms-admin-step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #E2E8F0;
+  color: #334155;
+  flex-shrink: 0;
+}
+
+.cg-cms-admin-step-btn.active .cg-cms-admin-step-num {
+  background: rgba(255, 255, 255, 0.22);
+  color: #FFFFFF;
+}
+
 /* Overview 2-Column Layout */
 .cg-cms-admin-overview-grid {
   display: grid;
