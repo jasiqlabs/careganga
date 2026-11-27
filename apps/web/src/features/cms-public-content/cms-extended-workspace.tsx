@@ -173,11 +173,13 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  },[]);
  useEffect(()=>{void refresh().catch(e=>setError(e.message));},[refresh]);
  const open=async(p:Item)=>{
+  if(busy)return;
   if(pending||mediaAttempt.current){
    setError("Your last original CMS action may have committed. "+
     "Retry the same request before opening another page.");
    return;
   }
+  if(editorOpen&&dirty&&!window.confirm("Discard unsaved changes?"))return;
   setBusy(true);setError("");setNotice("");
   try{
    const detail=await api<Detail>("pages/"+p.pageRef);
@@ -196,10 +198,12 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   finally{setBusy(false);}
  };
  const begin=(k:Kind)=>{
+  if(busy||!canManage)return;
   if(pending||mediaAttempt.current){
    setError("Resolve the original uncertain CMS request before a new page.");
    return;
   }
+  if(editorOpen&&dirty&&!window.confirm("Discard unsaved changes?"))return;
   setKind(k);setSelected(null);setDraft(initial(k));setPreview(false);
   setPreviewMediaScope("PHOTO");
   setEditorOpen(true);setClosePrompt(false);
@@ -255,7 +259,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    // an unrelated list/detail GET failing after the actual commit.
    setPending(null);setNotice("Confirmed: "+str(outcome.status).replaceAll("_"," "));
    try{
-    await refresh();
+    await refresh();window.dispatchEvent(new Event("cg-cms-extended-changed"));
     const ref=outcome.pageRef??selected?.pageRef;
     if(ref){
      const detail=await api<Detail>("pages/"+ref);
@@ -414,20 +418,21 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const inReview=pages.filter(p=>p.draftStatus==="SUBMITTED").length;
  const close=useCallback(()=>{
   if(busy)return;
-  if((pending||mediaAttempt.current)&&!closePrompt){setClosePrompt(true);return;}
+  if(pending||dirty||mediaAttempt.current){setClosePrompt(true);return;}
   setClosePrompt(false);
   setEditorOpen(false);
- },[busy,pending,closePrompt]);
+ },[busy,pending,dirty]);
  useEffect(()=>{
   const onOpen=(event:Event)=>{
    const pageRef=(event as CustomEvent<{pageRef?:string}>).detail?.pageRef;
    if(!pageRef)return;
-   const target=pages.find(p=>p.pageRef===pageRef)??({pageRef} as Item);
-   void open(target);
+   const target=pages.find(p=>p.pageRef===pageRef);
+   if(target)void open(target);
   };
   window.addEventListener("cg-cms-open-extended",onOpen);
   return()=>window.removeEventListener("cg-cms-open-extended",onOpen);
- },[pages]);
+ });
+ useEffect(()=>{const sync=()=>{void refresh().catch(e=>setError(e.message));};window.addEventListener("cg-cms-admin-changed",sync);return()=>window.removeEventListener("cg-cms-admin-changed",sync);},[refresh]);
  useEffect(()=>{
   if(!editorOpen)return;
   const onKey=(event:KeyboardEvent)=>{
@@ -611,13 +616,13 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
      onClick={()=>void command(pending)}>Retry original request</button>
    </div>}
    {closePrompt&&<div className="cg-cms-close-sticky" role="alert">
-    <p>{pending?"The previous action may have reached the server. Closing will abandon its retry key. Verify actual status before any new attempt.":
+    <p>{pending?"The previous action may have reached the server. Retry the original request before closing.":
      "This draft contains unsaved changes. Closing will discard only edits on this screen; the published version is unchanged."}</p>
     <div className="cg-cms-actions" style={{margin:0}}>
      <button type="button" className="cg-cms-admin-btn"
       onClick={()=>setClosePrompt(false)}>Keep editing</button>
-     <button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={!!mediaAttempt.current}
-      onClick={()=>{setClosePrompt(false);setEditorOpen(false);setPending(null);}}>
+     <button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={!!mediaAttempt.current||!!pending||busy}
+      onClick={()=>{setClosePrompt(false);setEditorOpen(false);}}>
       Discard edits and close</button>
     </div>
    </div>}
