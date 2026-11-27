@@ -5155,6 +5155,8 @@ button:disabled {
 @media(max-width:40rem) {
   .cg-cms-card.cg-cms-drawer {
     width: 100vw;
+    border-radius: 0 !important;
+    border-left: 0;
     padding: 1rem .8rem 2rem
   }
 

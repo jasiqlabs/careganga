@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View}
+import {ActivityIndicator,Alert,KeyboardAvoidingView,Platform,Pressable,ScrollView,StyleSheet,Text,TextInput,useWindowDimensions,View}
  from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
@@ -264,6 +264,8 @@ function CampaignSelection({sections,choices,error,locked,refresh,onChange}:{sec
 }
 export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  onExpired}:Props){
+ const {width}=useWindowDimensions();
+ const kpiWidth=width<360?"100%":width>=768?"23%":"47%";
  const [pages,setPages]=useState<Page[]>([]),[projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
  const [teamChoices,setTeamChoices]=useState<TeamSource[]>([]),[teamError,setTeamError]=useState("");
  const refreshTeam=()=>{setTeamError("");void api<{sources:TeamSource[]}>(token,"team-sources").then(v=>setTeamChoices(v.sources)).catch(e=>{setTeamChoices([]);setTeamError("Current consented staff sources require HR viewing permission.");if(e?.status===401)onExpired();});};
@@ -406,6 +408,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  const locked=!canManage||busy||uncertain;
  const original=selected?.pageRef??"";
  return <SafeAreaView style={styles.page} edges={["top","bottom"]}>
+  <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==="ios"?"padding":undefined}>
   <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
    {/* Standardized Mobile App Header */}
    <View style={styles.headerBar}>
@@ -451,28 +454,28 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
    },busy)}
    {/* Mobile Top 4 KPI Metrics with Pastel Vector Icon Badges */}
    <View style={styles.kpiRow}>
-    <View style={styles.kpiCard}>
+    <View style={[styles.kpiCard,{minWidth:kpiWidth}]}>
      <View style={styles.kpiTop}>
       <View style={[styles.kpiIconBadge,{backgroundColor:"#EFF6FF"}]}><IconFileText size={16} color="#2563EB"/></View>
       <Text style={styles.kpiLabel}>Total Pages</Text>
      </View>
      <Text style={styles.kpiValue}>{pages.length}</Text>
     </View>
-    <View style={styles.kpiCard}>
+    <View style={[styles.kpiCard,{minWidth:kpiWidth}]}>
      <View style={styles.kpiTop}>
       <View style={[styles.kpiIconBadge,{backgroundColor:"#ECFDF5"}]}><IconCheckCircle size={16} color="#059669"/></View>
       <Text style={styles.kpiLabel}>Published</Text>
      </View>
      <Text style={[styles.kpiValue,{color:"#059669"}]}>{pages.filter(p=>p.publicStatus!==null).length}</Text>
     </View>
-    <View style={styles.kpiCard}>
+    <View style={[styles.kpiCard,{minWidth:kpiWidth}]}>
      <View style={styles.kpiTop}>
       <View style={[styles.kpiIconBadge,{backgroundColor:"#FFF7ED"}]}><IconSliders size={16} color="#D97706"/></View>
       <Text style={styles.kpiLabel}>Drafts</Text>
      </View>
      <Text style={[styles.kpiValue,{color:"#D97706"}]}>{pages.filter(p=>p.draftStatus==="DRAFT").length}</Text>
     </View>
-    <View style={styles.kpiCard}>
+    <View style={[styles.kpiCard,{minWidth:kpiWidth}]}>
      <View style={styles.kpiTop}>
       <View style={[styles.kpiIconBadge,{backgroundColor:"#FAF5FF"}]}><IconClock size={16} color="#9333EA"/></View>
       <Text style={styles.kpiLabel}>In Review</Text>
@@ -656,6 +659,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
      </>}
    </View>}
   </ScrollView>
+  </KeyboardAvoidingView>
  </SafeAreaView>;
 }
 const styles=StyleSheet.create({

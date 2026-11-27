@@ -413,6 +413,16 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   setEditorOpen(false);
  },[busy,pending,dirty]);
  useEffect(()=>{
+  const onOpen=(event:Event)=>{
+   const pageRef=(event as CustomEvent<{pageRef?:string}>).detail?.pageRef;
+   if(!pageRef)return;
+   const target=pages.find(p=>p.pageRef===pageRef)??({pageRef} as Item);
+   void open(target);
+  };
+  window.addEventListener("cg-cms-open-extended",onOpen);
+  return()=>window.removeEventListener("cg-cms-open-extended",onOpen);
+ },[pages]);
+ useEffect(()=>{
   if(!editorOpen)return;
   const onKey=(event:KeyboardEvent)=>{
    if(event.key==="Escape"&&!event.defaultPrevented){event.preventDefault();close();}

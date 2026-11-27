@@ -243,9 +243,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const publishedPages=allPages.filter(p=>p.publicStatus==="EFFECTIVE");
  const draftPages=allPages.filter(p=>p.draftStatus==="DRAFT");
  const submittedPages=allPages.filter(p=>p.draftStatus==="SUBMITTED");
- const scrollToExtended=()=>{
+ const scrollToExtended=(pageRef?:unknown)=>{
+  if(typeof pageRef==="string"&&pageRef){window.dispatchEvent(new CustomEvent("cg-cms-open-extended",{detail:{pageRef}}));}
   const el=document.getElementById("editorial-pages");
-  if(el){if(el instanceof HTMLDetailsElement)el.open=true;el.scrollIntoView({behavior:"smooth",block:"start"});}
+  if(el){el.scrollIntoView({behavior:"smooth",block:"start"});}
  };
  const routeFor=(p:PageItem)=>p.kind==="HOME"?"/":p.kind==="COMPLIANCE"?"/ngo-information":p.kind==="ARTICLE"?"/blog/"+p.slug:p.kind==="POLICY"?"/policies/"+p.slug:"/"+p.slug;
  const [activeWorkspaceTab,setActiveWorkspaceTab]=useState<"OVERVIEW"|"PAGES"|"BLOG"|"MEDIA"|"MENUS"|"SLIDERS"|"BANNERS"|"SETTINGS"|"APPROVALS">("OVERVIEW");
@@ -976,7 +977,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
                       </button>
                       <button type="button" className="cg-cms-admin-action-btn" title="Edit Page" onClick={()=>{
                         if(p.kind==="HOME"||p.kind==="ABOUT"){void openPage(p.pageRef);setActiveWorkspaceTab("PAGES");}
-                        else{scrollToExtended();}
+                        else{scrollToExtended(p.pageRef);}
                       }}>
                         <Edit2 size={12}/>
                       </button>
@@ -1025,7 +1026,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
                     </td>
                     <td>
                       <button type="button" className="cg-cms-admin-action-btn" title="View Article" onClick={()=>{window.open("/blog/"+b.slug,"_blank");}}><Eye size={12}/></button>
-                      <button type="button" className="cg-cms-admin-action-btn" title="Edit Article" onClick={scrollToExtended}><Edit2 size={12}/></button>
+                      <button type="button" className="cg-cms-admin-action-btn" title="Edit Article" onClick={()=>scrollToExtended(b.pageRef)}><Edit2 size={12}/></button>
                     </td>
                   </tr>
                 ))}
@@ -1309,7 +1310,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      aria-pressed={selected?.pageRef===v.pageRef}
      onClick={()=>{
       if(v.kind==="HOME"||v.kind==="ABOUT"){void openPage(v.pageRef);}
-      else{scrollToExtended();}
+      else{scrollToExtended(v.pageRef);}
      }}>
      <strong>{v.title}</strong>
      <span>{v.kind} · {routeFor(v)} · draft {v.draftStatus.replaceAll("_"," ")} · {v.publicStatus?"public "+v.publicStatus.replaceAll("_"," "):"Not published"}</span>
