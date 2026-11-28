@@ -11,6 +11,7 @@ import {clientScreenshotHome} from "./cms-client-screenshot-reference";
 import {CampaignPublicCards} from "../campaigns/campaign-public-cards";
 import type {PublicCampaign} from "../campaigns/campaign-public-source";
 import {CmsImpactGroup,CmsImpactPage,CmsCompliance,CmsGallery,CmsArticle,CmsHealthcare,CmsContactInfo} from "./cms-public-extended";
+import {CmsAboutView} from "./cms-about-page";
 
 export type PublicCmsSection={kind:string;order:number;fields:Record<string,unknown>};
 export type PublicCmsPage={schemaVersion:number;effectiveGeneration:string;
@@ -257,6 +258,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
   <div className={sidebar?"cg-site-ngo-layout":undefined}>
    {sidebar&&<aside className="cg-site-ngo-sidebar">{sidebar}</aside>}
    <div className={"cg-site-sections cg-site-page-"+page.kind.toLowerCase()}>
+   {page.kind==="ABOUT"?<CmsAboutView page={page} navigation={navigation}/>:<>
    {!effectiveHeroSlides.length&&!["POLICY","IMPACT","COMPLIANCE","GALLERY","CONTACT","ARTICLE"].includes(page.kind)&&<header className="cg-site-content cg-site-page-heading"><p className="cg-site-eyebrow">CareGanga Foundation</p><h1>{page.title}</h1></header>}
    {page.kind==="POLICY"&&<header className="cg-site-content cg-site-policy-title">
     <Link href="/" className="cg-site-editorial-back">Return to homepage</Link>
@@ -325,7 +327,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
      if(section.kind==="PROJECT_TEASER"){if(page.kind==="HOME")return null;const cards=Array.isArray(section.fields.cards)?section.fields.cards:[];return <section key={key} className="cg-site-content cg-site-project-section">{(heroes.length>0||page.kind!=="PROJECTS"||(text(section.fields.heading)||"Projects").trim().toLowerCase()!==page.title.trim().toLowerCase())&&<h2>{text(section.fields.heading)||"Projects"}</h2>}{section===sections.find(s=>s.kind==="PROJECT_TEASER")&&projectFilters}{!cards.length?<div className="cg-site-empty" role="status"><strong>{projectCategory?"No projects match this category":"No projects to display yet"}</strong><p>{projectCategory?"Select another category to explore published projects.":"Published project updates will appear here."}</p>{projectCategory&&(page.slug==="our-work"||page.slug==="upcoming-projects")&&<Link href={"/"+page.slug} className="cg-site-project-reset">Show all projects</Link>}{page.slug==="home"&&navigation?.publishedRoutes?.some(v=>v.path==="/our-work")&&<Link href="/our-work" className="cg-site-action">Explore our work</Link>}</div>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Record<string,unknown>;return <article key={j} className="cg-site-project-card">{/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))&&<img src={text(p.coverSrc)} alt={text(p.title)} loading="lazy" className="cg-site-project-cover"/>}<div className="cg-site-project-copy"><p className="cg-site-eyebrow">{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</p><h3>{text(p.title)}</h3><p>{text(p.area)}</p><p>{text(p.summary)}</p>{text(p.launch)&&<p>Planned start: {text(p.launch)}</p>}</div></article>;})}</section>;}
      // Never infer operational projects from CMS-only teaser text.
      return null;
-    })}
+    })}</>}
    </div>
   </div>
   {page.kind!=="HOME"&&children}
