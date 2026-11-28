@@ -3628,3 +3628,96 @@
     padding: 2rem 1rem 2.75rem;
   }
 }
+
+
+/* ===== Home SPLIT / Why Choose Section (Text Left + Checklist + Photo Right) ===== */
+.cg-why-section {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: center;
+}
+.cg-why-section.has-photo {
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+}
+.cg-why-copy h2 {
+  margin: 0 0 0.85rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.85rem, 3.2vw, 2.45rem);
+  font-weight: 800;
+  line-height: 1.18;
+  color: #0f2942;
+}
+.cg-why-intro {
+  margin: 0 0 1.65rem;
+  color: #475569;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  max-width: 56ch;
+}
+.cg-why-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1.25rem;
+}
+.cg-why-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+.cg-why-check {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #15803d;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.cg-why-item strong {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.25rem;
+}
+.cg-why-item p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.9rem;
+  line-height: 1.62;
+}
+.cg-why-photo {
+  width: 100%;
+}
+.cg-why-img {
+  width: 100%;
+  max-height: 460px;
+  object-fit: cover;
+  border-radius: 20px;
+  display: block;
+  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.14);
+}
+
+@media (max-width: 900px) {
+  .cg-why-section.has-photo {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+@media (max-width: 640px) {
+  .cg-why-section {
+    padding: 2.25rem 1rem;
+  }
+  .cg-why-img {
+    max-height: 320px;
+    border-radius: 16px;
+  }
+}

@@ -11,6 +11,7 @@ import {clientScreenshotHome} from "./cms-client-screenshot-reference";
 import {CampaignPublicCards} from "../campaigns/campaign-public-cards";
 import type {PublicCampaign} from "../campaigns/campaign-public-source";
 import {CmsImpactGroup,CmsImpactPage,CmsCompliance,CmsGallery,CmsArticle,CmsHealthcare,CmsContactInfo} from "./cms-public-extended";
+import {CheckCircle2} from "lucide-react";
 import {CmsAboutView} from "./cms-about-page";
 
 export type PublicCmsSection={kind:string;order:number;fields:Record<string,unknown>};
@@ -20,7 +21,7 @@ export type PublicCmsPage={schemaVersion:number;effectiveGeneration:string;
  sections:PublicCmsSection[];assets:{role:string;altText:string;src:string;order:number}[]};
 type Asset=PublicCmsPage["assets"][number];
 const text=(v:unknown)=>typeof v==="string"?v:"";
-const list=(v:unknown)=>Array.isArray(v)?v.filter(x=>typeof x==="string").slice(0,5) as string[]:[];
+const list=(v:unknown)=>Array.isArray(v)?v.filter(x=>typeof x==="string").slice(0,6) as string[]:[];
 function CmsAction({label,href,variant,navigation}:{label:unknown;href:unknown;variant?:string;navigation?:PublicCmsNavigation|null}){
  const dest=effectiveCmsCtaRoute(href,navigation);
  return dest&&text(label)?<Link className={"cg-site-action "+(variant??"")} href={dest}>
@@ -30,14 +31,40 @@ function Photo({asset,className}:{asset?:Asset;className:string}){
  return asset?<img className={className} src={asset.src} alt={asset.altText} loading="lazy"/>:null;
 }
 function RichText({fields,asset}:{fields:Record<string,unknown>;asset?:Asset}){
- const split=fields.variant==="SPLIT"&&!!asset;
+ const isSplitVariant=fields.variant==="SPLIT";
  const highlights=list(fields.highlights);
- return <section className={split?"cg-site-about cg-site-content":"cg-site-content cg-site-article"+(highlights.length?" cg-site-article-highlights":"")}>
-  {split&&<div className="cg-site-about-photo"><Photo asset={asset} className="cg-site-about-img"/></div>}
+ if(isSplitVariant){
+  return <section className={"cg-why-section cg-site-content"+(asset?" has-photo":"")}>
+   <div className="cg-why-copy">
+    {text(fields.eyebrow)&&<p className="cg-site-eyebrow">{text(fields.eyebrow)}</p>}
+    <h2>{text(fields.heading)}</h2>
+    {text(fields.body)&&<p className="cg-why-intro">{text(fields.body)}</p>}
+    {highlights.length>0&&<ul className="cg-why-list">
+     {highlights.map((line,i)=>{
+      const colonIdx=line.indexOf(":");
+      const hasDesc=colonIdx>0&&colonIdx<line.length-1;
+      const title=hasDesc?line.slice(0,colonIdx).trim():line.trim();
+      const desc=hasDesc?line.slice(colonIdx+1).trim():"";
+      return <li key={i} className="cg-why-item">
+       <span className="cg-why-check" aria-hidden="true"><CheckCircle2 size={18}/></span>
+       <div>
+        <strong>{title}</strong>
+        {desc&&<p>{desc}</p>}
+       </div>
+      </li>;
+     })}
+    </ul>}
+   </div>
+   {asset&&<div className="cg-why-photo">
+    <Photo asset={asset} className="cg-why-img"/>
+    {asset.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<p className="cg-site-provenance">Illustration; not a photograph of Foundation activities.</p>}
+   </div>}
+  </section>;
+ }
+ return <section className={"cg-site-content cg-site-article"+(highlights.length?" cg-site-article-highlights":"")}>
   <div className="cg-site-copy">
    {text(fields.eyebrow)&&<p className="cg-site-eyebrow">{text(fields.eyebrow)}</p>}
    <h2>{text(fields.heading)}</h2>
-   {split&&asset?.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<p className="cg-site-provenance">Illustration; not a photograph of Foundation activities.</p>}
    {text(fields.body)&&<p className="cg-site-body">{text(fields.body)}</p>}
    {highlights.length>0&&<ul className="cg-site-highlights">
     {highlights.map((line,i)=><li key={i}>{line}</li>)}

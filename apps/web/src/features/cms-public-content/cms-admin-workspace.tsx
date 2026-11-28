@@ -152,7 +152,7 @@ function payload(d:Draft){
  if(d.body.trim())sections.push({kind:"RICH_TEXT",order:20,
   fields:{heading:d.bodyHeading||"About the Foundation",body:d.body,
    eyebrow:d.bodyEyebrow,variant:d.bodyVariant,highlights:lines(d.highlights,d.kind==="ABOUT"?10:4)}});
- for(const block of d.extraText)sections.push({kind:"RICH_TEXT",order:block.order,fields:{heading:block.heading,body:block.body,eyebrow:block.eyebrow,highlights:lines(block.highlights,d.kind==="ABOUT"?10:4),variant:block.placement?"STANDARD":block.variant,...(block.placement?{placement:block.placement}:{})}});
+ for(const block of d.extraText)sections.push({kind:"RICH_TEXT",order:block.order,fields:{heading:block.heading,body:block.body,eyebrow:block.eyebrow,highlights:lines(block.highlights,d.kind==="ABOUT"?10:6),variant:block.placement?"STANDARD":block.variant,...(block.placement?{placement:block.placement}:{})}});
  if(d.promoHeading.trim())sections.push({kind:"CTA",order:30,
   fields:{heading:d.promoHeading,eyebrow:d.promoEyebrow,body:d.promoBody,
    ...(d.promoLabel.trim()?{label:d.promoLabel}:{}),
@@ -524,7 +524,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
    const sha=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",await file.arrayBuffer())))
     .map(x=>x.toString(16).padStart(2,"0")).join("");
    const role=placement?.role??uploadRole,rawOrder=placement?.order??uploadOrder;
-   const order=role==="ABOUT"?20:role==="PROMO"?30:rawOrder;
+   const order=placement?.order!==undefined?placement.order:role==="ABOUT"?20:role==="PROMO"?30:rawOrder;
    const fingerprint=JSON.stringify([selected.pageRef,selected.revisionRef,
     file.type,file.size,sha,role,order,uploadAlt.trim()]);
    const old=mediaAttempt.current;
@@ -1715,8 +1715,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
          {value:"SPLIT",label:"Original photo / text split"},
          {value:"STANDARD",label:"Plain text"}
         ]}/>
-       {draft.kind==="ABOUT"&&draft.bodyVariant==="SPLIT"&&<div className="cg-cms-team" style={{marginBlock:"0.75rem"}}>
-         <h4>About / Mission Split Photo (used on Mission &amp; Vision and Founder Message)</h4>
+       {(draft.kind==="ABOUT"||draft.kind==="HOME")&&draft.bodyVariant==="SPLIT"&&<div className="cg-cms-team" style={{marginBlock:"0.75rem"}}>
+         <h4>{draft.kind==="HOME"?"Section Split Photo (right side on Home)":"About / Mission Split Photo (used on Mission & Vision and Founder Message)"}</h4>
          {draft.assets.filter(a=>a.role==="ABOUT"&&a.order===20).map(asset=><div key={asset.fileRef} className="cg-cms-banner-asset-preview">
           <span>Verified photo: {asset.altText}</span>
           <img loading="lazy" className="cg-cms-review-image" src={"/api/cms-image-preview/"+asset.fileRef} alt={asset.altText}/>
@@ -1752,10 +1752,32 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
         {draft.kind==="ABOUT"&&<CustomDropdown label="Display on" value={block.placement} disabled={!canManage}
          onChange={val=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,placement:val}:x))}
          options={[{value:"",label:"About page"},...placements.map(([key,label])=>({value:key,label}))]}/>}
+        {draft.kind==="HOME"&&<CustomDropdown label="Section layout" value={block.variant} disabled={!canManage}
+         onChange={val=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,variant:val==="SPLIT"?"SPLIT":"STANDARD"}:x))}
+         options={[
+          {value:"STANDARD",label:"Standard text"},
+          {value:"SPLIT",label:"Text left + photo right (Why Choose style)"}
+         ]}/>}
         <label>Section label<input value={block.eyebrow} maxLength={100} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,eyebrow:e.target.value}:x))}/></label>
         <label>Heading<input value={block.heading} maxLength={160} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,heading:e.target.value}:x))}/></label>
         <label>Body<textarea value={block.body} maxLength={4000} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,body:e.target.value}:x))}/></label>
-        <label>{draft.kind==="ABOUT"?"Items / Highlights (up to 10, one per line — Focus Areas or Title: Description for Values)":"Highlights (up to four, one per line)"}<textarea value={block.highlights} maxLength={2000} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,highlights:e.target.value}:x))}/></label>
+        <label>{draft.kind==="ABOUT"?"Items / Highlights (up to 10, one per line — Focus Areas or Title: Description for Values)":"Highlights (up to 6, one per line — use Title: Description for checklist items)"}<textarea value={block.highlights} maxLength={2000} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,highlights:e.target.value}:x))}/></label>
+        {draft.kind==="HOME"&&block.variant==="SPLIT"&&<div className="cg-cms-team" style={{marginBlock:"0.75rem"}}>
+         <h4>Split Section Photo (shown on right)</h4>
+         {draft.assets.filter(a=>a.role==="ABOUT"&&a.order===block.order).map(asset=><div key={asset.fileRef} className="cg-cms-banner-asset-preview">
+          <span>Verified photo: {asset.altText}</span>
+          <img loading="lazy" className="cg-cms-review-image" src={"/api/cms-image-preview/"+asset.fileRef} alt={asset.altText}/>
+         </div>)}
+         {selected?.status==="DRAFT"&&canManage&&<>
+          <label>Image description<input maxLength={300} value={uploadAlt} onChange={e=>setUploadAlt(e.target.value)}/></label>
+          <label className="cg-cms-consent"><input type="checkbox" checked={rights} onChange={e=>setRights(e.target.checked)}/>
+           The Foundation has permission to publish this photograph</label>
+          <label>Upload section photo<input type="file" accept="image/jpeg,image/png,image/webp"
+           disabled={busy||!rights||uploadAlt.trim().length<3}
+           onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file,{role:"ABOUT",order:block.order});e.currentTarget.value="";}}/></label>
+         </>}
+         {!selected&&<p>Save a draft first to attach a verified photograph.</p>}
+        </div>}
         {canManage&&draft.kind==="HOME"&&block.order>20&&block.order<30&&block.variant==="STANDARD"&&!block.placement&&
          !draft.assets.some(a=>a.role==="ABOUT"&&a.order===block.order)&&!selected?.bundledAssets?.some(a=>a.role==="ABOUT"&&a.order===block.order)&&
          [35,31,32,33,34,36,37,38,39].some(order=>!draft.extraText.some(x=>x.order===order))&&

@@ -235,7 +235,7 @@ function parseContent(raw:unknown):Content{
      throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"variant"});
     out.variant=fields.variant;
    }
-   out.highlights=array(fields.highlights??[],"highlights",kind==="ABOUT"?10:4,200);
+   out.highlights=array(fields.highlights??[],"highlights",kind==="ABOUT"?10:6,450);
    // Approved About revision can also own neutral introductory text for existing public owner routes.
    // No new operational master, URLs, personal information or permission/availability override.
    if(fields.placement!==undefined){
