@@ -15,7 +15,7 @@ export async function complianceEligible(
  if(fields.verification!=="VERIFIED")return true;
  const end=fields.validUntil;
  if(typeof end!=="string"||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(end)||
-   end<new Date().toISOString().slice(0,10))return false;
+   end<new Date(Date.now()+330*60_000).toISOString().slice(0,10))return false;
  const media=await db.query(
   "SELECT 1 FROM cms_asset_placement a "+
   "JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+

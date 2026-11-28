@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from "next/server";
 export const dynamic="force-dynamic";
 type Ctx={params:Promise<{parts:string[]}>};
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export async function GET(_req:NextRequest,ctx:Ctx){
  const parts=(await ctx.params).parts;
  const page=parts.length===2&&parts[0]==="pages"&&

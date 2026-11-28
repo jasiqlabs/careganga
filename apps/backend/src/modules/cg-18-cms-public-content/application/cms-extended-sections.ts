@@ -1,4 +1,7 @@
 import {BadRequestException} from "@nestjs/common";
+// Use IST (UTC+05:30) as the upper bound for "today" so Indian users entering
+// today's date between 00:00 and 05:30 IST are never rejected as future-dated.
+const istToday=()=>new Date(Date.now()+330*60_000).toISOString().slice(0,10);
 
 /** Typed CG-18 editorial payloads. This is content, never a source-of-truth
  * project, patient, finance, event, approval or CG-19 file master.
@@ -167,7 +170,7 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    source:str(x.source??"","source",180,items.length?3:0),
    asOfDate:date(x.asOfDate,"asOfDate"),items
   };
-  if(String(out.asOfDate)>new Date().toISOString().slice(0,10))return error("asOfDate");
+  if(String(out.asOfDate)>istToday())return error("asOfDate");
   if(group==="HERO"){
    if(x.eyebrow!==undefined)out.eyebrow=str(x.eyebrow,"eyebrow",100);
    if(x.highlight!==undefined)out.highlight=str(x.highlight,"highlight",120);
@@ -221,15 +224,15 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
      if(!["80G","REGISTRATION","ANNUAL_REPORT","OTHER"].includes(type))
       return error(field+".type");
      const asOfDate=date(v.asOfDate,field+".asOfDate");
-     if(asOfDate>new Date().toISOString().slice(0,10))return error(field+".asOfDate");
+     if(asOfDate>istToday())return error(field+".asOfDate");
      return {type,title:str(v.title,field+".title",140,3),asOfDate};
     });
    })()
   };
-  if(out.verifiedAsOf>new Date().toISOString().slice(0,10))
+  if(out.verifiedAsOf>istToday())
    return error("verifiedAsOf");
   if(verification==="VERIFIED"&&(!out.issuer||!out.approvalNumber||
-     !start||!end||end<new Date().toISOString().slice(0,10)))
+     !start||!end||end<istToday()))
    return error("verification");
   return out;
  }
@@ -247,12 +250,12 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    publicationsEmptyText:str(x.publicationsEmptyText??"","publicationsEmptyText",300),
    items:x.items.map((v,i)=>{
     const f="items["+i+"]",item=obj(v,f,
-     ["title","caption","category","mediaType","source","asOfDate","visible"]);
+     ["title","caption","category","mediaType","source","asOfDate","visible","date"]);
     const mediaType=str(item.mediaType,f+".mediaType",12,3);
     if(!["PHOTO","VIDEO","PUBLICATION"].includes(mediaType))
      return error(f+".mediaType");
-    const asOfDate=date(item.asOfDate,f+".asOfDate");
-    if(asOfDate>new Date().toISOString().slice(0,10))return error(f+".asOfDate");
+    const asOfDate=date(item.asOfDate??item.date,f+".asOfDate");
+    if(asOfDate>istToday())return error(f+".asOfDate");
     if(item.visible!==undefined&&typeof item.visible!=="boolean")
      return error(f+".visible");
     return {title:str(item.title,f+".title",150,3),
@@ -266,7 +269,7 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
  if(kind==="ARTICLE_BODY"){
   if(!Array.isArray(x.tags)||x.tags.length>8)return error("tags");
   const asOfDate=date(x.asOfDate,"asOfDate");
-  if(asOfDate>new Date().toISOString().slice(0,10))return error("asOfDate");
+  if(asOfDate>istToday())return error("asOfDate");
   const notice=x.sourceNoticeRef===undefined?null:(()=>{
    if(typeof x.sourceNoticeRef!=="string"||
     !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x.sourceNoticeRef)||

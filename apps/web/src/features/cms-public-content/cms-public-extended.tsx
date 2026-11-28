@@ -9,11 +9,23 @@ import {
   Clock,
   Landmark,
   FileText,
-  Download
+  Download,
+  Gift,
+  AlertTriangle,
+  ArrowRight,
+  Heart,
+  TrendingUp,
+  MapPin,
+  PieChart,
+  Target,
+  Quote,
+  Megaphone
 } from "lucide-react";
 import type {PublicCmsPage,PublicCmsSection} from "./cms-public-page";
 import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsGalleryGridClient,type CmsMediaType} from "./cms-gallery-grid-client";
+import {CmsNgoDocModalButton} from "./cms-ngo-doc-modal";
+import {CmsImpactGeoCard} from "./cms-impact-geo-card";
 type Asset=PublicCmsPage["assets"][number];
 const text=(v:unknown)=>typeof v==="string"?v:"";
 const records=(v:unknown)=>Array.isArray(v)?v.filter(x=>!!x&&typeof x==="object"&&!Array.isArray(x))
@@ -27,6 +39,115 @@ const label=(source:unknown,asOf:unknown)=>source||asOf?
   <span> · Editorial information; not an audited financial statement</span>
  </p>:null;
 
+export function CmsImpactPage({sections,assets,navigation}:{
+ sections:PublicCmsSection[];assets:Asset[];navigation?:PublicCmsNavigation|null}){
+ const byGroup=(name:string)=>sections.find(s=>s.kind==="IMPACT_GROUP"&&text(s.fields.group)===name);
+ const finite=(v:unknown):v is number=>typeof v==="number"&&Number.isFinite(v);
+ const validPct=(v:unknown):v is number=>finite(v)&&v>=0&&v<=100;
+ const hero=byGroup("HERO"),pillars=byGroup("PILLARS"),stats=byGroup("STATS");
+ const growth=byGroup("GROWTH"),geo=byGroup("GEOGRAPHY"),breakdown=byGroup("BREAKDOWN");
+ const focus=byGroup("FOCUS"),stories=byGroup("STORIES"),updates=byGroup("UPDATES"),cta=byGroup("CTA");
+ const growthRows=growth?records(growth.fields.items).filter(v=>finite(v.value)&&v.value>=0):[];
+ const growthMax=Math.max(1,...growthRows.map(v=>Number(v.value)||0));
+ const growthPts=growthRows.map((v,i)=>{
+  const x=growthRows.length===1?130:20+(i/(growthRows.length-1))*220;
+  const y=95-((Number(v.value)||0)/growthMax)*70;
+  return {x,y,label:typeof v.year==="number"?String(v.year):text(v.title),val:Number(v.value)||0};
+ });
+ const geoRows=geo?records(geo.fields.items):[];
+ const geoHigh=geoRows.filter(v=>text(v.level)==="HIGH").length;
+ const geoMed=geoRows.filter(v=>text(v.level)==="MEDIUM").length;
+ const geoExp=geoRows.filter(v=>text(v.level)==="EXPANDING").length;
+ const bdRows=breakdown?records(breakdown.fields.items).filter(v=>validPct(v.percentage)):[];
+ const bdColors=["#15803D","#2563EB","#EAB308","#DC2626","#7C3AED","#0D9488"];
+ const bdTotal=bdRows.reduce((a,b)=>a+Number(b.percentage||0),0);
+ const pillarColors=["is-green","is-pink","is-mint","is-amber"];
+ return <div className="cg-site-impact-dashboard">
+  {hero&&<CmsImpactGroup section={hero} assets={assets} navigation={navigation}/>}
+  {pillars&&<section className="cg-site-content cg-site-impact-pillars-wrap" aria-label={text(pillars.fields.heading)||"Our Pillars"}>
+   {records(pillars.fields.items).length>0?<div className="cg-site-impact-pillars-row">
+    {records(pillars.fields.items).map((item,i)=><article key={i} className="cg-site-impact-pillar-item">
+     <span className={"cg-site-impact-pillar-dot "+pillarColors[i%pillarColors.length]} aria-hidden="true">{text(item.title).slice(0,1)||"•"}</span>
+     <div><h3>{text(item.title)}</h3>{text(item.description)&&<p>{text(item.description)}</p>}</div>
+    </article>)}
+   </div>:<CmsImpactGroup section={pillars} assets={assets} navigation={navigation}/>}
+  </section>}
+  {stats&&records(stats.fields.items).length>0&&<section className="cg-site-content cg-site-impact-stats-row" aria-label={text(stats.fields.heading)||"Impact Statistics"}>
+   {records(stats.fields.items).map((item,i)=><article key={i} className="cg-site-impact-stat-card">
+    <strong>{finite(item.value)?item.value.toLocaleString("en-IN"):0}{text(item.unit)?" "+text(item.unit):""}</strong>
+    <h3>{text(item.title)}</h3>
+    {text(item.description)&&<p>{text(item.description)}</p>}
+   </article>)}
+  </section>}
+  <section className="cg-site-content cg-site-impact-analytics-grid" aria-label="Impact Analytics">
+   <article className="cg-site-impact-dash-card">
+    <div className="cg-site-impact-dash-head">
+     <h3><TrendingUp size={17} aria-hidden="true"/> {text(growth?.fields.heading)||"Impact Growth"}</h3>
+     <span className="cg-site-impact-dash-pill">{text(growth?.fields.asOfDate)||"Source Data"}</span>
+    </div>
+    <div className="cg-site-impact-growth-viz">
+     {growthPts.length>0?<svg viewBox="0 0 260 118" className="cg-site-impact-svg" role="img" aria-label="Impact growth chart">
+      <line x1="16" y1="96" x2="244" y2="96" stroke="#99F6E4" strokeWidth="6" strokeLinecap="round"/>
+      {growthPts.length>1?<polyline fill="none" stroke="#15803D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points={growthPts.map(p=>`${p.x},${p.y}`).join(" ")}/>:<path d="M 32 76 Q 130 62 224 22" fill="none" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round"/>}
+      {growthPts.map((p,i)=><g key={i}><circle cx={p.x} cy={growthPts.length>1?p.y:80} r="4" fill="#15803D"/><text x={p.x} y={growthPts.length>1?Math.max(14,p.y-8):88} textAnchor="middle" fontSize="11" fontWeight="800" fill="#0F172A">{p.val.toLocaleString("en-IN")}</text><text x={p.x} y="113" textAnchor="middle" fontSize="10" fill="#64748B">{p.label}</text></g>)}
+     </svg>:<svg viewBox="0 0 260 118" className="cg-site-impact-svg" role="img" aria-label="Impact growth baseline">
+      <path d="M 32 76 Q 130 62 224 22" fill="none" stroke="#15803D" strokeWidth="2" strokeLinecap="round"/>
+      <polygon points="224,22 216,23 221,30" fill="#15803D"/>
+      <text x="130" y="84" textAnchor="middle" fontSize="12" fontWeight="800" fill="#0F172A">0</text>
+      <line x1="16" y1="96" x2="244" y2="96" stroke="#99F6E4" strokeWidth="6" strokeLinecap="round"/>
+      <text x="130" y="113" textAnchor="middle" fontSize="10" fill="#64748B">No data yet</text>
+     </svg>}
+    </div>
+    {text(growth?.fields.intro)&&<p className="cg-site-impact-dash-note">{text(growth?.fields.intro)}</p>}
+    {growth&&growthRows.length>0&&label(growth.fields.source,growth.fields.asOfDate)}
+   </article>
+   <CmsImpactGeoCard
+    heading={text(geo?.fields.heading)||"Geographical Reach"}
+    items={geoRows}
+    sourceNode={geo&&geoRows.length>0?label(geo.fields.source,geo.fields.asOfDate):null}
+   />
+   <article className="cg-site-impact-dash-card">
+    <div className="cg-site-impact-dash-head">
+     <h3><PieChart size={17} aria-hidden="true"/> {text(breakdown?.fields.heading)||"Impact by Category"}</h3>
+    </div>
+    <div className="cg-site-impact-bd-split">
+     <div className="cg-site-impact-donut-wrap">
+      <svg viewBox="0 0 100 100" className="cg-site-impact-donut" role="img" aria-label="Impact category breakdown">
+       <circle cx="50" cy="50" r="36" fill="none" stroke="#E2E8F0" strokeWidth="12"/>
+       {(()=>{let off=0;return bdRows.map((v,i)=>{const pct=Number(v.percentage)||0;const len=(pct/100)*226.2;const el=<circle key={i} cx="50" cy="50" r="36" fill="none" stroke={bdColors[i%bdColors.length]} strokeWidth="12" strokeDasharray={`${len} ${226.2-len}`} strokeDashoffset={-off} transform="rotate(-90 50 50)"/>;off+=len;return el;});})()}
+      </svg>
+      <span className="cg-site-impact-donut-center">{bdTotal>0?`${bdTotal}%`:"Total Impact"}</span>
+     </div>
+     <ul className="cg-site-impact-legend">
+      {bdRows.length>0?bdRows.map((v,i)=><li key={i}><span className="cg-dot" style={{background:bdColors[i%bdColors.length]}}/> {text(v.title)} <strong>{Number(v.percentage)}%</strong></li>):<li className="cg-site-impact-empty-inline">No category breakdown published yet.</li>}
+     </ul>
+    </div>
+    {breakdown&&bdRows.length>0&&label(breakdown.fields.source,breakdown.fields.asOfDate)}
+   </article>
+  </section>
+  <section className="cg-site-content cg-site-impact-highlights-grid" aria-label="Impact Highlights">
+   {[
+    {sec:focus,Icon:Target,fallback:"Key Impact Areas",empty:"No impact areas published yet."},
+    {sec:stories,Icon:Quote,fallback:"Success Stories",empty:"No stories published yet."},
+    {sec:updates,Icon:Megaphone,fallback:"Latest Updates",empty:"No updates published yet."}
+   ].map(({sec,Icon,fallback,empty},idx)=>{
+    const list=sec?records(sec.fields.items):[];
+    const pic=sec?assets.find(a=>a.role==="IMPACT"&&a.order===sec.order):undefined;
+    return <article key={idx} className="cg-site-impact-dash-card">
+     <div className="cg-site-impact-dash-head">
+      <h3><Icon size={17} aria-hidden="true"/> {text(sec?.fields.heading)||fallback}</h3>
+      <span className="cg-site-impact-dash-pill">{list.length}</span>
+     </div>
+     {photo(pic,"cg-site-impact-card-photo")}
+     {list.length>0?<ul className="cg-site-impact-mini-list">
+      {list.slice(0,4).map((item,j)=><li key={j}><strong>{text(item.title)}</strong>{text(item.description)&&<p>{text(item.description)}</p>}</li>)}
+     </ul>:<p className="cg-site-impact-empty-inline">{empty}</p>}
+    </article>;
+   })}
+  </section>
+  {cta&&<CmsImpactGroup section={cta} assets={assets} navigation={navigation}/>}
+ </div>;
+}
 export function CmsImpactGroup({section,assets,navigation}:{
  section:PublicCmsSection;assets:Asset[];navigation?:PublicCmsNavigation|null}){
  const f=section.fields,group=text(f.group),rows=records(f.items);
@@ -116,60 +237,132 @@ export function CmsCompliance({section,assets}:{
   </div>
   {text(f.subtitle)&&<h2 className="cg-site-legal-subtitle cg-site-ngo-orange-sub">{text(f.subtitle)}</h2>}
   <p className="cg-site-ngo-lead">{text(f.summary)}</p>
-  <div className="cg-site-ngo-cert-split">
-   <div className="cg-site-ngo-navy-brand">
-    <div className="cg-site-ngo-navy-emblem"><ShieldCheck size={28} aria-hidden="true"/></div>
-    <strong>CareGanga Foundation</strong>
-    <span>{supported?"Eligible Charitable Organisation":"Foundation disclosure"}</span>
-   </div>
-   <dl className="cg-site-ngo-kv-list cg-site-ngo-kv-card">
-    <div>
-     <dt><ShieldCheck size={15} aria-hidden="true"/> 80G Status</dt>
-     <dd><span className={supported?"cg-site-ngo-status-active":"cg-site-ngo-status-pending"}>{supported?"● Active":"Not verified"}</span></dd>
-    </div>
-    {([
-     ["Approval / Registration No.",f.approvalNumber||f.registrationNumber,Award],
-     ["PAN",f.pan,CreditCard],
-     ["Valid From",f.validFrom,Calendar],
-     ["Validity",f.validUntil,Clock],
-     ["Issuing Authority",f.issuer,Landmark],
-     ["Source",f.source,FileText],
-     ["Reviewed On",text(f.source)?f.verifiedAsOf:"",Calendar]
-    ] as [string,unknown,typeof Award][]).filter(([,v])=>!!text(v)).map(([key,value,Icon])=><div key={key}>
-     <dt><Icon size={15} aria-hidden="true"/> {key}</dt><dd>{text(value)}</dd>
-    </div>)}
-   </dl>
-  </div>
-  <p className="cg-site-legal-status">{supported?
-   "Document-supported Foundation declaration":"Not currently verified — no tax eligibility is promised"}</p>
-  {documents.length>0&&<section aria-label="Published original reports" style={{marginTop:"1.25rem"}}>
-   <h2 style={{fontSize:"1.1rem",marginBottom:"0.75rem"}}>{supported?"Verified source documents and annual reports":"Published disclosures and annual reports"}</h2>
-   <div className="cg-site-ngo-cert-grid">{documents.map(({record,document},i)=>{
-    if(!document)return null;
-    return <article key={i} className="cg-site-ngo-cert-card">
-     <div className="cg-site-ngo-cert-head">
-      <div className="cg-site-ngo-cert-icon"><FileText size={18} aria-hidden="true"/></div>
-      <div className="cg-site-ngo-cert-title-wrap">
-       <h3>{text(record.title)}</h3>
-       <span className="cg-site-ngo-cert-meta">{text(record.type).replaceAll("_"," ")} · {text(record.asOfDate)}</span>
+  <div className="cg-site-ngo-80g-top-grid">
+   <div className="cg-site-ngo-80g-main">
+    <div className="cg-site-ngo-cert-split">
+     <div className="cg-site-ngo-navy-brand">
+      <div className="cg-site-ngo-navy-emblem"><ShieldCheck size={28} aria-hidden="true"/></div>
+      <strong>CareGanga Foundation</strong>
+      <span>{supported?"Eligible Charitable Organisation":"Foundation disclosure"}</span>
+     </div>
+     <dl className="cg-site-ngo-kv-list cg-site-ngo-kv-card">
+      <div>
+       <dt><ShieldCheck size={15} aria-hidden="true"/> 80G Status</dt>
+       <dd><span className={supported?"cg-site-ngo-status-active":"cg-site-ngo-status-pending"}>{supported?"● Active":"Not verified"}</span></dd>
       </div>
-      <span className="cg-site-ngo-active-pill">Published</span>
+      {([
+       ["Approval / Registration No.",f.approvalNumber||f.registrationNumber,Award],
+       ["PAN",f.pan,CreditCard],
+       ["Valid From",f.validFrom,Calendar],
+       ["Validity",f.validUntil,Clock],
+       ["Issuing Authority",f.issuer,Landmark],
+       ["Source",f.source,FileText],
+       ["Reviewed On",text(f.source)?f.verifiedAsOf:"",Calendar]
+      ] as [string,unknown,typeof Award][]).filter(([,v])=>!!text(v)).map(([key,value,Icon])=><div key={key}>
+       <dt><Icon size={15} aria-hidden="true"/> {key}</dt><dd>{text(value)}</dd>
+      </div>)}
+     </dl>
+    </div>
+   </div>
+   <aside className="cg-site-ngo-80g-aside" aria-label="Tax benefit illustration and donate">
+    <div className="cg-site-ngo-80g-illus-card" aria-hidden="true">
+     <svg viewBox="0 0 240 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="44" y="14" width="152" height="132" rx="12" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth="2"/>
+      <rect x="90" y="6" width="60" height="16" rx="6" fill="#64748B"/>
+      <text x="120" y="40" textAnchor="middle" fill="#14452F" fontSize="13" fontWeight="800" fontFamily="sans-serif">TAX BENEFIT 80G</text>
+      <rect x="62" y="52" width="16" height="16" rx="4" fill="#DCFCE7"/>
+      <path d="M66 60l3 3 5-6" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <text x="86" y="64" fill="#1E293B" fontSize="10" fontWeight="700" fontFamily="sans-serif">Section 80G</text>
+      <rect x="62" y="75" width="16" height="16" rx="4" fill="#DCFCE7"/>
+      <path d="M66 83l3 3 5-6" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <text x="86" y="87" fill="#1E293B" fontSize="10" fontWeight="700" fontFamily="sans-serif">Deduction Claim</text>
+      <rect x="62" y="98" width="16" height="16" rx="4" fill="#DCFCE7"/>
+      <path d="M66 106l3 3 5-6" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <text x="86" y="110" fill="#1E293B" fontSize="10" fontWeight="700" fontFamily="sans-serif">Donation Receipt</text>
+      <rect x="62" y="121" width="16" height="16" rx="4" fill="#DCFCE7"/>
+      <path d="M66 129l3 3 5-6" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <text x="86" y="133" fill="#1E293B" fontSize="10" fontWeight="700" fontFamily="sans-serif">Tax Savings</text>
+      <circle cx="204" cy="126" r="14" fill="#FACC15"/>
+      <circle cx="204" cy="118" r="14" fill="#EAB308"/>
+      <text x="204" y="122" textAnchor="middle" fill="#14452F" fontSize="12" fontWeight="800" fontFamily="sans-serif">₹</text>
+     </svg>
+    </div>
+    <div className="cg-site-ngo-donate-card">
+     <div className="cg-site-ngo-donate-icon"><Gift size={22} aria-hidden="true"/></div>
+     <h3>DONATE &amp; GET TAX BENEFIT</h3>
+     <p>Subject to applicable law and eligibility</p>
+     <Link href="/contact" className="cg-site-ngo-donate-cta">
+      <Heart size={14} aria-hidden="true"/> DONATE NOW <ArrowRight size={14} aria-hidden="true"/>
+     </Link>
+    </div>
+   </aside>
+  </div>
+  <div className="cg-site-ngo-3col">
+   <article className="cg-site-ngo-info-card">
+    <div className="cg-site-ngo-info-head">
+     <span className="cg-site-ngo-info-icon cg-site-ngo-info-icon-green"><ShieldCheck size={16} aria-hidden="true"/></span>
+     <h3>DONOR TAX BENEFIT</h3>
+    </div>
+    {text(f.summary).trim()?<ul className="cg-site-ngo-check-list">
+     {text(f.summary).split(/\n+|(?<=\.)\s+/).map(s=>s.trim()).filter(Boolean).map((line,idx)=>
+      <li key={idx}><CheckCircle2 size={14} aria-hidden="true"/><span>{line}</span></li>
+     )}
+    </ul>:<p className="cg-site-ngo-empty-note">No donor tax benefit details published yet.</p>}
+   </article>
+   <article className="cg-site-ngo-info-card">
+    <div className="cg-site-ngo-info-head">
+     <span className="cg-site-ngo-info-icon cg-site-ngo-info-icon-green"><FileText size={16} aria-hidden="true"/></span>
+     <h3>DOCUMENTS</h3>
+    </div>
+    {documents.length>0?<div className="cg-site-ngo-doc-stack">
+     {documents.map(({record,document},i)=>document?<div key={i} className="cg-site-ngo-doc-item">
+      <div className="cg-site-ngo-doc-item-title">
+       <FileText size={15} aria-hidden="true"/>
+       <div>
+        <strong>{text(record.title)}</strong>
+        <span>{text(record.type).replaceAll("_"," ")} · {text(record.asOfDate)}</span>
+       </div>
+      </div>
+      <CmsNgoDocModalButton
+       title={text(record.title)}
+       meta={`${text(record.type).replaceAll("_"," ")} · ${text(record.asOfDate)}`}
+       src={document.src}
+       verifiedBy={text(f.source)||undefined}
+       active={supported}
+       buttonLabel="VIEW DOCUMENT"
+      />
+     </div>:null)}
+    </div>:supported&&proof?.src?<div className="cg-site-ngo-doc-stack">
+     <div className="cg-site-ngo-doc-item">
+      <div className="cg-site-ngo-doc-item-title">
+       <FileText size={15} aria-hidden="true"/>
+       <div><strong>80G Approval / Supporting Document</strong></div>
+      </div>
+      <CmsNgoDocModalButton
+       title="80G Approval / Supporting Document"
+       src={proof.src}
+       verifiedBy={text(f.source)||undefined}
+       active={supported}
+       buttonLabel="VIEW DOCUMENT"
+      />
      </div>
-     <div className="cg-site-ngo-cert-actions">
-      <a className="cg-site-ngo-doc-btn" href={document.src} download><Download size={14} aria-hidden="true"/> View approved source document</a>
-     </div>
-    </article>;
-   })}</div>
-  </section>}
-  {supported&&proof?.src&&(f.documents===undefined||Array.isArray(f.documents)&&f.documents.length===0)&&
-   <div style={{marginTop:"1rem"}}><a className="cg-site-ngo-doc-btn" href={proof.src} download>
-    <Download size={14} aria-hidden="true"/> View approved supporting document</a></div>}
-  {text(f.importantNote)&&<aside className="cg-site-legal-important">
-   <strong>Important</strong><p>{text(f.importantNote)}</p>
-  </aside>}
-  {text(f.disclaimer)&&<p className="cg-site-legal-notice">{text(f.disclaimer)}</p>}
-  <p className="cg-site-provenance">Only the current Foundation-published information is shown.
-   Confirm tax applicability with the issuing authority.</p>
+    </div>:<p className="cg-site-ngo-empty-note">No published 80G supporting documents attached yet.</p>}
+   </article>
+   <article className="cg-site-ngo-info-card">
+    <div className="cg-site-ngo-info-head">
+     <span className="cg-site-ngo-info-icon cg-site-ngo-info-icon-amber"><AlertTriangle size={16} aria-hidden="true"/></span>
+     <h3>IMPORTANT</h3>
+    </div>
+    {(text(f.importantNote).trim()||text(f.disclaimer).trim())?<ul className="cg-site-ngo-bullet-list">
+     {text(f.importantNote).trim()&&<li>{text(f.importantNote)}</li>}
+     {text(f.disclaimer).trim()&&<li>{text(f.disclaimer)}</li>}
+    </ul>:<p className="cg-site-ngo-empty-note">No additional notes published.</p>}
+   </article>
+  </div>
+  <div className="cg-site-ngo-disclaimer-bar">
+   {text(f.verifiedAsOf)&&<span><Calendar size={13} aria-hidden="true" style={{verticalAlign:"-2px",marginRight:"0.3rem"}}/><strong>Last Updated:</strong> {text(f.verifiedAsOf)}</span>}
+   <span><ShieldCheck size={13} aria-hidden="true" style={{verticalAlign:"-2px",marginRight:"0.3rem"}}/><strong>Disclaimer:</strong> Only the current Foundation-published information is shown. Confirm tax applicability with the issuing authority.</span>
+  </div>
  </section>;
 }
 export function CmsGallery({section,assets,mediaScope="PHOTO",embedded=false}:{

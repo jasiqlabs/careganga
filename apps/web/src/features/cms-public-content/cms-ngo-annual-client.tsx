@@ -1,7 +1,8 @@
 "use client";
 import {useMemo,useState} from "react";
-import {BarChart2,IndianRupee,Download,ShieldCheck,RotateCcw} from "lucide-react";
+import {BarChart2,IndianRupee,ShieldCheck,RotateCcw} from "lucide-react";
 import {CustomDropdown} from "../../shared/custom-dropdown";
+import {CmsNgoDocModalButton} from "./cms-ngo-doc-modal";
 
 export type ApprovedAnnualReport={title:string;date:string;href:string};
 export function CmsNgoAnnualReports({reports,kind="annual"}:{reports:ApprovedAnnualReport[];kind?:"annual"|"financial"}){
@@ -48,7 +49,7 @@ export function CmsNgoAnnualReports({reports,kind="annual"}:{reports:ApprovedAnn
       <th scope="col" role="columnheader">Actions</th></tr></thead>
      <tbody role="rowgroup">{matching.length===0?<tr role="row"><td role="cell" colSpan={3} className="cg-site-report-empty">{approved.length?"No reports match these filters.":"No reports published yet."}</td></tr>:matching.map((r,i)=><tr role="row" key={r.href+"-"+i}>
       <th scope="row" role="rowheader">{r.title}</th><td role="cell"><span className="cg-site-report-date-label">Document date: </span>{r.date}</td>
-      <td role="cell"><a className="cg-site-ngo-doc-btn" href={r.href} download><Download size={13} aria-hidden="true"/> View document</a></td>
+      <td role="cell"><CmsNgoDocModalButton title={r.title} meta={`Published: ${r.date}`} src={r.href} buttonLabel="View document" className="cg-site-ngo-doc-btn"/></td>
      </tr>)}</tbody>
     </table>
    </div>

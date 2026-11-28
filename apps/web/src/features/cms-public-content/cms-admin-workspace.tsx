@@ -662,7 +662,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
         <span className="cg-cms-admin-kpi-label">Working Drafts</span>
       </div>
       <div className="cg-cms-admin-kpi-value">{draftPages.length}</div>
-      <div className="cg-cms-admin-kpi-trend">Draft revisions (including published pages)</div>
+      <div className="cg-cms-admin-kpi-trend">Draft revisions</div>
     </div>
     <div className="cg-cms-admin-kpi-card">
       <div className="cg-cms-admin-kpi-top">
@@ -1283,13 +1283,61 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
   {/* TAB 2+: PAGES, BANNERS, APPROVALS, ETC. */}
   {(activeWorkspaceTab !== "OVERVIEW" || reviewing) && (
     <>
-      {reviewing?<section className="cg-cms-card">
-   <h3>Website publication approvals</h3>
-   <div className="cg-cms-list">{reviews.map(v=><button type="button" key={v.caseRef}
-    aria-pressed={review?.caseRef===v.caseRef} disabled={busy}
-    onClick={()=>void openReview(v.caseRef)}>
-    <strong>{v.title}</strong><span>{v.number} · {v.status.replaceAll("_"," ")}</span>
-   </button>)}</div>
+      {reviewing?<section className="cg-cms-card" style={{display:"flex",flexDirection:"column",gap:"1rem"}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"0.75rem"}}>
+    <div>
+     <h3 style={{margin:0}}>Website publication approvals</h3>
+     <p style={{margin:"0.2rem 0 0",fontSize:"0.82rem",color:"#64748B"}}>
+      Pending drafts are highlighted at the top. A different reviewer from the submitter must approve.
+     </p>
+    </div>
+    <span style={{padding:"0.3rem 0.75rem",borderRadius:"999px",fontSize:"0.78rem",fontWeight:700,
+     background:reviews.some(v=>["SUBMITTED","IN_REVIEW"].includes(v.status))?"#FEF3C7":"#DCFCE7",
+     color:reviews.some(v=>["SUBMITTED","IN_REVIEW"].includes(v.status))?"#92400E":"#166534"}}>
+     {reviews.filter(v=>["SUBMITTED","IN_REVIEW"].includes(v.status)).length} Pending Approval
+    </span>
+   </div>
+   {(()=>{
+    const pendingList=reviews.filter(v=>["SUBMITTED","IN_REVIEW"].includes(v.status));
+    const pastList=reviews.filter(v=>!["SUBMITTED","IN_REVIEW"].includes(v.status));
+    return <>
+     {pendingList.length>0&&<div>
+      <h4 style={{margin:"0 0 0.5rem",fontSize:"0.85rem",fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:"0.04em"}}>
+       Action Required — Awaiting Your Review ({pendingList.length})
+      </h4>
+      <div className="cg-cms-list">{pendingList.map(v=><button type="button" key={v.caseRef}
+       aria-pressed={review?.caseRef===v.caseRef} disabled={busy}
+       style={{borderLeft:"4px solid #F59E0B",background:review?.caseRef===v.caseRef?"#EEF2FF":"#FFFBEB",borderColor:review?.caseRef===v.caseRef?"#4F46E5":"#FCD34D"}}
+       onClick={()=>void openReview(v.caseRef)}>
+       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"0.5rem"}}>
+        <strong>{v.title}</strong>
+        <span style={{fontSize:"0.68rem",fontWeight:800,padding:"0.15rem 0.5rem",borderRadius:"999px",background:"#FEF3C7",color:"#92400E",whiteSpace:"nowrap"}}>PENDING</span>
+       </div>
+       <span>{v.number} · {v.status.replaceAll("_"," ")}</span>
+      </button>)}</div>
+     </div>}
+     {!pendingList.length&&<p style={{padding:"0.75rem 1rem",borderRadius:"8px",background:"#F0FDF4",color:"#166534",fontSize:"0.85rem",fontWeight:600,margin:0}}>
+      No pending drafts are awaiting approval right now.
+     </p>}
+     {pastList.length>0&&<details style={{border:"1px solid #E2E8F0",borderRadius:"10px",padding:"0.75rem 1rem",background:"#F8FAFC"}}>
+      <summary style={{cursor:"pointer",fontWeight:700,fontSize:"0.85rem",color:"#475569"}}>
+       Completed &amp; Past Review History ({pastList.length})
+      </summary>
+      <div className="cg-cms-list" style={{marginTop:"0.75rem"}}>{pastList.map(v=><button type="button" key={v.caseRef}
+       aria-pressed={review?.caseRef===v.caseRef} disabled={busy}
+       style={{opacity:0.85}}
+       onClick={()=>void openReview(v.caseRef)}>
+       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"0.5rem"}}>
+        <strong>{v.title}</strong>
+        <span style={{fontSize:"0.68rem",fontWeight:700,padding:"0.15rem 0.5rem",borderRadius:"999px",background:"#DCFCE7",color:"#166534",whiteSpace:"nowrap"}}>
+         {v.status==="OWNER_COMPLETED"?"APPROVED":v.status.replaceAll("_"," ")}
+        </span>
+       </div>
+       <span>{v.number} · {v.status.replaceAll("_"," ")}</span>
+      </button>)}</div>
+     </details>}
+    </>;
+   })()}
    {!reviews.length&&<p>No submitted pages are awaiting an editorial decision.</p>}
    {review&&<section className="cg-cms-form" aria-label="Review original page">
     <h4>{review.source.title} — original draft</h4>
@@ -1319,22 +1367,29 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
          Review original scanned PDF proof</a>}
       </li>)}</ul>}
      {["SUBMITTED","IN_REVIEW"].includes(review.status)&&<>
-     <label>Review comments<textarea value={remark} maxLength={500}
+     <div style={{padding:"0.75rem 0.95rem",borderRadius:"8px",background:"#EFF6FF",border:"1px solid #BFDBFE",color:"#1E3A8A",fontSize:"0.82rem",lineHeight:1.5}}>
+      <strong>4-Eyes Approval Rule:</strong> Enter the <strong>login password of the currently signed-in Reviewer</strong> below to confirm.
+      The user who submitted this draft cannot approve their own submission — a different authorized Reviewer account must sign in to approve.
+     </div>
+     <label>Review comments (optional)<textarea value={remark} maxLength={500}
+      placeholder="Add any review note for the author..."
       onChange={e=>setRemark(e.target.value)}/></label>
-     <label>Current reviewer password<input type="password" autoComplete="current-password"
-      value={reviewPassword} onChange={e=>setReviewPassword(e.target.value)}/></label>
+     <label>Your Reviewer Login Password (to confirm decision)
+      <input type="password" autoComplete="current-password"
+       placeholder="Enter your current account password (min 8 chars)"
+       value={reviewPassword} onChange={e=>setReviewPassword(e.target.value)}/></label>
      {!!error && (
      <div className="cg-cms-admin-inline-error" role="alert">
-      <AlertCircle size={16}/> {error}
+      <AlertCircle size={16}/> <span>{error}{error.includes("access")?" (Note: If you submitted this draft yourself, sign in with a different Reviewer/Admin account to approve.)":""}</span>
      </div>
     )}
     <div className="cg-cms-actions">
-      <button disabled={busy||reviewPassword.length<8||
+      <button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={busy||reviewPassword.length<8||
        review.source.assets.some(asset=>!asset.current)} onClick={()=>void decide("APPROVE")}>
        Approve original content</button>
-      <button disabled={busy||reviewPassword.length<8} onClick={()=>void decide("RETURN")}>
+      <button type="button" className="cg-cms-admin-btn" disabled={busy||reviewPassword.length<8} onClick={()=>void decide("RETURN")}>
        Return for changes</button>
-      <button disabled={busy||reviewPassword.length<8} onClick={()=>void decide("REJECT")}>
+      <button type="button" className="cg-cms-admin-btn" style={{borderColor:"#FCA5A5",color:"#B91C1C"}} disabled={busy||reviewPassword.length<8} onClick={()=>void decide("REJECT")}>
        Reject</button>
      </div>
     </>}

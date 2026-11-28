@@ -47,7 +47,7 @@ const legalPages=[
 ] as const;
 const groups=["HERO","PILLARS","STATS","GROWTH","GEOGRAPHY","BREAKDOWN",
  "FOCUS","STORIES","UPDATES","CTA"];
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*60_000).toISOString().slice(0,10);
 const str=(v:unknown)=>typeof v==="string"?v:"";
 const items=(v:unknown)=>Array.isArray(v)?v as Record<string,unknown>[]:[];
 const pathFor=(kind:Kind,slug:string)=>kind==="COMPLIANCE"?"/ngo-information":
@@ -150,6 +150,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const [galleryCategory,setGalleryCategory]=useState("ALL");
  const [galleryVisibility,setGalleryVisibility]=useState("ALL");
  const [editorOpen,setEditorOpen]=useState(false);
+ const [loadingDetail,setLoadingDetail]=useState(false);
  const [closePrompt,setClosePrompt]=useState(false);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [draft,setDraft]=useState<Draft>(initial("IMPACT"));
@@ -166,6 +167,8 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const [partnerSources,setPartnerSources]=useState<PartnerOption[]>([]),[partnerSourceError,setPartnerSourceError]=useState("");
  const [uploadRole,setUploadRole]=useState("IMPACT"),[uploadOrder,setUploadOrder]=useState(0);
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
+ const [docRights,setDocRights]=useState<Record<number,boolean>>({});
+ const [docAlt,setDocAlt]=useState<Record<number,string>>({});
  const [withdrawReason,setWithdrawReason]=useState("");
  const [publishWhen,setPublishWhen]=useState("");
  const [previewDevice,setPreviewDevice]=useState<"DESKTOP"|"MOBILE">("DESKTOP");
@@ -178,22 +181,39 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    return;
   }
   if(editorOpen&&dirty&&!window.confirm("Discard unsaved changes?"))return;
-  setBusy(true);setError("");setNotice("");
+  setEditorOpen(true);setClosePrompt(false);setLoadingDetail(true);
+  setSelected(null);setBusy(true);setError("");setNotice("");
   try{
    const detail=await api<Detail>("pages/"+p.pageRef);
    setSelected(detail);setKind(detail.kind);
-   setEditorOpen(true);setClosePrompt(false);
    setPreviewMediaScope("PHOTO");setGalleryCategory("ALL");setGalleryVisibility("ALL");
    setUploadRole(detail.kind==="PARTNERS"?"FEATURE":detail.kind==="IMPACT"?"IMPACT":detail.kind==="GALLERY"?"GALLERY":
     detail.kind==="COMPLIANCE"?"DOCUMENT":detail.kind==="ARTICLE"?"ARTICLE":
     detail.kind==="CONTACT"?"CONTACT":"HERO");
    setUploadOrder(0);setRights(false);setUploadAlt("");
+   const normalizedSections=detail.status!=="DRAFT"?detail.sections:detail.sections.map(sec=>{
+    if(sec.kind!=="GALLERY_GRID"||!Array.isArray(sec.fields.items))return sec;
+    return {...sec,fields:{...sec.fields,items:sec.fields.items.map((raw:unknown)=>{
+     if(!raw||typeof raw!=="object"||Array.isArray(raw))return raw;
+     const it=raw as Record<string,unknown>;
+     const cap=str(it.caption).trim();
+     return {
+      title:str(it.title).trim()||(cap?cap.slice(0,60):"CareGanga Media Item"),
+      caption:cap,
+      category:str(it.category).trim()||"Relief",
+      mediaType:str(it.mediaType)||"PHOTO",
+      source:str(it.source).trim()||"CareGanga Foundation",
+      asOfDate:str(it.asOfDate)||str(it.date)||today(),
+      visible:it.visible!==false
+     };
+    })}};
+   });
    setDraft({kind:detail.kind,slug:detail.slug,title:detail.title,
     seoTitle:detail.seoTitle,seoDescription:detail.seoDescription,
-    sections:detail.sections,assets:detail.assets});
+    sections:normalizedSections,assets:detail.assets});
    setPreview(!canManage);setPending(null);
   }catch(e){setError(e instanceof Error?e.message:"Page could not be loaded.")}
-  finally{setBusy(false);}
+  finally{setBusy(false);setLoadingDetail(false);}
  };
  const begin=(k:Kind)=>{
   if(busy||!canManage)return;
@@ -279,30 +299,106 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    setError(e instanceof Error?e.message:"Check the original action before retrying.");
   }finally{setBusy(false);}
  }
+ function validateDraft(d:Draft):string|null{
+  if(d.title.trim().length<3)return "Page title must be at least 3 characters.";
+  const curToday=today();
+  for(const s of d.sections){
+   const f=s.fields;
+   if(s.kind==="COMPLIANCE_FACTS"){
+    if(str(f.heading).trim().length<3)return "Section heading must be at least 3 characters.";
+    const pan=str(f.pan).trim().toUpperCase();
+    if(pan&&!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan))return "PAN must be a valid 10-character format (e.g. ABCDE1234F).";
+    const docs=items(f.documents);
+    if((str(f.verification)==="VERIFIED"||pan||str(f.registrationNumber).trim()||str(f.approvalNumber).trim()||docs.length>0)&&str(f.source).trim().length<3)
+     return "Source is required (at least 3 characters) when verification, PAN, registration, approval number, or documents are present.";
+    if(!str(f.verifiedAsOf))return "Source reviewed on date is required.";
+    if(str(f.verifiedAsOf)>curToday)return "Source reviewed on date cannot be in the future.";
+    if(str(f.disclaimer).trim().length<10)return "Required disclaimer must be at least 10 characters.";
+    if(str(f.verification)==="VERIFIED"){
+     if(!str(f.issuer).trim()||!str(f.approvalNumber).trim()||!str(f.validFrom)||!str(f.validUntil))
+      return "Verified 80G status requires Issuer, Approval number, Valid from, and Valid until.";
+     if(str(f.validUntil)<str(f.validFrom))return "Valid until date cannot be earlier than Valid from date.";
+     if(str(f.validUntil)<curToday)return "Valid until date cannot be in the past when status is Verified.";
+    }
+    for(let i=0;i<docs.length;i++){
+     const doc=docs[i];
+     if(str(doc.title).trim().length<3)return `Document ${i+1}: Official document title must be at least 3 characters (or remove the empty row).`;
+     if(!str(doc.asOfDate))return `Document ${i+1}: Document date is required.`;
+     if(str(doc.asOfDate)>curToday)return `Document ${i+1}: Document date cannot be in the future.`;
+    }
+   }
+   if(s.kind==="GALLERY_GRID"){
+    if(str(f.heading).trim().length<3)return "Gallery heading must be at least 3 characters.";
+    const gItems=items(f.items);
+    for(let i=0;i<gItems.length;i++){
+     const it=gItems[i];
+     if(str(it.title).trim().length<3)return `Gallery item ${i+1}: Title must be at least 3 characters.`;
+     if(str(it.category).trim().length<2)return `Gallery item ${i+1}: Category is required (e.g. Relief, Healthcare, or Financial Reports).`;
+     if(str(it.source).trim().length<3)return `Gallery item ${i+1}: Source must be at least 3 characters.`;
+     if(!str(it.asOfDate))return `Gallery item ${i+1}: Media source date is required.`;
+     if(str(it.asOfDate)>curToday)return `Gallery item ${i+1}: Media source date cannot be in the future.`;
+    }
+   }
+  }
+  return null;
+ }
  const act=(path:string,method:"POST"|"PUT",body:Record<string,unknown>)=>{
   if(busy||pending||mediaAttempt.current){
    setError("Resolve the previous original request before another change.");
    return;
   }
+  if((method==="PUT"&&selected?.status==="DRAFT")||path==="pages"){
+   const issue=validateDraft(draft);
+   if(issue){setError(issue);return;}
+  }
+  if(path.endsWith("/submit")&&draft.kind==="COMPLIANCE"){
+   const fact=draft.sections.find(s=>s.kind==="COMPLIANCE_FACTS")?.fields;
+   const docs=items(fact?.documents);
+   if(str(fact?.verification)==="VERIFIED"&&(docs.length===0||str(docs[0]?.type)!=="80G")){
+    setError("When Public verification status is 'Verified', Document 1 must have Document kind = '80G approval' (add or move an 80G approval document to position 1).");
+    return;
+   }
+   const missingIdx=docs.findIndex((_,i)=>!draft.assets.some(a=>a.role==="DOCUMENT"&&a.order===i));
+   if(missingIdx!==-1){
+    const title=str(docs[missingIdx]?.title)||`Document ${missingIdx+1}`;
+    setError(`Document ${missingIdx+1} (${title}): Please upload an image/PDF inside that document card and click "Save draft" before submitting for review.`);
+    return;
+   }
+  }
+  if(path.endsWith("/submit")&&draft.kind==="GALLERY"){
+   const gItems=items(draft.sections.find(s=>s.kind==="GALLERY_GRID")?.fields.items);
+   const missingIdx=gItems.findIndex((it,i)=>it.visible!==false&&!draft.assets.some(a=>a.role==="GALLERY"&&a.order===i));
+   if(missingIdx!==-1){
+    const title=str(gItems[missingIdx]?.title)||`Gallery item ${missingIdx+1}`;
+    setError(`Gallery item ${missingIdx+1} (${title}): Please upload its Photo/Video/PDF inside that item card and click "Save draft" before submitting for review.`);
+    return;
+   }
+  }
   void command({path,method,body:{requestKey:crypto.randomUUID(),...body}});
  };
- const allowedForCurrentPlacement=()=>{
+ const allowedForCurrentPlacement=(roleOverride?:string,orderOverride?:number)=>{
+  const role=roleOverride??uploadRole;
+  const order=orderOverride??uploadOrder;
   const image=["image/jpeg","image/png","image/webp"];
-  if(uploadRole==="GALLERY"){
+  if(role==="GALLERY"){
    const media=items(draft.sections.find(s=>s.kind==="GALLERY_GRID")?.fields.items)
-    [uploadOrder]?.mediaType;
+    [order]?.mediaType;
    return media==="PHOTO"?image:media==="VIDEO"?["video/mp4"]:
     media==="PUBLICATION"?["application/pdf"]:[];
   }
-  return uploadRole==="DOCUMENT"?[...image,"application/pdf"]:image;
+  return role==="DOCUMENT"?[...image,"application/pdf"]:image;
  };
- async function upload(file:File){
+ async function upload(file:File,target?:{role:string;order:number;alt:string;rightsConfirmed:boolean}){
   if(!selected||selected.status!=="DRAFT"||busy||pending)return;
-  if(!rights||uploadAlt.trim().length<3){
-   setError("Confirm publication rights and original media description.");return;
+  const role=target?.role??uploadRole;
+  const order=target?.order??uploadOrder;
+  const alt=(target?.alt??uploadAlt).trim();
+  const okRights=target?target.rightsConfirmed:rights;
+  if(!okRights||alt.length<3){
+   setError("Confirm publication rights and original media description (at least 3 characters).");return;
   }
   const cap=file.type==="video/mp4"?26214400:10485760;
-  const allowed=allowedForCurrentPlacement();
+  const allowed=allowedForCurrentPlacement(role,order);
   if(!allowed.includes(file.type)||file.size<1||file.size>cap){
    setError("Select an allowed original image/PDF (10 MB) or video (25 MB).");
    return;
@@ -312,7 +408,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    const sha=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",
     await file.arrayBuffer()))).map(x=>x.toString(16).padStart(2,"0")).join("");
    const fingerprint=JSON.stringify([selected.pageRef,selected.revisionRef,
-    file.type,file.size,sha,uploadRole,uploadOrder,uploadAlt.trim()]);
+    file.type,file.size,sha,role,order,alt]);
    const old=mediaAttempt.current;
    if(old&&old.fingerprint!==fingerprint)
     throw Error("Earlier original media may have reached CG19. Choose the "+
@@ -321,11 +417,16 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
     old??{fingerprint,key:crypto.randomUUID(),uploadRef:null};
    mediaAttempt.current=attempt;
    const attach=(fileRef:string,version:number)=>{
-    const placement={fileRef,version,role:uploadRole,order:uploadOrder,
-     altText:uploadAlt.trim()};
+    const placement={fileRef,version,role,order,altText:alt};
     setDraft(d=>({...d,assets:[...d.assets.filter(a=>
-     a.role!==uploadRole||a.order!==uploadOrder),placement]}));
-    mediaAttempt.current=null;setUploadAlt("");setRights(false);
+     a.role!==role||a.order!==order),placement]}));
+    mediaAttempt.current=null;
+    if(target){
+     setDocAlt(prev=>{const next={...prev};delete next[order];return next;});
+     setDocRights(prev=>{const next={...prev};delete next[order];return next;});
+    }else{
+     setUploadAlt("");setRights(false);
+    }
     setNotice("Original CG19 scanned file is verified and attached to "+
      "your unsaved draft. Save before submitting.");
    };
@@ -624,7 +725,13 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       Discard edits and close</button>
     </div>
    </div>}
-   {preview?<div className="cg-cms-preview">
+   {loadingDetail?<div style={{padding:"2rem 1rem",display:"flex",flexDirection:"column",gap:"0.85rem"}} role="status">
+    <div style={{height:"1.25rem",width:"45%",borderRadius:"6px",background:"#E2E8F0"}}/>
+    <div style={{height:"2.5rem",width:"100%",borderRadius:"8px",background:"#F1F5F9",border:"1px solid #E2E8F0"}}/>
+    <div style={{height:"2.5rem",width:"100%",borderRadius:"8px",background:"#F1F5F9",border:"1px solid #E2E8F0"}}/>
+    <div style={{height:"7rem",width:"100%",borderRadius:"10px",background:"#F1F5F9",border:"1px solid #E2E8F0"}}/>
+    <p style={{margin:0,fontSize:"0.82rem",color:"#64748B",fontWeight:600}}>Loading latest draft from server…</p>
+   </div>:preview?<div className="cg-cms-preview">
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"0.5rem",marginBottom:"0.75rem",padding:"0.5rem 0.75rem",background:"#F8FAFC",borderRadius:"8px",border:"1px solid #E2E8F0"}}>
      <span style={{fontSize:"0.8rem",color:"#64748B",fontWeight:500}}>Private preview — matches public website layout (unpublished draft).</span>
      <div style={{display:"flex",gap:"0.4rem"}}>
@@ -831,25 +938,52 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         onChange={v=>change("disclaimer",v)}/>
        <p>Verified 80G claims require a current approved 80G document in the first position.
         Registration certificates and annual reports may be added as separate scanned documents.</p>
-       {items(f.documents).map((document,j)=><div className="cg-cms-team" key={j}>
-        <CustomDropdown
-         label="Document kind"
-         value={str(document.type)||"OTHER"}
-         onChange={val=>changeItem(index,j,{type:val},"documents")}
-         options={[
-          {value:"80G",label:"80G approval"},
-          {value:"REGISTRATION",label:"Registration"},
-          {value:"ANNUAL_REPORT",label:"Annual report"},
-          {value:"OTHER",label:"Other published document"}
-         ]}
-        />
-        <Field name="Official document title" value={document.title}
-         onChange={v=>changeItem(index,j,{title:v},"documents")}/>
-        <Field name="Document date" type="date" value={document.asOfDate}
-         onChange={v=>changeItem(index,j,{asOfDate:v},"documents")}/>
-        {canManage&&<button type="button"
-         onClick={()=>removeItem(index,"documents",j,"DOCUMENT")}>Remove document</button>}
-       </div>)}
+       {items(f.documents).map((document,j)=>{
+        const docAsset=draft.assets.find(a=>a.role==="DOCUMENT"&&a.order===j);
+        const rowAlt=(docAlt[j]??str(document.title)).trim();
+        const rowRights=docRights[j]===true;
+        const rowCanUpload=!busy&&rowRights&&rowAlt.length>=3;
+        return <div className="cg-cms-team" key={j}>
+         <CustomDropdown
+          label="Document kind"
+          value={str(document.type)||"OTHER"}
+          onChange={val=>changeItem(index,j,{type:val},"documents")}
+          options={[
+           {value:"80G",label:"80G approval"},
+           {value:"REGISTRATION",label:"Registration"},
+           {value:"ANNUAL_REPORT",label:"Annual report"},
+           {value:"OTHER",label:"Other published document"}
+          ]}
+         />
+         <Field name="Official document title" value={document.title}
+          onChange={v=>changeItem(index,j,{title:v},"documents")}/>
+         <Field name="Document date" type="date" value={document.asOfDate}
+          onChange={v=>changeItem(index,j,{asOfDate:v},"documents")}/>
+         {docAsset?<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"0.5rem",padding:"0.5rem 0.75rem",borderRadius:"8px",background:"#ECFDF5",border:"1px solid #A7F3D0",fontSize:"0.8125rem",color:"#065F46"}}>
+          <span style={{display:"inline-flex",alignItems:"center",gap:"0.4rem",fontWeight:600}}><FileCheck2 size={15}/> Attached (position {j+1}): {docAsset.altText}</span>
+          {selected?.status==="DRAFT"&&canManage&&<button type="button" className="cg-cms-admin-btn" style={{minHeight:"28px",padding:"0.2rem 0.6rem",fontSize:"0.75rem"}} onClick={()=>setDraft(d=>({...d,assets:d.assets.filter(v=>v!==docAsset)}))}>Detach</button>}
+         </div>:selected?.status==="DRAFT"&&canManage?<div style={{display:"grid",gap:"0.5rem",padding:"0.65rem 0.75rem",borderRadius:"8px",background:"#F8FAFC",border:"1px dashed #CBD5E1"}}>
+          <Field name={`File description (position ${j+1})`} value={docAlt[j]??str(document.title)}
+           onChange={v=>setDocAlt(prev=>({...prev,[j]:v}))}/>
+          <label className="cg-cms-consent" style={{margin:0}}><input type="checkbox" checked={rowRights}
+           onChange={e=>setDocRights(prev=>({...prev,[j]:e.target.checked}))}/>The Foundation owns the public-use rights</label>
+          <label className={`cg-cms-upload-dropzone${rowCanUpload?"":" cg-cms-upload-disabled"}`} style={{padding:"0.6rem 0.75rem"}}>
+           <UploadCloud size={18} color={rowCanUpload?"#4F46E5":"#94A3B8"}/>
+           <span style={{fontSize:"0.8125rem",fontWeight:700,color:"#0F172A"}}>
+            {busy?"Uploading & verifying with CG-19…":`Upload PDF / image for Document ${j+1}`}
+           </span>
+           <span style={{fontSize:"0.75rem",color:"#64748B"}}>
+            {rowCanUpload?"Allowed: JPG, PNG, WebP or PDF (max 10 MB)":"Tick the rights checkbox above (and ensure 3+ char title/description)"}
+           </span>
+           <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
+            disabled={!rowCanUpload}
+            onChange={e=>{const file=e.target.files?.[0];e.target.value="";if(file)void upload(file,{role:"DOCUMENT",order:j,alt:rowAlt,rightsConfirmed:rowRights});}}/>
+          </label>
+         </div>:null}
+         {canManage&&<button type="button"
+          onClick={()=>removeItem(index,"documents",j,"DOCUMENT")}>Remove document</button>}
+        </div>;
+       })}
        {canManage&&items(f.documents).length<6&&<button type="button"
         onClick={()=>addItem(index,"documents",{
          type:items(f.documents).length===0?"80G":"ANNUAL_REPORT",
@@ -886,28 +1020,34 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         (galleryCategory==="ALL"||item.category===galleryCategory)&&
         (galleryVisibility==="ALL"||(galleryVisibility==="VISIBLE"?
          item.visible!==false:item.visible===false)))
-        .map(({item,j})=><div className="cg-cms-team" key={j}>
+        .map(({item,j})=>{
+        const galAsset=draft.assets.find(a=>a.role==="GALLERY"&&a.order===j);
+        const rowAlt=(docAlt[j]??str(item.title)).trim();
+        const rowRights=docRights[j]===true;
+        const rowCanUpload=!busy&&rowRights&&rowAlt.length>=3;
+        const mType=str(item.mediaType)||"PHOTO";
+        const accept=mType==="VIDEO"?"video/mp4":mType==="PUBLICATION"?"application/pdf":"image/jpeg,image/png,image/webp";
+        const typeLabel=mType==="VIDEO"?"MP4 Video (max 25 MB)":mType==="PUBLICATION"?"PDF Document (max 10 MB)":"JPG, PNG or WebP Photo (max 10 MB)";
+        return <div className="cg-cms-team" key={j}>
         <span className="cg-cms-muted">Gallery item {j+1} ·
          {item.visible===false?" Hidden from public":" Visible after approval"}</span>
-        {item.mediaType==="PHOTO"&&
-         draft.assets.find(a=>a.role==="GALLERY"&&a.order===j)&&
+        {item.mediaType==="PHOTO"&&galAsset&&
          <img className="cg-cms-review-image" loading="lazy"
-          alt={str(draft.assets.find(a=>a.role==="GALLERY"&&a.order===j)?.altText)}
-          src={"/api/cms-image-preview/"+
-           draft.assets.find(a=>a.role==="GALLERY"&&a.order===j)?.fileRef}/>}
+          alt={str(galAsset.altText)}
+          src={"/api/cms-image-preview/"+galAsset.fileRef}/>}
         <label className="cg-cms-consent">
          <input type="checkbox" checked={item.visible!==false}
           onChange={e=>changeItem(index,j,{visible:e.target.checked})}/>
          Show this item on the public site after independent approval and publication
         </label>
         {(["title","caption","category","source"] as const).map(key=>
-         <Field key={key} name={key} value={item[key]}
+         <Field key={key} name={key==="category"?"category (use 'Financial Reports' for Financial Reports page)":key} value={item[key]}
           onChange={v=>changeItem(index,j,{[key]:v})}/>)}
         <Field name="Media source date" type="date" value={item.asOfDate}
          onChange={v=>changeItem(index,j,{asOfDate:v})}/>
         <CustomDropdown
          label="Media type"
-         value={str(item.mediaType)||"PHOTO"}
+         value={mType}
          onChange={val=>changeItem(index,j,{mediaType:val})}
          options={[
           {value:"PHOTO",label:"Photo"},
@@ -915,9 +1055,30 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
           {value:"PUBLICATION",label:"Publication PDF"}
          ]}
         />
+        {galAsset?<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"0.5rem",padding:"0.5rem 0.75rem",borderRadius:"8px",background:"#ECFDF5",border:"1px solid #A7F3D0",fontSize:"0.8125rem",color:"#065F46"}}>
+         <span style={{display:"inline-flex",alignItems:"center",gap:"0.4rem",fontWeight:600}}><FileCheck2 size={15}/> Attached (position {j+1}): {galAsset.altText}</span>
+         {selected?.status==="DRAFT"&&canManage&&<button type="button" className="cg-cms-admin-btn" style={{minHeight:"28px",padding:"0.2rem 0.6rem",fontSize:"0.75rem"}} onClick={()=>setDraft(d=>({...d,assets:d.assets.filter(v=>v!==galAsset)}))}>Detach</button>}
+        </div>:selected?.status==="DRAFT"&&canManage?<div style={{display:"grid",gap:"0.5rem",padding:"0.65rem 0.75rem",borderRadius:"8px",background:"#F8FAFC",border:"1px dashed #CBD5E1"}}>
+         <Field name={`File description (position ${j+1})`} value={docAlt[j]??str(item.title)}
+          onChange={v=>setDocAlt(prev=>({...prev,[j]:v}))}/>
+         <label className="cg-cms-consent" style={{margin:0}}><input type="checkbox" checked={rowRights}
+          onChange={e=>setDocRights(prev=>({...prev,[j]:e.target.checked}))}/>The Foundation owns the public-use rights</label>
+         <label className={`cg-cms-upload-dropzone${rowCanUpload?"":" cg-cms-upload-disabled"}`} style={{padding:"0.6rem 0.75rem"}}>
+          <UploadCloud size={18} color={rowCanUpload?"#4F46E5":"#94A3B8"}/>
+          <span style={{fontSize:"0.8125rem",fontWeight:700,color:"#0F172A"}}>
+           {busy?"Uploading & verifying with CG-19…":`Upload ${mType==="VIDEO"?"Video":mType==="PUBLICATION"?"PDF":"Photo"} for Item ${j+1}`}
+          </span>
+          <span style={{fontSize:"0.75rem",color:"#64748B"}}>
+           {rowCanUpload?`Allowed: ${typeLabel}`:"Tick the rights checkbox above (and ensure 3+ char title/description)"}
+          </span>
+          <input type="file" accept={accept}
+           disabled={!rowCanUpload}
+           onChange={e=>{const file=e.target.files?.[0];e.target.value="";if(file)void upload(file,{role:"GALLERY",order:j,alt:rowAlt,rightsConfirmed:rowRights});}}/>
+         </label>
+        </div>:null}
         {canManage&&<button type="button"
          onClick={()=>removeItem(index,"items",j,"GALLERY")}>Remove item</button>}
-       </div>)}
+       </div>;})}
        {canManage&&items(f.items).length<12&&<button type="button"
         onClick={()=>addItem(index,"items",{title:"",caption:"",category:"",
          source:"",asOfDate:today(),mediaType:"PHOTO",visible:true})}>Add gallery item</button>}
@@ -1111,6 +1272,14 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       kind:"RICH_TEXT",order:d.sections.length,fields:{heading:"",body:"",
        eyebrow:"",variant:"STANDARD",highlights:[]}}]}))}>
       Add legal text section</button>}
+    {selected&&selected.status!=="DRAFT"&&draft.kind!=="POLICY"&&canManage&&!draft.sections.some(s=>typeof s.fields.sourceEventRef==="string")&&
+     <div style={{padding:"0.85rem 1rem",borderRadius:"10px",background:"#FFFBEB",border:"1px solid #FDE68A",color:"#92400E",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"0.75rem",flexWrap:"wrap",fontSize:"0.85rem"}}>
+      <span><strong>Uploads locked ({selected.status.replaceAll("_"," ")}):</strong> Start a new draft revision to add or upload media files.</span>
+      <button type="button" className="cg-cms-admin-btn cg-cms-admin-btn-primary" disabled={busy||!!pending}
+       onClick={()=>act("pages/"+selected.pageRef+"/draft","PUT",{content:content(draft),expectedVersion:selected.version})}>
+       Create next draft revision
+      </button>
+     </div>}
     {selected?.status==="DRAFT"&&draft.kind!=="POLICY"&&!draft.sections.some(s=>typeof s.fields.sourceEventRef==="string")&&
      <fieldset><legend>Verified original media</legend>
       <p>Only original CG-19 scanned, consented media. Attach one per matching section or item.</p>

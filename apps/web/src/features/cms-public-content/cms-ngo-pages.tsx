@@ -24,6 +24,7 @@ import type {PublicCmsPage} from "./cms-public-page";
 import {CmsPublicShell} from "./cms-public-page";
 import {publishedCmsNavigation,publishedCmsPage,publishedPublicIntro,type PublicCmsNavigation} from "./cms-public-source";
 import {CmsNgoAnnualReports,type ApprovedAnnualReport} from "./cms-ngo-annual-client";
+import {CmsNgoDocModalButton} from "./cms-ngo-doc-modal";
 import {UnavailablePage} from "../../shared/unavailable-page";
 
 type Child="pan-details"|"registration-certificate"|"annual-reports"|"financial-reports";
@@ -136,7 +137,7 @@ export async function CmsNgoChildRoute({section}:{section:string}){
  const info=<section className="cg-site-content cg-site-legal cg-site-ngo-child" data-ngo-section={key}>
   <nav className="cg-site-ngo-child-breadcrumb" aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true"> › </span><Link href="/ngo-information">NGO Information</Link><span aria-hidden="true"> › </span><span>Legal &amp; Registration</span><span aria-hidden="true"> › </span><span aria-current="page">{chapter[key]}</span></nav>
   <div className="cg-site-ngo-heading-row">
-   <h1>{intro?.heading??chapter[key]}</h1>
+   <h1>{intro?.heading??(key==="registration-certificate"?"REGISTRATION CERTIFICATES":chapter[key])}</h1>
    {fact.verification==="VERIFIED"&&<span className="cg-site-ngo-verified-pill"><CheckCircle2 size={14} aria-hidden="true"/> VERIFIED / ACTIVE</span>}
   </div>
   {intro?.body&&<p className="cg-site-ngo-lead">{intro.body}</p>}
@@ -174,19 +175,45 @@ export async function CmsNgoChildRoute({section}:{section:string}){
   </dl></section>}
   </div>}
   {key==="registration-certificate"&&<div className="cg-site-impact-grid cg-site-certificate-grid cg-site-ngo-cert-grid">
-   {matches.map((d,i)=><article className="cg-site-ngo-cert-card" key={i}>
-    <div className="cg-site-ngo-cert-head">
-     <div className="cg-site-ngo-cert-icon"><FileText size={18} aria-hidden="true"/></div>
-     <div className="cg-site-ngo-cert-title-wrap">
-      <h2>{words(d.title)}</h2>
-      <span className="cg-site-ngo-cert-meta"><Calendar size={12} aria-hidden="true"/> Document date: {words(d.asOfDate)}</span>
+   {matches.map((d,i)=>{
+    const regNo=words(fact.registrationNumber)||words(fact.approvalNumber);
+    const authority=words(fact.issuer)||words(fact.source);
+    return <article className="cg-site-ngo-cert-card" key={i}>
+     <div className="cg-site-ngo-cert-head">
+      <div className="cg-site-ngo-cert-icon"><FileText size={18} aria-hidden="true"/></div>
+      <div className="cg-site-ngo-cert-title-wrap">
+       <h2>{words(d.title)}</h2>
+       {regNo&&<span className="cg-site-ngo-cert-regno">Reg. No: {regNo}</span>}
+      </div>
+      <span className="cg-site-ngo-active-pill">{fact.verification==="VERIFIED"?"Active":"Published"}</span>
      </div>
-     <span className="cg-site-ngo-active-pill">Published</span>
-    </div>
-    <div className="cg-site-ngo-cert-actions">
-     <a className="cg-site-ngo-doc-btn" href={d.file!.src} download><Download size={14} aria-hidden="true"/> View Document</a>
-    </div>
-   </article>)}
+     <div className="cg-site-ngo-cert-details">
+      <div className="cg-site-ngo-cert-detail-block">
+       <span className="cg-site-ngo-cert-label">DOCUMENT TYPE</span>
+       <strong>Statutory Registration</strong>
+      </div>
+      {authority&&<div className="cg-site-ngo-cert-detail-block">
+       <span className="cg-site-ngo-cert-label">AUTHORITY</span>
+       <strong>{authority}</strong>
+      </div>}
+      <div className="cg-site-ngo-cert-dates">
+       <span>Registration Date: {words(d.asOfDate)}</span>
+       <strong>{fact.verification==="VERIFIED"?"Active Record":"Published Record"}</strong>
+      </div>
+     </div>
+     <div className="cg-site-ngo-cert-actions">
+      <CmsNgoDocModalButton
+       title={words(d.title)}
+       meta={words(d.asOfDate)?`Published: ${words(d.asOfDate)}`:"Official Certified Document"}
+       src={d.file!.src}
+       verifiedBy={authority||undefined}
+       active={fact.verification==="VERIFIED"}
+       buttonLabel="View Document"
+       className="cg-site-ngo-doc-btn"
+      />
+     </div>
+    </article>;
+   })}
   </div>}
   {key==="annual-reports"&&<CmsNgoAnnualReports reports={annual}/>}
   {key==="financial-reports"&&((publications?.state==="UNAVAILABLE"||(publications?.state==="PUBLISHED"&&publications.page.kind!=="GALLERY"))?<p role="alert">Published financial reports cannot currently be verified.</p>:<CmsNgoAnnualReports reports={financial} kind="financial"/>)}

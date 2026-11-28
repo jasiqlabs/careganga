@@ -9,7 +9,7 @@ import {CmsHeroCarousel} from "./cms-hero-carousel";
 import {clientScreenshotHome} from "./cms-client-screenshot-reference";
 import {CampaignPublicCards} from "../campaigns/campaign-public-cards";
 import type {PublicCampaign} from "../campaigns/campaign-public-source";
-import {CmsImpactGroup,CmsCompliance,CmsGallery,CmsArticle,CmsHealthcare,CmsContactInfo} from "./cms-public-extended";
+import {CmsImpactGroup,CmsImpactPage,CmsCompliance,CmsGallery,CmsArticle,CmsHealthcare,CmsContactInfo} from "./cms-public-extended";
 
 export type PublicCmsSection={kind:string;order:number;fields:Record<string,unknown>};
 export type PublicCmsPage={schemaVersion:number;effectiveGeneration:string;
@@ -246,7 +246,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
     <p className="cg-site-eyebrow">Policies &amp; Legal</p><h1>{page.title}</h1>
    </header>}
    {effectiveHeroSlides.length>0&&<CmsHeroCarousel slides={effectiveHeroSlides} navigation={navigation}/>}
-   {sections.filter(x=>x.kind!=="HERO"&&x.kind!=="SITE_FOOTER"&&!(x.kind==="RICH_TEXT"&&x.fields.placement))
+   {page.kind==="IMPACT"?<CmsImpactPage sections={sections} assets={assets} navigation={navigation}/>:sections.filter(x=>x.kind!=="HERO"&&x.kind!=="SITE_FOOTER"&&!(x.kind==="RICH_TEXT"&&x.fields.placement))
     .map((section,i)=>{
      const key=section.kind+"-"+section.order+"-"+i;
      if(section.kind==="RICH_TEXT")return <RichText key={key} fields={section.fields}

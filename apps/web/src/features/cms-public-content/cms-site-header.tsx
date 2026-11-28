@@ -22,9 +22,13 @@ const mediaLabels=["News & Updates","Gallery","Videos","Publications / Reports",
 const inSection=(pathname:string,href?:string)=>!!href&&!href.includes("?")&&
  (pathname===href||href!=="/"&&pathname.startsWith(href+"/"));
 
-function Menu({label,items,pathname,className}:{label:string;items:NavChild[];pathname:string;className?:string}){
- return <details className={"cg-site-menu"+(className?" "+className:"")} name="cg-public-navigation">
-  <summary className={items.some(item=>inSection(pathname,item.href))?"cg-site-active":undefined}>{label} <span className="cg-chevron" aria-hidden="true">▾</span></summary>
+function Menu({label,items,pathname,className,href}:{label:string;items:NavChild[];pathname:string;className?:string;href?:string}){
+ const ref=useRef<HTMLDetailsElement>(null);
+ const active=items.some(item=>inSection(pathname,item.href))||(href?inSection(pathname,href):false);
+ return <details ref={ref} className={"cg-site-menu"+(className?" "+className:"")} name="cg-public-navigation"
+  onMouseEnter={()=>{if(ref.current)ref.current.open=true;}}
+  onMouseLeave={()=>{if(ref.current)ref.current.open=false;}}>
+  <summary className={active?"cg-site-active":undefined}>{href?<Link href={href} style={{color:"inherit",textDecoration:"none"}}>{label}</Link>:label} <span className="cg-chevron" aria-hidden="true">▾</span></summary>
   <div className="cg-site-dropdown">{items.map(item=>item.href?
    <Link href={item.href} key={item.text} aria-current={pathname===item.href?"page":undefined}>{item.text}</Link>:
    <span key={item.text} className="cg-site-unavailable" aria-disabled="true">{item.text}<small>Not available yet</small></span>)}</div>
@@ -106,6 +110,7 @@ export function CmsSiteHeader({
    label:"About Us",
    children:[
     {text:"About the Foundation",href:isPublished("/about")?"/about":undefined},
+    {text:"Our Impact",href:isPublished("/our-impact")?"/our-impact":undefined},
     {text:"Team Directory",href:"/about/team"}
    ]
   },
@@ -121,7 +126,14 @@ export function CmsSiteHeader({
    key:"ngo",
    label:"NGO Information",
    href:isPublished("/ngo-information")?"/ngo-information":undefined,
-   unavailable:!isPublished("/ngo-information")
+   unavailable:!isPublished("/ngo-information"),
+   children:[
+    {text:"80G Registration",href:isPublished("/ngo-information")?"/ngo-information":undefined},
+    {text:"PAN Details",href:isPublished("/ngo-information")?"/ngo-information/pan-details":undefined},
+    {text:"Registration Certificate",href:isPublished("/ngo-information")?"/ngo-information/registration-certificate":undefined},
+    {text:"Annual Reports",href:isPublished("/ngo-information")?"/ngo-information/annual-reports":undefined},
+    {text:"Financial Reports",href:isPublished("/ngo-information")?"/ngo-information/financial-reports":undefined}
+   ]
   },
   {key:"campaigns",label:"Campaigns",href:"/campaigns"},
   {
@@ -164,9 +176,8 @@ export function CmsSiteHeader({
  const toggleAccordion=(key:string)=>setOpenAccordions(prev=>({...prev,[key]:!prev[key]}));
 
  return <>
-  <header ref={header} className="cg-site-header">
-   {/* 1. Top Notification Bar (Matching Screenshot 1) */}
-   <div className="cg-site-contact-strip">
+  {/* 1. Top Notification Bar (scrolls naturally; main navbar stays sticky) */}
+  <div className="cg-site-contact-strip">
     <div className="cg-site-strip-inner">
      {/* Left angled orange badge */}
      <div className="cg-site-connect-badge">
@@ -203,6 +214,7 @@ export function CmsSiteHeader({
     </div>
    </div>
 
+  <header ref={header} className="cg-site-header">
    {/* 2. Main Navbar with warm golden-cream gradient & animated swoosh */}
    <div className="cg-site-nav-shell">
     <svg className="nav-swoosh" viewBox="0 0 680 80" preserveAspectRatio="none" aria-hidden="true">
@@ -233,7 +245,7 @@ export function CmsSiteHeader({
       onClick={event=>{if(event.target instanceof Element&&event.target.closest("a[href]"))closeNavigation();}}>
       {navNodes.map(node=>{
        if(node.children){
-        return <Menu key={node.key} pathname={pathname} label={node.label} items={node.children}/>;
+        return <Menu key={node.key} pathname={pathname} label={node.label} items={node.children} href={node.href}/>;
        }
        if(node.key==="ngo"){
         return isPublished("/ngo-information")?
