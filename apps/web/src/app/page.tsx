@@ -2,6 +2,7 @@ import Link from "next/link";
 import type {Metadata} from "next";
 import {CmsPublicPage,CmsPublicShell,RichText,Features,JoinCards} from "../features/cms-public-content/cms-public-page";
 import {publishedCmsPage,publishedCmsNavigation} from "../features/cms-public-content/cms-public-source";
+import {CmsHomeGalleryMarquee,type HomeGalleryPhoto} from "../features/cms-public-content/cms-home-gallery-marquee";
 import {clientScreenshotHome} from "../features/cms-public-content/cms-client-screenshot-reference";
 import {CmsHeroCarousel} from "../features/cms-public-content/cms-hero-carousel";
 
@@ -16,8 +17,22 @@ export async function generateMetadata():Promise<Metadata>{
 }
 
 export default async function PublicHome(){
- const [result,navigation]=await Promise.all([publishedCmsPage("home"),publishedCmsNavigation()]);
- if(result.state==="PUBLISHED")return <CmsPublicPage page={result.page} navigation={navigation}/>;
+ const [result,navigation,galleryResult]=await Promise.all([publishedCmsPage("home"),publishedCmsNavigation(),publishedCmsPage("gallery")]);
+ const gallerySection=galleryResult.state==="PUBLISHED"&&galleryResult.page.kind==="GALLERY"?galleryResult.page.sections.find(s=>s.kind==="GALLERY_GRID"):undefined;
+ const galleryItems=Array.isArray(gallerySection?.fields.items)?gallerySection.fields.items:[];
+ const galleryPhotos:HomeGalleryPhoto[]=galleryResult.state==="PUBLISHED"?galleryItems.flatMap(raw=>{
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))return [];
+  const item=raw as Record<string,unknown>;
+  if(item.visible===false||item.mediaType!=="PHOTO"||!Number.isSafeInteger(item.originalIndex))return [];
+  const asset=galleryResult.page.assets.find(a=>a.role==="GALLERY"&&a.order===item.originalIndex);
+  if(!asset||!/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(asset.src))return [];
+  return [{src:asset.src,alt:asset.altText||String(item.title??""),title:String(item.title??""),category:String(item.category??"")}];
+ }):[];
+ const homeGalleryIntro=result.state==="PUBLISHED"?result.page.sections.find(s=>s.kind==="RICH_TEXT"&&typeof s.fields.heading==="string"&&/media gallery/i.test(s.fields.heading))?.fields:undefined;
+ const galleryEyebrow=typeof homeGalleryIntro?.eyebrow==="string"?homeGalleryIntro.eyebrow:undefined;
+ const galleryHeading=typeof homeGalleryIntro?.heading==="string"?homeGalleryIntro.heading:(typeof gallerySection?.fields.heading==="string"?gallerySection.fields.heading:undefined);
+ const gallerySub=typeof homeGalleryIntro?.body==="string"?homeGalleryIntro.body:(typeof gallerySection?.fields.description==="string"?gallerySection.fields.description:undefined);
+ if(result.state==="PUBLISHED")return <CmsPublicPage page={result.page} navigation={navigation}><CmsHomeGalleryMarquee eyebrow={galleryEyebrow} heading={galleryHeading} subtitle={gallerySub} photos={galleryPhotos}/></CmsPublicPage>;
 
  // Prepare the 4 reference slides from clientScreenshotHome for local dev & unpopulated fallback
  const referenceSlides = clientScreenshotHome.slides.map((s, idx) => ({
