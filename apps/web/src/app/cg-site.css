@@ -3571,6 +3571,20 @@
   font-size: 0.96rem;
   color: #0f2942;
   list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.cg-contact-v2-faq-item summary::after {
+  content: "+";
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0d4a33;
+  flex-shrink: 0;
+}
+.cg-contact-v2-faq-item[open] summary::after {
+  content: "−";
 }
 .cg-contact-v2-faq-item p {
   margin: 0.65rem 0 0;
@@ -3579,10 +3593,31 @@
   line-height: 1.65;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 960px) {
+  .cg-contact-v2-inquiries {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cg-contact-v2-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .cg-contact-v2-hero {
+    padding: 2.5rem 1rem 3rem;
+  }
+  .cg-contact-v2-body {
+    padding: 1.5rem 1rem 2rem;
+  }
   .cg-contact-v2-inquiries,
-  .cg-contact-v2-grid,
   .cg-contact-v2-photo-strip {
     grid-template-columns: 1fr;
+  }
+  .cg-contact-v2-card {
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+  .cg-contact-v2-faq-section {
+    padding: 2rem 1rem 2.75rem;
   }
 }
