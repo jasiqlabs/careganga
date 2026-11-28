@@ -211,6 +211,7 @@
  white-space:normal;
  z-index:60;
  animation:cgDropIn .18s ease-out both}
+.cg-site-dropdown::before{content:"";position:absolute;left:0;right:0;top:-8px;height:8px}
 .cg-site-dropdown>a,.cg-site-dropdown>span{
  padding:9px 12px;
  text-decoration:none;
