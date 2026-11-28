@@ -99,9 +99,6 @@ export function CmsSiteHeader({
  const displayEmail=contact?.email?.trim()||defaultEmail;
  const displayPhone=contact?.phone?.trim()||defaultPhone;
 
- // Visual label for slot 11 matching Screenshot 1 while retaining contract
- const bloodSlot = ["Blood", "Donation"].join(" ");
-
  // Single dynamic navigation array derived from CMS navigation state (All 12 items)
  const navNodes:NavNode[]=[
   {key:"home",label:"Home",href:"/"},
@@ -169,7 +166,6 @@ export function CmsSiteHeader({
   {
    key:"healthcare",
    label:"Healthcare Assistance",
-   displayLabel:bloodSlot,
    href:isPublished("/healthcare")?"/healthcare":"/health-network"
   },
   {key:"contact",label:"Contact Us",href:"/contact"}
