@@ -131,7 +131,7 @@ function fromPage(p:PageDetail):Draft{
   memberJoinDesired:p.navigation?.memberJoinDesired??false,
   volunteerJoinDesired:p.navigation?.volunteerJoinDesired??false};
 }
-function lines(s:string){return s.split("\n").map(v=>v.trim()).filter(Boolean).slice(0,4);}
+function lines(s:string,max=4){return s.split("\n").map(v=>v.trim()).filter(Boolean).slice(0,max);}
 function payload(d:Draft){
  const sections:{kind:string;order:number;fields:Record<string,unknown>}[]=[];
  d.slides.forEach((slide,index)=>{
@@ -151,8 +151,8 @@ function payload(d:Draft){
  });
  if(d.body.trim())sections.push({kind:"RICH_TEXT",order:20,
   fields:{heading:d.bodyHeading||"About the Foundation",body:d.body,
-   eyebrow:d.bodyEyebrow,variant:d.bodyVariant,highlights:lines(d.highlights)}});
- for(const block of d.extraText)sections.push({kind:"RICH_TEXT",order:block.order,fields:{heading:block.heading,body:block.body,eyebrow:block.eyebrow,highlights:lines(block.highlights),variant:block.placement?"STANDARD":block.variant,...(block.placement?{placement:block.placement}:{})}});
+   eyebrow:d.bodyEyebrow,variant:d.bodyVariant,highlights:lines(d.highlights,d.kind==="ABOUT"?10:4)}});
+ for(const block of d.extraText)sections.push({kind:"RICH_TEXT",order:block.order,fields:{heading:block.heading,body:block.body,eyebrow:block.eyebrow,highlights:lines(block.highlights,d.kind==="ABOUT"?10:4),variant:block.placement?"STANDARD":block.variant,...(block.placement?{placement:block.placement}:{})}});
  if(d.promoHeading.trim())sections.push({kind:"CTA",order:30,
   fields:{heading:d.promoHeading,eyebrow:d.promoEyebrow,body:d.promoBody,
    ...(d.promoLabel.trim()?{label:d.promoLabel}:{}),
@@ -1715,7 +1715,37 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
          {value:"SPLIT",label:"Original photo / text split"},
          {value:"STANDARD",label:"Plain text"}
         ]}/>
-       <div className="cg-cms-team"><h4>Additional editorial sections</h4>
+       {draft.kind==="ABOUT"&&draft.bodyVariant==="SPLIT"&&<div className="cg-cms-team" style={{marginBlock:"0.75rem"}}>
+         <h4>About / Mission Split Photo (used on Mission &amp; Vision and Founder Message)</h4>
+         {draft.assets.filter(a=>a.role==="ABOUT"&&a.order===20).map(asset=><div key={asset.fileRef} className="cg-cms-banner-asset-preview">
+          <span>Verified photo: {asset.altText}</span>
+          <img loading="lazy" className="cg-cms-review-image" src={"/api/cms-image-preview/"+asset.fileRef} alt={asset.altText}/>
+         </div>)}
+         {selected?.status==="DRAFT"&&canManage&&<>
+          <label>Image description<input maxLength={300} value={uploadAlt} onChange={e=>setUploadAlt(e.target.value)}/></label>
+          <label className="cg-cms-consent"><input type="checkbox" checked={rights} onChange={e=>setRights(e.target.checked)}/>
+           The Foundation has permission to publish this photograph</label>
+          <label>Upload About / Mission photo<input type="file" accept="image/jpeg,image/png,image/webp"
+           disabled={busy||!rights||uploadAlt.trim().length<3}
+           onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file,{role:"ABOUT",order:20});e.currentTarget.value="";}}/></label>
+         </>}
+         {!selected&&<p>Save a draft first to attach a verified photograph.</p>}
+        </div>}
+        <div className="cg-cms-team"><h4>Additional editorial sections</h4>
+        {canManage&&draft.kind==="ABOUT"&&<div style={{display:"flex",flexWrap:"wrap",gap:"0.45rem",marginBottom:"0.75rem"}}>
+         {([
+          ["OUR MISSION","Our Mission","To stand beside those in need by expanding access to education, healthcare, clean water, and a sustainable environment.","Guiding our actions today for a better tomorrow."],
+          ["OUR VISION","Our Vision","A compassionate, just, and inclusive society where no one is left behind.",""],
+          ["OUR FOCUS AREAS","Our Focus Areas","Core community development initiatives led by CareGanga Foundation.","Education\nWater & Sanitation\nEnvironment\nHealthcare\nCommunity Dev"],
+          ["OUR VALUES","Our Values","Core principles guiding CareGanga Foundation.","Compassion: We care for every life and community.\nSustainability: We work for a better today and a stronger tomorrow.\nIntegrity: We are honest, transparent and accountable.\nAccountability: We take responsibility and deliver results.\nInclusivity: We respect everyone and embrace diversity."],
+          ["FOUNDER & CEO'S MESSAGE","Founder & CEO's Message","Share the Founder & CEO's message to supporters and communities.","Nakul Kumar — Founder & CEO\nGrassroots Community Empowerment"]
+         ] as const).filter(([,h])=>!draft.extraText.some(x=>!x.placement&&x.heading.trim().toLowerCase()===h.toLowerCase())).map(([eyebrow,heading,body,highlights])=>
+          <button key={heading} type="button" className="cg-cms-admin-btn" disabled={busy||!!pending||draft.extraText.length>=15}
+           onClick={()=>{const order=Array.from({length:80},(_,i)=>i+21).find(n=>!draft.extraText.some(x=>x.order===n));if(order!==undefined)edit("extraText",[...draft.extraText,{order,heading,body,eyebrow,highlights,placement:"",variant:"STANDARD"}]);}}>
+           <Plus size={13}/> {heading}
+          </button>
+         )}
+        </div>}
        <p>General public-page introductions are stored in the approved About revision. They never replace operational records.</p>
        {draft.extraText.map((block,i)=><fieldset key={block.order}>
         <legend>{block.placement?placements.find(x=>x[0]===block.placement)?.[1]??"Public page":"Additional page text"}</legend>
@@ -1725,14 +1755,14 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
         <label>Section label<input value={block.eyebrow} maxLength={100} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,eyebrow:e.target.value}:x))}/></label>
         <label>Heading<input value={block.heading} maxLength={160} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,heading:e.target.value}:x))}/></label>
         <label>Body<textarea value={block.body} maxLength={4000} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,body:e.target.value}:x))}/></label>
-        <label>Highlights (up to four, one per line)<textarea value={block.highlights} maxLength={800} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,highlights:e.target.value}:x))}/></label>
+        <label>{draft.kind==="ABOUT"?"Items / Highlights (up to 10, one per line — Focus Areas or Title: Description for Values)":"Highlights (up to four, one per line)"}<textarea value={block.highlights} maxLength={2000} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,highlights:e.target.value}:x))}/></label>
         {canManage&&draft.kind==="HOME"&&block.order>20&&block.order<30&&block.variant==="STANDARD"&&!block.placement&&
          !draft.assets.some(a=>a.role==="ABOUT"&&a.order===block.order)&&!selected?.bundledAssets?.some(a=>a.role==="ABOUT"&&a.order===block.order)&&
          [35,31,32,33,34,36,37,38,39].some(order=>!draft.extraText.some(x=>x.order===order))&&
          <button type="button" disabled={busy||!!pending} onClick={()=>{const order=[35,31,32,33,34,36,37,38,39].find(n=>!draft.extraText.some(x=>x.order===n));if(order!==undefined)edit("extraText",draft.extraText.map((x,j)=>j===i?{...x,order}:x));}}>Move after volunteer banner</button>}
         {canManage&&!draft.assets.some(a=>a.role==="ABOUT"&&a.order===block.order)&&<button type="button" disabled={busy||!!pending} onClick={()=>edit("extraText",draft.extraText.filter((_,j)=>i!==j))}>Remove section</button>}
        </fieldset>)}
-       {canManage&&draft.extraText.length<10&&<button type="button" disabled={busy||!!pending} onClick={()=>{const order=Array.from({length:80},(_,i)=>i+21).find(n=>!draft.extraText.some(x=>x.order===n));if(order!==undefined)edit("extraText",[...draft.extraText,{order,heading:"",body:"",eyebrow:"",highlights:"",placement:"",variant:"STANDARD"}]);}}>Add editorial section</button>}
+       {canManage&&draft.extraText.length<(draft.kind==="ABOUT"?15:10)&&<button type="button" disabled={busy||!!pending} onClick={()=>{const order=Array.from({length:80},(_,i)=>i+21).find(n=>!draft.extraText.some(x=>x.order===n));if(order!==undefined)edit("extraText",[...draft.extraText,{order,heading:"",body:"",eyebrow:"",highlights:"",placement:"",variant:"STANDARD"}]);}}>Add editorial section</button>}
        </div>
        <label>Foundation information<textarea disabled={!canManage} rows={9}
         value={draft.body} maxLength={4000}
@@ -1792,7 +1822,14 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview,navigation=nul
       <label>Member benefits (one per line)<textarea disabled={!canManage}
        value={draft.memberBenefits} onChange={e=>edit("memberBenefits",e.target.value)}/></label>
      </fieldset>
-    </>:<p style={{color:"#64748B",fontSize:"0.875rem",padding:"0.75rem",background:"#F8FAFC",borderRadius:"8px",border:"1px solid #E2E8F0"}}>Volunteer banner &amp; solution cards apply to Homepage only. Proceed to Step 6 to save your About page.</p>)}
+    </>:<fieldset><legend>About Us — Bottom Call-to-Action Banner</legend>
+      <p>Controls the dark navy &quot;Be a Part of the Change&quot; banner at the bottom of About Us, Mission &amp; Vision, Founder Message, and Leadership Directory.</p>
+      <label>Eyebrow<input disabled={!canManage} value={draft.promoEyebrow} maxLength={80} onChange={e=>edit("promoEyebrow",e.target.value)}/></label>
+      <label>Heading<input disabled={!canManage} value={draft.promoHeading} maxLength={160} onChange={e=>edit("promoHeading",e.target.value)}/></label>
+      <label>Description<textarea disabled={!canManage} value={draft.promoBody} maxLength={400} onChange={e=>edit("promoBody",e.target.value)}/></label>
+      <label>Primary button label<input disabled={!canManage} value={draft.promoLabel} maxLength={80} onChange={e=>edit("promoLabel",e.target.value)}/></label>
+      <label>Primary button route<input disabled={!canManage} value={draft.promoPath} placeholder="/contact" onChange={e=>edit("promoPath",e.target.value)}/></label>
+     </fieldset>)}
      {formSectionStep==="FOOTER"&&(draft.kind==="HOME"?<fieldset><legend>Website header / footer content</legend>
       <p>Published site contact information is reused on Home and About.</p>
       <label>Mission<textarea disabled={!canManage} maxLength={600}

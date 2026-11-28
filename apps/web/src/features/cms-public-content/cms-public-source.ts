@@ -8,7 +8,7 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
  if(!backend)return {state:"UNAVAILABLE",page:null};
  try{
   const response=await fetch(new URL("/api/public/content/pages/"+slug,backend),
-   {cache:"no-store",signal:AbortSignal.timeout(9000)});
+   {cache:"no-store",signal:AbortSignal.timeout(25000)});
   if(response.status===404)return {state:"NOT_PUBLISHED",page:null};
   if(!response.ok)return {state:"UNAVAILABLE",page:null};
   const p:unknown=await response.json();
@@ -98,7 +98,7 @@ export async function publishedCmsNavigation():Promise<PublicCmsNavigation|null>
  if(!backend)return null;
  try{
   const res=await fetch(new URL("/api/public/content/navigation",backend),{
-   cache:"no-store",signal:AbortSignal.timeout(7000)});
+   cache:"no-store",signal:AbortSignal.timeout(25000)});
   if(!res.ok)return null;
   const data:unknown=await res.json();
   if(!data||typeof data!=="object"||Array.isArray(data))return null;
@@ -122,7 +122,7 @@ export async function publishedCmsArticles(category="",cursor="",eventsOnly=fals
   const url=new URL(eventsOnly?"/api/public/content/events":"/api/public/content/articles",backend);
   if(category)url.searchParams.set("category",category);
   if(cursor)url.searchParams.set("cursor",cursor);
-  const res=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(7000)});
+  const res=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(25000)});
   if(!res.ok)throw Error();
   const data:unknown=await res.json();
   if(!data||typeof data!=="object"||Array.isArray(data)||
@@ -157,7 +157,7 @@ export async function publishedCmsNotices():Promise<{available:boolean;notices:C
  if(!backend)return {available:false,notices:[]};
  try{
   const response=await fetch(new URL("/api/public/content/notices",backend),{
-   cache:"no-store",signal:AbortSignal.timeout(9000)});
+   cache:"no-store",signal:AbortSignal.timeout(25000)});
   if(!response.ok)throw Error();
   const data:unknown=await response.json();
   if(!data||typeof data!=="object"||Array.isArray(data))throw Error();

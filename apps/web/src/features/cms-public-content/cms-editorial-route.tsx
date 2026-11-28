@@ -3,12 +3,12 @@ import type {ReactNode} from "react";
 import {UnavailablePage} from "../../shared/unavailable-page";
 import type {Metadata} from "next";
 import {notFound} from "next/navigation";
-import {CmsPublicPage} from "./cms-public-page";
+import {CmsPublicPage,CmsPublicShell} from "./cms-public-page";
+import {CmsHealthcareView} from "./cms-healthcare-page";
 import {CmsNgoSidebar} from "./cms-ngo-pages";
 import {publishedCmsPage,publishedCmsNavigation} from "./cms-public-source";
-import {publicLabOffers,rupees} from "../diagnostics/public-lab-offers";
+import {publicLabOffers} from "../diagnostics/public-lab-offers";
 import {currentConsultationBenefits} from "../healthcare-assistance/public-consultation-benefits";
-import {ConsultationBenefitCards} from "../healthcare-assistance/approved-consultation-benefits";
 
 /** One SSR source for each approved Foundation editorial route.
  * The Home publication supplies only shared original CMS footer content.
@@ -27,40 +27,15 @@ export async function CmsEditorialRoute({slug,extra,expectedKind}:{slug:string;e
   slug==="healthcare"?currentConsultationBenefits():Promise.resolve(null)]);
  if(page.state==="NOT_PUBLISHED"||(page.state==="PUBLISHED"&&expectedKind&&page.page.kind!==expectedKind))notFound();
  if(page.state!=="PUBLISHED")return <UnavailablePage title="Foundation content temporarily unavailable" description="We could not verify the currently approved public information." linkHref="/" linkLabel="Return to the homepage" />;
- return <CmsPublicPage page={page.page} navigation={navigation}
-  siteFooter={home.state==="PUBLISHED"?
-   home.page.sections.find(section=>section.kind==="SITE_FOOTER")?.fields:null}>
-  {slug==="healthcare"&&<section className="cg-site-content"
-   aria-label="Verified healthcare consultation booking">
-   <h2>Find &amp; book healthcare services</h2>
-
-   <p>CareGanga lists only currently verified healthcare providers and doctors.
-    Where live working hours and consultation fees are available, an eligible
-    patient can request an in-person appointment. Center payment methods and assistance are checked against the actual booking.</p>
-   <Link className="cg-site-action" href="/health-network?tab=doctors">
-    View verified doctors &amp; book an appointment</Link>
-   <p><Link href="/health-network?tab=centers">Find verified healthcare centers</Link>{" · "}<Link href="/health-network/lab-tests">Browse current lab prices</Link>{" · "}<Link href="/patients/me">My patient profile &amp; consultations</Link></p>
-   <p>Bookings depend on a current available slot and final confirmation.
-    This is not an approval for financial assistance.</p>
-  </section>}
-  {benefits&&<ConsultationBenefitCards response={benefits}/>}
+ const siteFooter=home.state==="PUBLISHED"?home.page.sections.find(section=>section.kind==="SITE_FOOTER")?.fields:null;
+ if(slug==="healthcare"&&page.page.kind==="HEALTHCARE"){
+  return <CmsPublicShell navigation={navigation} siteFooter={siteFooter}>
+   <CmsHealthcareView page={page.page} navigation={navigation} benefits={benefits} labOffers={labOffers}/>
+   {extra??null}
+  </CmsPublicShell>;
+ }
+ return <CmsPublicPage page={page.page} navigation={navigation} siteFooter={siteFooter}>
   {extra??null}
-  {slug==="healthcare"&&labOffers?.state==="READY"&&labOffers.items.length>0&&
-   <section className="cg-site-content" aria-label="Currently approved partner laboratory tests">
-    <h2>Current approved laboratory tests and prices</h2>
-    <p>These are verified partner laboratory commercial prices, not an appointment,
-     Foundation assistance, a received payment or a medical report. Contact the
-     original verified laboratory to confirm services.</p>
-    <ul>
-     {labOffers.items.slice(0,3).map(offer=><li key={offer.offerRef}>
-      <strong>{offer.name}</strong> — {offer.centerName}: {rupees(offer.patientPriceMinor)}
-      {" "}<Link href={"/health-network/lab-tests?center="+
-       encodeURIComponent(offer.centerSlug)}>View current lab test options</Link>
-     </li>)}
-    </ul>
-    <Link className="cg-site-action" href="/health-network/lab-tests">
-     Browse all currently approved tests and prices</Link>
-   </section>}
  </CmsPublicPage>;
 }
 

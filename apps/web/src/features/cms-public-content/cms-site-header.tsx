@@ -109,9 +109,11 @@ export function CmsSiteHeader({
    key:"about",
    label:"About Us",
    children:[
-    {text:"About the Foundation",href:isPublished("/about")?"/about":undefined},
-    {text:"Our Impact",href:isPublished("/our-impact")?"/our-impact":undefined},
-    {text:"Team Directory",href:"/about/team"}
+    {text:"About Us",href:isPublished("/about")?"/about":undefined},
+    {text:"Founder & CEO's Message",href:isPublished("/about")?"/about/founder-message":undefined},
+    {text:"Mission & Vision",href:isPublished("/about")?"/about/mission-vision":undefined},
+    {text:"Leadership Directory",href:"/about/team"},
+    {text:"Our Impact",href:isPublished("/our-impact")?"/our-impact":undefined}
    ]
   },
   {

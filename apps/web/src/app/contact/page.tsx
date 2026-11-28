@@ -30,7 +30,8 @@ export default async function FoundationContactPage(){
  const page=verified?contact.page:neutral;
  const footer=home.state==="PUBLISHED"?
   home.page.sections.find(s=>s.kind==="SITE_FOOTER")?.fields:null;
- const form=<Cg19PublicContactForm contact={footer??{}}/>;
+ const contactInfoFields=page.sections.find(s=>s.kind==="CONTACT_INFO")?.fields;
+ const form=<Cg19PublicContactForm contact={footer??{}} contactInfo={contactInfoFields??{}}/>;
  const embedded=page.sections.some(s=>s.kind==="CONTACT_INFO");
  return <CmsPublicPage page={page} navigation={navigation} siteFooter={footer} contactForm={embedded?form:undefined}>
   {!embedded&&<header className="cg-site-content cg-site-page-heading cg-site-contact-fallback"><p className="cg-site-eyebrow">CareGanga Foundation</p><h1>{page.title||"Contact the Foundation"}</h1></header>}
