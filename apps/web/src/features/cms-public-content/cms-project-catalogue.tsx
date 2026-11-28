@@ -26,6 +26,8 @@ export async function CmsProjectCatalogue({slug,category}:{slug:"our-work"|"upco
  const heroAsset=result.page.assets.find(a=>a.role==="HERO");
  const teaserHeading=typeof teasers[0]?.fields.heading==="string"?teasers[0].fields.heading:(slug==="upcoming-projects"?"Planned Projects":"Our Projects");
  const joinHref=navigation?.publishedRoutes?.some(r=>r.path==="/volunteer")?"/volunteer":"/contact";
+ const isDonatePublished=navigation?.publishedRoutes?.some(r=>r.path==="/donate")===true;
+ const donateHref=isDonatePublished?"/donate":"/contact";
  return <CmsPublicShell navigation={navigation} siteFooter={footer}>
   <CmsProjectExplorer
    slug={slug}
@@ -37,6 +39,8 @@ export async function CmsProjectCatalogue({slug,category}:{slug:"our-work"|"upco
    projects={cards as ExplorerProject[]}
    initialCategory={category}
    joinHref={joinHref}
+   donateHref={donateHref}
+   isDonatePublished={isDonatePublished}
   />
  </CmsPublicShell>;
 }

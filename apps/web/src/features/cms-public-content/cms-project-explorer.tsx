@@ -6,16 +6,16 @@ import {
   Briefcase,
   Calendar,
   CalendarClock,
-  ChevronRight,
   FolderKanban,
   GraduationCap,
   HandHeart,
-  Handshake,
+  Heart,
   HeartPulse,
   Home,
   Layers,
   LayoutGrid,
   MapPin,
+  Search,
   Sprout,
   X,
 } from "lucide-react";
@@ -47,11 +47,11 @@ export function CmsProjectExplorer({
   pageTitle,
   pageIntro,
   teaserHeading,
-  heroImageSrc,
-  heroImageAlt,
   projects,
   initialCategory,
   joinHref,
+  donateHref,
+  isDonatePublished,
 }: {
   slug: "our-work" | "upcoming-projects";
   pageTitle: string;
@@ -62,6 +62,8 @@ export function CmsProjectExplorer({
   projects: ExplorerProject[];
   initialCategory?: string;
   joinHref?: string;
+  donateHref?: string;
+  isDonatePublished?: boolean;
 }) {
   const dynamicCategories = useMemo(() => {
     const seen = new Set<string>();
@@ -76,6 +78,16 @@ export function CmsProjectExplorer({
     return list;
   }, [projects]);
 
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    counts.set("All Projects", projects.length);
+    for (const p of projects) {
+      const key = p.category.trim().toLowerCase();
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [projects]);
+
   const resolveCategory = (raw?: string) => {
     if (!raw || !raw.trim()) return "All Projects";
     const norm = raw.trim().toLowerCase();
@@ -85,6 +97,7 @@ export function CmsProjectExplorer({
   const [selectedCategory, setSelectedCategory] = useState<string>(() =>
     resolveCategory(initialCategory)
   );
+  const [searchQuery, setSearchQuery] = useState("");
   const [activeProject, setActiveProject] = useState<ExplorerProject | null>(null);
 
   useEffect(() => {
@@ -114,219 +127,273 @@ export function CmsProjectExplorer({
   };
 
   const filtered = useMemo(() => {
-    if (selectedCategory === "All Projects") return projects;
-    const target = selectedCategory.toLowerCase();
-    return projects.filter((p) => p.category.trim().toLowerCase() === target);
-  }, [projects, selectedCategory]);
+    const q = searchQuery.trim().toLowerCase();
+    return projects.filter((p) => {
+      const catOk =
+        selectedCategory === "All Projects" ||
+        p.category.trim().toLowerCase() === selectedCategory.toLowerCase();
+      if (!catOk) return false;
+      if (!q) return true;
+      return (
+        p.title.toLowerCase().includes(q) ||
+        p.area.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        p.summary.toLowerCase().includes(q)
+      );
+    });
+  }, [projects, selectedCategory, searchQuery]);
 
-  const headingText =
+  const activeCount = useMemo(
+    () => projects.filter((p) => p.status === "ACTIVE").length,
+    [projects]
+  );
+  const plannedCount = useMemo(
+    () => projects.filter((p) => p.status === "PLANNED").length,
+    [projects]
+  );
+  const uniqueAreasCount = useMemo(
+    () => new Set(projects.map((p) => p.area.trim().toLowerCase()).filter(Boolean)).size,
+    [projects]
+  );
+
+  const headingWords = pageTitle.trim().split(/\s+/);
+  const titleLead = headingWords.length > 1 ? headingWords.slice(0, -1).join(" ") : pageTitle;
+  const titleAccent = headingWords.length > 1 ? headingWords[headingWords.length - 1] : "";
+
+  const sectionHeading =
     selectedCategory === "All Projects"
       ? teaserHeading || (slug === "upcoming-projects" ? "Planned Projects" : "Our Projects")
       : selectedCategory;
 
+  const supportHref = donateHref || "/contact";
+  const supportLabel = isDonatePublished ? "Support" : "Enquire";
+
   return (
-    <div className="cg-work-page">
-      {/* 1. Compact Horizontal Hero Banner matching Reference Screenshot */}
-      <section className="cg-site-content cg-work-hero" aria-label={pageTitle}>
-        <div className="cg-work-hero-copy">
-          <div className="cg-work-eyebrow-row">
-            <span className="cg-work-eyebrow">TOGETHER FOR A BETTER TOMORROW</span>
-            <span className="cg-work-eyebrow-line" aria-hidden="true" />
-          </div>
-          <h1>{pageTitle}</h1>
-          {pageIntro && <p className="cg-work-hero-lead">{pageIntro}</p>}
-          <div className="cg-work-hero-actions">
-            <a href="#cg-work-explorer" className="cg-work-hero-cta">
-              Explore More <ArrowRight size={15} aria-hidden="true" />
-            </a>
+    <div className="cg-work-v2-root">
+      {/* A. Deep Slate Hero Section */}
+      <section className="cg-work-v2-hero" aria-label={pageTitle}>
+        <div className="cg-work-v2-hero-inner">
+          <span className="cg-work-v2-pill">
+            <Sprout size={14} aria-hidden="true" />
+            {slug === "upcoming-projects" ? "UPCOMING FIELD INITIATIVES" : "CMS GROUND INITIATIVES"}
+          </span>
+          <h1>
+            {titleLead} {titleAccent && <span>{titleAccent}</span>}
+          </h1>
+          <p className="cg-work-v2-lead">
+            {pageIntro ||
+              "Explore approved CareGanga Foundation initiatives across education, healthcare, livelihood, and community welfare along the Ganga riverbanks."}
+          </p>
+
+          <div className="cg-work-v2-search-wrap">
+            <Search size={18} aria-hidden="true" className="cg-work-v2-search-icon" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search initiatives by title, location, or category..."
+              aria-label="Search projects"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="cg-work-v2-search-clear"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+              >
+                <X size={15} />
+              </button>
+            )}
           </div>
         </div>
-        <div className="cg-work-hero-media">
-          <img
-            src={heroImageSrc || "/careganga-hero-community.jpg"}
-            alt={heroImageAlt || pageTitle}
-            className="cg-work-hero-img"
-          />
-          <div className="cg-work-hero-fade" aria-hidden="true" />
-          <svg
-            viewBox="0 0 320 220"
-            preserveAspectRatio="none"
-            className="cg-work-hero-curve"
-            aria-hidden="true"
-          >
-            <defs>
-              <linearGradient id="cgHeroCurveGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#84CC16" stopOpacity="0.2" />
-                <stop offset="45%" stopColor="#65A30D" stopOpacity="0.95" />
-                <stop offset="100%" stopColor="#84CC16" stopOpacity="0.85" />
-              </linearGradient>
-            </defs>
-            <path
-              d="M 0 185 Q 115 215 205 95 T 320 0"
-              fill="none"
-              stroke="url(#cgHeroCurveGrad)"
-              strokeWidth="7"
-              strokeLinecap="round"
-            />
-          </svg>
+
+        <svg
+          className="cg-work-v2-wave"
+          viewBox="0 0 1440 72"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path d="M0,24 Q720,86 1440,24 L1440,72 L0,72 Z" fill="#FAF7EE" />
+        </svg>
+      </section>
+
+      {/* B. Floating Dynamic Stat Cards (100% derived from CMS projects) */}
+      <section className="cg-work-v2-stats-wrap" aria-label="Published project summary">
+        <div className="cg-work-v2-stats-grid">
+          <article className="cg-work-v2-stat-card">
+            <span className="cg-work-v2-stat-icon is-green" aria-hidden="true">
+              <FolderKanban size={20} />
+            </span>
+            <div>
+              <strong>{projects.length} Approved Initiatives</strong>
+              <p>
+                {activeCount} Active · {plannedCount} Planned in CMS
+              </p>
+            </div>
+          </article>
+          <article className="cg-work-v2-stat-card">
+            <span className="cg-work-v2-stat-icon is-teal" aria-hidden="true">
+              <Layers size={20} />
+            </span>
+            <div>
+              <strong>{Math.max(0, dynamicCategories.length - 1)} Focus Categories</strong>
+              <p>Dynamically grouped from published Foundation projects</p>
+            </div>
+          </article>
+          <article className="cg-work-v2-stat-card">
+            <span className="cg-work-v2-stat-icon is-amber" aria-hidden="true">
+              <MapPin size={20} />
+            </span>
+            <div>
+              <strong>{uniqueAreasCount} Regions Covered</strong>
+              <p>Verified field locations across riverbank communities</p>
+            </div>
+          </article>
         </div>
       </section>
 
-      {/* 2. Explorer: Sidebar + Project Cards */}
-      <section id="cg-work-explorer" className="cg-site-content cg-work-layout">
-        <aside className="cg-work-sidebar" aria-label="Project categories">
-          <div className="cg-work-sidebar-card">
-            <div className="cg-work-sidebar-header">
-              <Layers size={17} aria-hidden="true" />
-              <h2>Project Categories</h2>
-            </div>
-            <div className="cg-work-cat-list" role="tablist" aria-label="Filter projects by category">
-              {dynamicCategories.map((cat) => {
-                const Icon = categoryIcon(cat);
-                const isSelected = selectedCategory === cat;
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    role="tab"
-                    aria-selected={isSelected}
-                    className={isSelected ? "cg-work-cat-btn is-active" : "cg-work-cat-btn"}
-                    onClick={() => handleSelectCategory(cat)}
-                  >
-                    <Icon size={16} aria-hidden="true" className="cg-work-cat-icon" />
-                    <span>{cat}</span>
-                    {isSelected && <ChevronRight size={15} aria-hidden="true" className="cg-work-cat-arrow" />}
-                  </button>
-                );
-              })}
-              <Link
-                href={slug === "upcoming-projects" ? "/our-work" : "/upcoming-projects"}
-                className="cg-work-cat-btn cg-work-cat-link"
+      {/* C. Sticky Horizontal Category Filter Bar */}
+      <section className="cg-work-v2-filter-sticky" aria-label="Filter projects by category">
+        <div className="cg-work-v2-filter-inner" role="tablist">
+          {dynamicCategories.map((cat) => {
+            const Icon = categoryIcon(cat);
+            const isSelected = selectedCategory === cat;
+            const count =
+              cat === "All Projects"
+                ? projects.length
+                : categoryCounts.get(cat.toLowerCase()) ?? 0;
+            return (
+              <button
+                key={cat}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                className={isSelected ? "cg-work-v2-cat-pill is-active" : "cg-work-v2-cat-pill"}
+                onClick={() => handleSelectCategory(cat)}
               >
-                <CalendarClock size={16} aria-hidden="true" className="cg-work-cat-icon" />
-                <span>{slug === "upcoming-projects" ? "All Approved Projects" : "Upcoming Projects"}</span>
-              </Link>
-            </div>
-          </div>
+                <Icon size={15} aria-hidden="true" />
+                <span>{cat}</span>
+                <span className="cg-work-v2-cat-count">{count}</span>
+              </button>
+            );
+          })}
+          <Link
+            href={slug === "upcoming-projects" ? "/our-work" : "/upcoming-projects"}
+            className="cg-work-v2-cat-pill is-cross"
+          >
+            <CalendarClock size={15} aria-hidden="true" />
+            <span>{slug === "upcoming-projects" ? "All Approved Projects" : "Upcoming Projects"}</span>
+          </Link>
+        </div>
+      </section>
 
-          <div className="cg-work-mission-card">
-            <div className="cg-work-mission-icon" aria-hidden="true">
-              <Handshake size={22} />
-            </div>
-            <h3>Be a Part of Our Mission</h3>
-            <p>Together we can do more for a better society.</p>
-            <Link href={joinHref || "/contact"} className="cg-work-mission-btn">
-              Join Us <ArrowRight size={15} aria-hidden="true" />
-            </Link>
+      {/* D. Dynamic 3-Column Projects Grid */}
+      <section id="cg-work-explorer" className="cg-work-v2-main">
+        <div className="cg-work-v2-main-head">
+          <div>
+            <p className="cg-work-v2-main-eyebrow">VERIFIED PROJECTS</p>
+            <h2>{sectionHeading}</h2>
           </div>
-        </aside>
+          <span className="cg-work-v2-result-pill">
+            Showing {filtered.length} of {projects.length}
+          </span>
+        </div>
 
-        <div className="cg-work-main">
-          <div className="cg-work-main-head">
-            <div className="cg-work-main-title">
-              <span className="cg-work-title-rule" aria-hidden="true" />
-              <Sprout size={18} aria-hidden="true" className="cg-work-title-icon" />
-              <h2>{headingText}</h2>
-              <span className="cg-work-count-pill">
-                {filtered.length} {filtered.length === 1 ? "project" : "projects"}
-              </span>
-            </div>
+        {filtered.length === 0 ? (
+          <div className="cg-work-v2-empty" role="status">
+            <FolderKanban size={32} aria-hidden="true" />
+            <h3>
+              {searchQuery
+                ? `No projects matching "${searchQuery}"`
+                : selectedCategory !== "All Projects"
+                ? `No projects in "${selectedCategory}"`
+                : "No projects to display yet"}
+            </h3>
+            <p>
+              {searchQuery || selectedCategory !== "All Projects"
+                ? "Try clearing your search or selecting another category."
+                : "Published project updates will appear here once approved."}
+            </p>
+            {(searchQuery || selectedCategory !== "All Projects") && (
+              <button
+                type="button"
+                className="cg-work-v2-btn-primary"
+                onClick={() => {
+                  setSearchQuery("");
+                  handleSelectCategory("All Projects");
+                }}
+              >
+                Reset Filters
+              </button>
+            )}
           </div>
-
-          {filtered.length === 0 ? (
-            <div className="cg-work-empty" role="status">
-              <FolderKanban size={30} aria-hidden="true" />
-              <h3>
-                {selectedCategory !== "All Projects"
-                  ? `No projects in "${selectedCategory}"`
-                  : "No projects to display yet"}
-              </h3>
-              <p>
-                {selectedCategory !== "All Projects"
-                  ? "Select another category or reset to view all approved Foundation projects."
-                  : "Published project updates will appear here once approved."}
-              </p>
-              {selectedCategory !== "All Projects" && (
-                <button
-                  type="button"
-                  className="cg-work-hero-cta"
-                  onClick={() => handleSelectCategory("All Projects")}
-                >
-                  Show All Projects
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="cg-work-cards">
-              {filtered.map((project) => (
-                <article key={project.slug} className="cg-work-card">
-                  {project.coverSrc && (
-                    <div className="cg-work-card-media">
-                      <img
-                        src={project.coverSrc}
-                        alt={project.title}
-                        loading="lazy"
-                        className="cg-work-card-img"
-                      />
-                      <span
-                        className={
-                          project.status === "PLANNED"
-                            ? "cg-work-status is-planned"
-                            : "cg-work-status is-active"
-                        }
-                      >
-                        <span className="cg-work-status-dot" aria-hidden="true" />
-                        {project.status === "PLANNED" ? "Planned" : "Active"}
-                      </span>
+        ) : (
+          <div className="cg-work-v2-grid">
+            {filtered.map((project) => (
+              <article key={project.slug} className="cg-work-v2-card">
+                <div className="cg-work-v2-card-media">
+                  {project.coverSrc ? (
+                    <img src={project.coverSrc} alt={project.title} loading="lazy" />
+                  ) : (
+                    <div className="cg-work-v2-card-placeholder" aria-hidden="true">
+                      <Sprout size={34} />
                     </div>
                   )}
-                  <div className="cg-work-card-body">
-                    <div className="cg-work-card-top">
-                      <span className="cg-work-cat-badge">{project.category}</span>
-                      {!project.coverSrc && (
-                        <span
-                          className={
-                            project.status === "PLANNED"
-                              ? "cg-work-status is-planned is-inline"
-                              : "cg-work-status is-active is-inline"
-                          }
-                        >
-                          <span className="cg-work-status-dot" aria-hidden="true" />
-                          {project.status === "PLANNED" ? "Planned" : "Active"}
-                        </span>
-                      )}
-                    </div>
-                    <h3>{project.title}</h3>
-                    <p className="cg-work-card-area">{project.area}</p>
-                    <p className="cg-work-card-summary">{project.summary}</p>
-                    <div className="cg-work-card-footer">
-                      <div className="cg-work-card-meta">
-                        <span>
-                          <Calendar size={14} aria-hidden="true" />
-                          {project.launch ? `Planned: ${project.launch}` : "Ongoing"}
-                        </span>
-                        <span>
-                          <MapPin size={14} aria-hidden="true" />
-                          {project.area}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className="cg-work-detail-btn"
-                        onClick={() => setActiveProject(project)}
-                      >
-                        View Details <ArrowRight size={14} aria-hidden="true" />
-                      </button>
-                    </div>
+                  <span className="cg-work-v2-badge-cat">{project.category}</span>
+                  <span
+                    className={
+                      project.status === "PLANNED"
+                        ? "cg-work-v2-badge-status is-planned"
+                        : "cg-work-v2-badge-status is-active"
+                    }
+                  >
+                    <span className="cg-work-v2-pulse-dot" aria-hidden="true" />
+                    {project.status === "PLANNED" ? "Upcoming" : "Active"}
+                  </span>
+                </div>
+
+                <div className="cg-work-v2-card-body">
+                  <p className="cg-work-v2-card-loc">
+                    <MapPin size={14} aria-hidden="true" /> {project.area}
+                  </p>
+                  <h3>{project.title}</h3>
+                  <p className="cg-work-v2-card-summary">{project.summary}</p>
+                  <p className="cg-work-v2-card-time">
+                    <Calendar size={13} aria-hidden="true" />{" "}
+                    {project.launch ? `Planned start: ${project.launch}` : "Ongoing initiative"}
+                  </p>
+
+                  <div className="cg-work-v2-card-actions">
+                    <button
+                      type="button"
+                      className="cg-work-v2-btn-outline"
+                      onClick={() => setActiveProject(project)}
+                    >
+                      Read Story <ArrowRight size={14} aria-hidden="true" />
+                    </button>
+                    <Link href={supportHref} className="cg-work-v2-btn-orange">
+                      <Heart size={14} aria-hidden="true" /> {supportLabel}
+                    </Link>
                   </div>
-                </article>
-              ))}
-            </div>
-          )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+
+        {/* Bottom Mission Strip */}
+        <div className="cg-work-v2-mission-strip">
+          <div>
+            <h3>Be a Part of Our Mission</h3>
+            <p>Collaborate, volunteer, or support approved community initiatives along the Ganga.</p>
+          </div>
+          <Link href={joinHref || "/contact"} className="cg-work-v2-btn-primary">
+            Join Us <ArrowRight size={15} aria-hidden="true" />
+          </Link>
         </div>
       </section>
 
-      {/* 3. Accessible Project Details Modal */}
+      {/* E. Accessible Project Detail Modal */}
       {activeProject && (
         <div
           className="cg-site-ngo-doc-modal-backdrop"
@@ -340,16 +407,16 @@ export function CmsProjectExplorer({
           <div className="cg-work-modal">
             <div className="cg-work-modal-header">
               <div className="cg-work-modal-badges">
-                <span className="cg-work-cat-badge">{activeProject.category}</span>
+                <span className="cg-work-v2-badge-cat is-static">{activeProject.category}</span>
                 <span
                   className={
                     activeProject.status === "PLANNED"
-                      ? "cg-work-status is-planned is-inline"
-                      : "cg-work-status is-active is-inline"
+                      ? "cg-work-v2-badge-status is-planned is-static"
+                      : "cg-work-v2-badge-status is-active is-static"
                   }
                 >
-                  <span className="cg-work-status-dot" aria-hidden="true" />
-                  {activeProject.status === "PLANNED" ? "Planned" : "Active"}
+                  <span className="cg-work-v2-pulse-dot" aria-hidden="true" />
+                  {activeProject.status === "PLANNED" ? "Upcoming" : "Active"}
                 </span>
               </div>
               <button
@@ -380,12 +447,12 @@ export function CmsProjectExplorer({
               <p>{activeProject.summary}</p>
             </div>
             <div className="cg-work-modal-footer">
-              <Link href="/contact" className="cg-work-hero-cta">
-                Support or Enquire <ArrowRight size={15} aria-hidden="true" />
+              <Link href={supportHref} className="cg-work-v2-btn-orange">
+                <Heart size={15} aria-hidden="true" /> {isDonatePublished ? "Donate Now" : "Support or Enquire"}
               </Link>
               <button
                 type="button"
-                className="cg-work-detail-btn"
+                className="cg-work-v2-btn-outline"
                 onClick={() => setActiveProject(null)}
               >
                 Close

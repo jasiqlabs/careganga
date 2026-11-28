@@ -40,11 +40,8 @@ function splitAccentHeading(heading: string) {
 }
 
 function parseValues(body: string, highlights: string[]) {
-  const lines = body
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-  const parsed = lines
+  const source = highlights.length > 0 ? highlights : body.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  return source
     .map((line) => {
       const sep = line.indexOf(":");
       if (sep > 0) {
@@ -53,17 +50,14 @@ function parseValues(body: string, highlights: string[]) {
       return { title: line, desc: "" };
     })
     .filter((x) => x.title);
-  if (parsed.length > 0) return parsed;
-  return highlights.map((h) => ({ title: h, desc: "" }));
 }
 
 function parseFocusAreas(body: string, highlights: string[]) {
-  const fromPipe = body
+  if (highlights.length > 0) return highlights;
+  return body
     .split("|")
     .map((s) => s.trim())
     .filter(Boolean);
-  if (fromPipe.length > 0) return fromPipe;
-  return highlights;
 }
 
 const focusIcon = (label: string) => {
