@@ -19,7 +19,9 @@ import {
   PieChart,
   Target,
   Quote,
-  Megaphone
+  Megaphone,
+  MessageCircle,
+  Users
 } from "lucide-react";
 import type {PublicCmsPage,PublicCmsSection} from "./cms-public-page";
 import type {PublicCmsNavigation} from "./cms-public-source";
@@ -443,77 +445,48 @@ export function CmsHealthcare({section,assets}:{
  */
 export function CmsContactInfo({section,assets,form}:{section:PublicCmsSection;assets:Asset[];form?:ReactNode}){
  const f=section.fields,faq=records(f.faqs),inquiries=records(f.inquiries);
- const social=records(f.socialLinks);
- const secure=(value:unknown,hosts:string[])=>{
-  const entry=text(value);
-  try{
-   const url=new URL(entry);
-   return url.protocol==="https:"&&!url.username&&!url.password&&!url.port&&!url.hash&&
-    hosts.includes(url.hostname.toLowerCase())?entry:"";
-  }catch{return "";}
- };
- const map=secure(f.mapUrl,["www.google.com","google.com","maps.google.com"]);
- // Render an embedded map only if Admin supplied an explicit Google Maps embed
- // URL; normal approved location links remain ordinary outbound links.
- const embeddedMap=(()=>{
-  if(!map)return "";
-  try{
-   const u=new URL(map);
-   return ["www.google.com","google.com"].includes(u.hostname.toLowerCase())&&
-    u.pathname==="/maps/embed"&&u.searchParams.has("pb")?map:"";
-  }catch{return "";}
- })();
- const allowedSocial:Record<string,string[]>={
-  Facebook:["facebook.com","www.facebook.com"],
-  Instagram:["instagram.com","www.instagram.com"],
-  YouTube:["youtube.com","www.youtube.com"]
- };
- const safeSocial=social.filter(link=>allowedSocial[text(link.network)]&&secure(link.url,allowedSocial[text(link.network)]));
- return <section className="cg-site-contact-original cg-site-content">
-  <header className="cg-site-contact-hero">
-   <p className="cg-site-eyebrow">Contact the Foundation</p>
-   <h1>{text(f.heroTitle).trim()||"Contact the Foundation"}</h1>
-   {text(f.heroIntro)&&<p>{text(f.heroIntro)}</p>}
+ const inquiryIcons=[Heart,Users,MessageCircle];
+ const photoStrip=assets.filter(a=>a.role==="CONTACT"&&a.order>=0&&a.order<3&&
+  /^\/api\/public\/content\/media\/[0-9a-f-]{36}$/i.test(a.src));
+ return <div className="cg-contact-v2-page">
+  <header className="cg-contact-v2-hero">
+   <div className="cg-contact-v2-hero-inner">
+    <span className="cg-contact-v2-hero-pill">{text(f.eyebrow)||"Contact"}</span>
+    <h1>{text(f.heroTitle).trim()||"Contact the Foundation"}</h1>
+    {text(f.heroIntro)&&<p>{text(f.heroIntro)}</p>}
+   </div>
   </header>
-  {inquiries.length>0&&<div className="cg-site-contact-inquiries">
-   {inquiries.map((item,i)=><article key={i} className="cg-site-contact-inquiry">
-    <h2>{text(item.title)}</h2><p>{text(item.description)}</p>
-   </article>)}
-  </div>}
-  {form}
-  {assets.some(a=>a.role==="CONTACT"&&a.order>=0&&a.order<3&&
-   /^\/api\/public\/content\/media\/[0-9a-f-]{36}$/i.test(a.src))&&
-   <div className="cg-site-contact-photo-strip" aria-label="Approved Foundation photographs">
-    {[0,1,2].map(index=>{
-     const asset=assets.find(a=>a.role==="CONTACT"&&a.order===index&&
-      /^\/api\/public\/content\/media\/[0-9a-f-]{36}$/i.test(a.src));
-     return asset?<img key={index} src={asset.src} alt={asset.altText}
-      loading="lazy"/>:null;
+
+  <div className="cg-contact-v2-body">
+   {inquiries.length>0&&<div className="cg-contact-v2-inquiries">
+    {inquiries.map((item,i)=>{
+     const Icon=inquiryIcons[i%inquiryIcons.length];
+     return <article key={i} className="cg-contact-v2-inquiry-card">
+      <div className="cg-contact-v2-inquiry-ico" aria-hidden="true"><Icon size={20}/></div>
+      <h2>{text(item.title)}</h2>
+      <p>{text(item.description)}</p>
+     </article>;
     })}
    </div>}
-  {(text(f.officeHours)||map)&&<section className="cg-site-contact-details-public">
-   <h2>Visit or connect</h2>
-   {text(f.officeHours)&&<p>Foundation hours: {text(f.officeHours)}</p>}
-   {embeddedMap&&<iframe className="cg-site-contact-map-embed" title="Foundation location on Google Maps"
-    src={embeddedMap} loading="lazy"
-    referrerPolicy="no-referrer-when-downgrade"/>}
-   {map&&<a href={map} rel="noopener noreferrer" target="_blank">
-    View verified Foundation location on Google Maps</a>}
-  </section>}
-  {faq.length>0&&<section className="cg-site-contact-faq">
+
+   {form}
+  </div>
+
+  {photoStrip.length>0&&<div className="cg-contact-v2-photo-strip" aria-label="Approved Foundation photographs">
+   {[0,1,2].map(index=>{
+    const asset=photoStrip.find(a=>a.order===index);
+    return asset?<div key={index} className="cg-contact-v2-photo-cell"><img src={asset.src} alt={asset.altText} loading="lazy"/></div>:null;
+   })}
+  </div>}
+
+  {faq.length>0&&<section className="cg-contact-v2-faq-section">
    <h2>Frequently Asked Questions</h2>
-   <div className="cg-site-contact-faq-grid">
-    {faq.map((item,i)=><details key={i}>
-     <summary>{text(item.question)}</summary><p>{text(item.answer)}</p>
+   <div className="cg-contact-v2-faq-list">
+    {faq.map((item,i)=><details key={i} className="cg-contact-v2-faq-item" open={i===0}>
+     <summary>{text(item.question)}</summary>
+     <p>{text(item.answer)}</p>
     </details>)}
    </div>
   </section>}
-  {safeSocial.length>0&&<section className="cg-site-contact-social">
-   <h2>Follow the Foundation</h2>
-   <div>{safeSocial
-    .map((link,i)=><a key={i}
-     href={secure(link.url,allowedSocial[text(link.network)])}
-     target="_blank" rel="noopener noreferrer">{text(link.network)}</a>)}</div>
-  </section>}
- </section>;
+ </div>;
 }
